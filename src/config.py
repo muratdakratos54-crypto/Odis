@@ -23,6 +23,20 @@ class ModelConfig:
     rope_theta: float = 10000.0
     dropout: float = 0.0        # tek epoch'tan az veri görüyoruz -> overfit yok, dropout gereksiz
     tie_embeddings: bool = True  # giriş embedding'i = çıkış projeksiyonu (bkz. model.py)
+    # --- Mixture-of-Experts (ayrıntılar: src/moe.py). n_experts = 0 -> tamamen dense model ---
+    n_experts: int = 0          # katman başına routed expert sayısı (E)
+    top_k: int = 2              # token başına seçilen routed expert sayısı (k)
+    expert_hidden: int = 352    # her expert'in SwiGLU gizli boyutu (ince taneli: dense'in 1/4'ü)
+    n_shared_experts: int = 0   # her tokenın her zaman geçtiği expert sayısı
+    # İlk katman(lar) dense kalır (DeepSeek-V3/Kimi K2: first_k_dense_replace). Erken katmanlar
+    # daha çok token-yerel/genel özellik işler; burada routing'den kazanç az, dengesizlik riski yüksek.
+    first_dense_layers: int = 1
+    norm_topk_prob: bool = True  # seçilen k gate ağırlığını toplamı 1 olacak şekilde normalize et
+    # Katsayılar MoE katmanlarının ORTALAMASINA uygulanır (bkz. GPT.forward). Switch Transformer
+    # (0.01) ve ST-MoE (0.001) aynı değerleri katman başına kullanıp toplar; bizdeki eşdeğeri
+    # router başına coef / n_moe_katman.
+    aux_loss_coef: float = 0.01  # load-balancing loss katsayısı
+    z_loss_coef: float = 0.001   # router z-loss katsayısı
 
 
 @dataclass
@@ -75,6 +89,27 @@ PRESETS: dict[str, tuple[ModelConfig, TrainConfig]] = {
     # ~30M parametre (4.2M embedding + 8 katman x ~3.2M). TinyStories için "tatlı nokta":
     # 12 GB'a rahat sığar ve ~20-30 dakikada tutarlı hikâye üretir.
     "dense": (ModelConfig(), TrainConfig()),
+    # Kimi K2 tarzı MoE, dense ile AYNI aktif hesapla (adil karşılaştırma):
+    #   katman 0: dense SwiGLU(1408)
+    #   katman 1-7: 16 routed expert (352) içinden top-3 + 1 shared expert (352)
+    #   aktif FFN = 3*352 + 352 = 1408 = dense ;  toplam FFN parametresi katman başına ~4.2x
+    "moe": (
+        ModelConfig(n_experts=16, top_k=3, expert_hidden=352, n_shared_experts=1, first_dense_layers=1),
+        TrainConfig(run_name="moe"),
+    ),
+    # Ablasyon: aynı MoE ama load-balancing loss KAPALI -> expert collapse'ı gözlemlemek için.
+    # (z-loss açık kalır: o denge sağlamaz, sadece logit'leri küçük tutar; böylece tek fark aux loss.)
+    "moe-noaux": (
+        ModelConfig(n_experts=16, top_k=3, expert_hidden=352, n_shared_experts=1, first_dense_layers=1,
+                    aux_loss_coef=0.0),
+        TrainConfig(run_name="moe-noaux"),
+    ),
+    "tiny-moe": (
+        ModelConfig(max_seq_len=128, d_model=128, n_layer=2, n_head=4, ffn_hidden=352,
+                    n_experts=8, top_k=2, expert_hidden=88, n_shared_experts=1, first_dense_layers=1),
+        TrainConfig(run_name="tiny-moe", batch_size=16, grad_accum=1, max_steps=60, warmup_steps=10,
+                    eval_interval=30, eval_iters=5, log_interval=10, sample_tokens=40),
+    ),
 }
 
 

@@ -50,7 +50,7 @@ def main() -> None:
                     torch.cuda.synchronize()
                     t0 = time.time()
                 with torch.autocast("cuda", dtype=torch.bfloat16):
-                    _, loss = model(x, x)
+                    _, loss, _ = model(x, x)
                 loss.backward()
                 opt.step()
                 opt.zero_grad(set_to_none=True)

@@ -25,6 +25,7 @@ from src.checkpoint import save_atomic
 from src.config import TrainConfig, build_configs
 from src.data import TokenDataset, dataset_paths
 from src.model import GPT
+from src.moe import load_balance_metrics, load_sparkline
 from src.tokenizer import load_tokenizer
 
 
@@ -51,8 +52,10 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> fl
     for _ in range(cfg.eval_iters):
         x, y = ds.get_batch(cfg.batch_size, g)
         with autocast_ctx:
-            _, loss = model(x, y)
-        total += loss.item()
+            _, _, info = model(x, y)
+        # Toplam loss değil, saf cross-entropy: MoE'nin aux/z ceza terimleri model kalitesini
+        # ölçmez; dense ile MoE'yi adil karşılaştırmak için yalnızca CE'ye bakıyoruz.
+        total += info["ce"].item()
     model.train()
     return total / cfg.eval_iters
 
@@ -123,6 +126,11 @@ def main() -> None:
     tokens_per_step = tcfg.batch_size * tcfg.grad_accum * mcfg.max_seq_len
     print(f"model: {model.num_params() / 1e6:.2f}M parametre "
           f"({model.num_params(exclude_embedding=True) / 1e6:.2f}M embedding hariç)")
+    if mcfg.n_experts > 0:
+        n_moe = sum(b.is_moe for b in model.blocks)
+        print(f"MoE: {n_moe} katman x {mcfg.n_experts} expert, top-{mcfg.top_k} + {mcfg.n_shared_experts} shared | "
+              f"token başına aktif: {model.num_params(active_only=True) / 1e6:.2f}M "
+              f"({model.num_params(exclude_embedding=True, active_only=True) / 1e6:.2f}M embedding hariç)")
     print(f"veri: train {len(train_ds) / 1e6:.1f}M token, val {len(val_ds) / 1e6:.2f}M token")
     print(f"adım başına {tokens_per_step:,} token, toplam {tokens_per_step * tcfg.max_steps / 1e6:.0f}M token")
     with open(os.path.join(run_dir, "config.json"), "w") as f:
@@ -143,7 +151,11 @@ def main() -> None:
         metrics.flush()
 
     t_start = t_log = time.time()
-    loss_accum, steps_since_log = torch.zeros((), device=device), 0
+    # Log aralığı boyunca GPU'da biriken değerler (her adımda .item() çağırmamak için tensör olarak)
+    accum = {k: torch.zeros((), device=device) for k in ("loss", "ce", "aux_loss", "z_loss")}
+    load_accum: torch.Tensor | None = None  # (MoE katmanı, E) expert atama sayıları
+    last_load: list[list[float]] | None = None
+    steps_since_log = 0
     skip_eval_once = tcfg.resume and step > 0  # bu adımın eval'i kaydedilmeden önce zaten yapılmıştı
 
     while True:
@@ -153,6 +165,13 @@ def main() -> None:
             val_loss = evaluate(train_model, val_ds, tcfg, autocast_ctx)
             print(f"[eval] adım {step}: val_loss {val_loss:.4f} (ppl {math.exp(val_loss):.2f})")
             log({"type": "val", "step": step, "val_loss": val_loss, "time": time.time() - t_start})
+            if last_load is not None:
+                # Expert kullanım tablosu: her satır bir MoE katmanı, her karakter bir expert.
+                # '▄' ideal pay; '█' ~1.9x+ aşırı yüklü; boşluk = ideal payın %10'undan az (ölü).
+                for li, row in enumerate(last_load):
+                    layer = li + mcfg.first_dense_layers
+                    print(f"[expert] katman {layer}: |{load_sparkline(row)}| "
+                          f"min {min(row) * len(row):.2f}x maks {max(row) * len(row):.2f}x")
             if tcfg.sample_tokens > 0:
                 model.eval()
                 start = torch.tensor([[tok.bos_id]], device=device)
@@ -182,11 +201,16 @@ def main() -> None:
         for _ in range(tcfg.grad_accum):
             x, y = train_ds.get_batch(tcfg.batch_size, train_gen)
             with autocast_ctx:
-                _, loss = train_model(x, y)
+                _, loss, info = train_model(x, y)
             # Gradyan biriktirme: loss'u grad_accum'a böl ki toplanan gradyan, büyük tek bir
             # batch'in *ortalama* gradyanına eşit olsun (LR'ı batch'ten bağımsız tutar).
             (loss / tcfg.grad_accum).backward()
-            loss_accum += loss.detach() / tcfg.grad_accum
+            accum["loss"] += loss.detach() / tcfg.grad_accum
+            for k in ("ce", "aux_loss", "z_loss"):
+                if k in info:
+                    accum[k] += info[k] / tcfg.grad_accum
+            if "counts" in info:
+                load_accum = info["counts"].clone() if load_accum is None else load_accum + info["counts"]
         # Gradyan kırpma: nadir "kötü batch"lerde oluşan dev gradyanların modeli bozmasını engeller.
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), tcfg.grad_clip)
         optimizer.step()
@@ -198,14 +222,26 @@ def main() -> None:
         # .item() GPU'yu CPU ile senkronize eder (yavaş); bu yüzden her adımda değil, aralıklarla.
         if step % tcfg.log_interval == 0 or step >= tcfg.max_steps:
             dt = time.time() - t_log
-            train_loss = loss_accum.item() / steps_since_log
+            avg = {k: v.item() / steps_since_log for k, v in accum.items()}
             tok_s = steps_since_log * tokens_per_step / dt
             mem = torch.cuda.max_memory_allocated() / 1e9 if device == "cuda" else 0.0
-            print(f"adım {step:5d} | loss {train_loss:.4f} | lr {lr:.2e} | grad_norm {grad_norm.item():.2f} "
-                  f"| {tok_s / 1e3:.1f}k tok/s | tepe bellek {mem:.2f} GB")
-            log({"type": "train", "step": step, "loss": train_loss, "lr": lr, "grad_norm": grad_norm.item(),
-                 "tok_per_sec": tok_s, "peak_mem_gb": mem, "time": time.time() - t_start})
-            loss_accum.zero_()
+            record = {"type": "train", "step": step, "loss": avg["loss"], "ce": avg["ce"], "lr": lr,
+                      "grad_norm": grad_norm.item(), "tok_per_sec": tok_s, "peak_mem_gb": mem,
+                      "time": time.time() - t_start}
+            line = (f"adım {step:5d} | loss {avg['loss']:.4f} | lr {lr:.2e} | grad_norm {grad_norm.item():.2f} "
+                    f"| {tok_s / 1e3:.1f}k tok/s | tepe bellek {mem:.2f} GB")
+            if load_accum is not None:
+                bal = load_balance_metrics(load_accum)
+                last_load = bal["load"]
+                record.update(aux_loss=avg["aux_loss"], z_loss=avg["z_loss"], **bal)
+                line += (f"\n           ce {avg['ce']:.4f} | aux {avg['aux_loss']:.3f} | z {avg['z_loss']:.2f} "
+                         f"| yük CV {bal['load_cv']:.3f} | maks {bal['load_max_ratio']:.2f}x "
+                         f"| min {bal['load_min_ratio']:.2f}x | ölü expert {bal['dead_experts']}")
+                load_accum = None
+            print(line)
+            log(record)
+            for v in accum.values():
+                v.zero_()
             steps_since_log, t_log = 0, time.time()
 
     metrics.close()
