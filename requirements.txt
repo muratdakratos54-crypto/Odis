@@ -1,0 +1,10 @@
+# PyTorch'un CUDA'lı Windows wheel'i PyPI'da değil, PyTorch'un kendi index'inde.
+# RTX 40xx (Ada, SM89) için CUDA 12.8 build'i uygundur.
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+torch
+numpy
+sentencepiece   # kendi BPE tokenizer'ımızı eğitmek için
+tiktoken        # alternatif: hazır GPT-2 BPE tokenizer (karşılaştırma için)
+tqdm
+matplotlib      # expert kullanım grafikleri

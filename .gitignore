@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Büyük/üretilen dosyalar: veri ve checkpoint'ler git'e girmez (GB'larca olabilir)
+data/*
+!data/.gitkeep
+checkpoints/*
+!checkpoints/.gitkeep
+
+# Editör / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
