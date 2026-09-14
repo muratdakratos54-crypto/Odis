@@ -19,9 +19,13 @@ from src.model import GPT
 
 def save_atomic(obj: dict, path: str) -> None:
     """Önce geçici dosyaya yaz, sonra yerine taşı: yazma sırasında çökme/elektrik kesintisi olursa
-    eski checkpoint bozulmadan kalır."""
+    eski checkpoint bozulmadan kalır. fsync, işletim sisteminin önbelleğindeki verinin diske
+    gerçekten yazılmasını bekler; o olmadan elektrik kesintisinde yeni dosya yarım kalabilir."""
     tmp = path + ".tmp"
-    torch.save(obj, tmp)
+    with open(tmp, "wb") as f:
+        torch.save(obj, f)
+        f.flush()
+        os.fsync(f.fileno())
     for attempt in range(5):
         try:
             os.replace(tmp, path)

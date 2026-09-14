@@ -24,7 +24,7 @@ class TokenDataset:
         self.data = np.memmap(path, dtype=np.uint16, mode="r")
         self.block_size = block_size
         self.device = device
-        if len(self.data) <= block_size + 1:
+        if len(self.data) < block_size + 1:
             raise ValueError(f"{path} çok kısa ({len(self.data)} token)")
 
     def __len__(self) -> int:
@@ -32,12 +32,15 @@ class TokenDataset:
 
     def get_batch(self, batch_size: int, generator: torch.Generator) -> tuple[torch.Tensor, torch.Tensor]:
         T = self.block_size
-        ix = torch.randint(len(self.data) - T - 1, (batch_size,), generator=generator).tolist()
+        # Pencere başı i ∈ [0, len - T - 1] (randint üst sınırı hariçtir): son pencere [len-T-1, len)
+        # dosyanın son tokenını da hedef olarak kullanır.
+        ix = torch.randint(len(self.data) - T, (batch_size,), generator=generator).tolist()
         chunk = np.stack([self.data[i : i + T + 1] for i in ix]).astype(np.int64)
         xy = torch.from_numpy(chunk)
         if self.device.startswith("cuda"):
-            # pinned (sayfalanamaz) bellek + non_blocking: CPU->GPU kopyası GPU'yu bekletmeden,
-            # asenkron yapılır; GPU önceki adımın hesabını sürdürürken veri yolda olur.
+            # pinned (sayfalanamaz) bellek + non_blocking: kopya komutu GPU kuyruğuna (aynı CUDA
+            # stream) eklenir ve CPU, GPU'yu beklemeden bir sonraki işe geçer. Kopyanın kendisi
+            # kuyruktaki önceki çekirdekler bitince yapılır; kazanç, CPU'nun boşuna beklememesidir.
             xy = xy.pin_memory().to(self.device, non_blocking=True)
         else:
             xy = xy.to(self.device)

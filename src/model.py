@@ -137,9 +137,12 @@ class GPT(nn.Module):
         self.norm = RMSNorm(cfg.d_model)  # son norm: logit ölçeğini stabil tutar
         self.lm_head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
         if cfg.tie_embeddings:
-            # Weight tying: "token -> vektör" ve "vektör -> token" aynı matrisi paylaşır.
-            # Küçük modellerde parametrenin büyük kısmı embedding'dedir; paylaşmak hem parametre
-            # tasarrufu sağlar hem de nadir tokenların çıkış tarafını da iyi eğitir.
+            # Weight tying: "token -> vektör" ve "vektör -> token" aynı V x d matrisini paylaşır.
+            # Çıkış (softmax) tarafı her adımda TÜM satırlar için gradyan alır; giriş embedding'inde
+            # ise yalnızca batch'te geçen tokenların satırı güncellenir. Paylaşınca nadir tokenların
+            # GİRİŞ vektörleri de çıkış tarafından her adımda eğitilir (Press & Wolf, 2017).
+            # Ayrıca V x d parametre tasarrufu: dense preset'te 4.2M (~%14); çok küçük modellerde
+            # (tiny preset: ~%72) embedding modelin çoğunluğu olabilir.
             self.lm_head.weight = self.tok_emb.weight
 
         cos, sin = precompute_rope(cfg.d_model // cfg.n_head, cfg.max_seq_len, cfg.rope_theta)
@@ -220,7 +223,7 @@ class GPT(nn.Module):
                 next_id = logits.argmax(dim=-1, keepdim=True)  # greedy
             else:
                 logits = logits / temperature  # <1: daha keskin/tutarlı, >1: daha çeşitli/rastgele
-                if top_k is not None:
+                if top_k is not None and top_k > 0:  # top_k <= 0 veya None: filtre kapalı
                     # Olasılığı en yüksek k token dışındakileri ele: "kuyruk"taki saçma tokenları kes
                     v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                     logits[logits < v[:, [-1]]] = -float("inf")

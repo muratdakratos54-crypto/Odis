@@ -15,6 +15,7 @@ import math
 import os
 import sys
 
+import numpy as np
 import torch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -41,6 +42,7 @@ def test_causality():
 
 def test_rope_relative():
     """RoPE sonrası <q_m, k_n> yalnızca m - n'e bağlı olmalı."""
+    torch.manual_seed(0)
     hd = 16
     cos, sin = precompute_rope(hd, 64, 10000.0)
     q = torch.randn(1, 1, 1, hd)
@@ -53,8 +55,23 @@ def test_rope_relative():
 
     assert math.isclose(score(5, 2), score(20, 17), rel_tol=1e-4)
     assert math.isclose(score(0, 0), score(40, 40), rel_tol=1e-4)
+    # ...ama farklı göreli mesafeler farklı skor vermeli (yoksa hiç döndürme yapılmıyor demektir)
+    assert not math.isclose(score(5, 2), score(5, 4), rel_tol=1e-3)
     # döndürme normu korumalı
     assert torch.allclose(apply_rope(q, cos[7:8], sin[7:8]).norm(), q.norm(), atol=1e-5)
+
+
+def test_model_uses_positions():
+    """Konum bilgisi olmayan tek katmanlı causal attention, önekteki tokenların SIRASINA kayıtsızdır
+    (aynı kümeye aynı ağırlıklı ortalama). RoPE gerçekten (q VE k'ye) uygulanıyorsa [a,b,c,d] ile
+    [b,a,c,d]'nin son konum çıktısı farklı olmalı. (Aynı tokenı tekrarlayan bir girdi bu testi
+    yapamaz: tüm v vektörleri aynı olur ve RoPE doğru olsa bile çıktılar eşit çıkar.)"""
+    torch.manual_seed(0)
+    model = GPT(ModelConfig(vocab_size=97, max_seq_len=32, d_model=64, n_layer=1, n_head=4, ffn_hidden=176)).eval()
+    with torch.no_grad():
+        la, _ = model(torch.tensor([[5, 17, 42, 9]]))
+        lb, _ = model(torch.tensor([[17, 5, 42, 9]]))
+    assert not torch.allclose(la, lb, atol=1e-5)
 
 
 def test_initial_loss_near_uniform():
@@ -106,5 +123,30 @@ def test_weight_tying_and_param_count():
 def test_generate_stops_at_eos():
     torch.manual_seed(0)
     model = GPT(CFG).eval()
-    out = model.generate(torch.zeros(3, 1, dtype=torch.long), 20, temperature=1.0, top_k=5)
-    assert out.shape == (3, 21)
+    start = torch.zeros(3, 1, dtype=torch.long)
+    out = model.generate(start, 20, temperature=1.0, top_k=5)
+    assert out.shape == (3, 21)  # eos_id yok -> tam uzunluk
+    # Greedy'de 3 özdeş girdi aynı ilk tokenı üretir; onu EOS sayarsak üretim 1 adımda durmalı
+    first = int(model.generate(start, 1, temperature=0)[0, -1])
+    out = model.generate(start, 20, temperature=0, eos_id=first)
+    assert out.shape == (3, 2)
+    # top_k=0 filtreyi kapatır (çökmemeli)
+    assert model.generate(start, 3, temperature=1.0, top_k=0).shape == (3, 4)
+
+
+def test_get_batch_bounds(tmp_path):
+    """Pencereler dosya sınırını aşmamalı, y = x'in bir kaydırılmışı olmalı ve son token da hedef olabilmeli."""
+    from src.data import TokenDataset
+
+    path = tmp_path / "toy.bin"
+    data = np.arange(20, dtype=np.uint16)
+    data.tofile(path)
+    ds = TokenDataset(str(path), block_size=8, device="cpu")
+    g = torch.Generator().manual_seed(0)
+    seen_last = False
+    for _ in range(200):
+        x, y = ds.get_batch(4, g)
+        assert torch.equal(y[:, :-1], x[:, 1:]) and torch.equal(y, x + 1)
+        assert int(y.max()) <= 19
+        seen_last |= bool((y[:, -1] == 19).any())
+    assert seen_last, "dosyanın son tokenı hiç hedef olmadı (off-by-one)"

@@ -61,6 +61,24 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python -m src.sample --ckpt checkpoints\dense\best.pt --prompt "Once upon a time"
 ```
 
+## Sonuçlar
+
+### Adım 1: Dense baseline (`--preset dense`)
+
+29.9M parametre (8 katman, d=512, 8 head, SwiGLU 1408, V=8192), 3000 adım x 32 768 token
+= **98M token** (TinyStories'in ~%18'i), RTX 4070 Super'da **15.5 dakika**, 115k tok/s, tepe VRAM 6.3 GB.
+
+| adım | 0 | 500 | 1000 | 2000 | 3000 |
+|---|---|---|---|---|---|
+| val loss | 9.12 | 1.90 | 1.65 | 1.44 | **1.354** (ppl 3.87) |
+
+Örnek (`--prompt "Once upon a time, there was a little dragon who"`, temperature 0.8, top-k 50):
+
+> Once upon a time, there was a little dragon who lived in a big cave. This dragon was not a bad
+> dragon. He was an original dragon, not like any other dragon. The dragon felt sad and wanted to
+> find a new home. One day, the dragon met a little girl. The girl said, "Hello, dragon! I can help
+> you find a new home." [...] From that day on, they became the best of friends.
+
 ## 12 GB VRAM notları
 
 `scripts/benchmark.py` ile ölçüldü (dense 30M, seq 512):
@@ -74,4 +92,15 @@ py -3.13 -m venv .venv
 
 Windows'ta VRAM dolduğunda sürücü OOM hatası vermek yerine belleği sistem RAM'ine taşır
 ("sysmem fallback") ve eğitim sessizce yavaşlar. `train.py` bu yüzden PyTorch'u VRAM'in
-%92'siyle sınırlar (`--vram_limit_frac`): taşma olursa açık bir OOM hatası alırsınız.
+%92'siyle sınırlar (`--vram_limit_frac`): kendi belleğimiz taşarsa açık bir OOM hatası alırsınız.
+Bu en iyi çaba bir korumadır (başka uygulamalar VRAM'i doldurursa yine taşabilir); kesin çözüm
+NVIDIA Denetim Masası → 3D ayarları → "CUDA - Sysmem Fallback Policy" = "Prefer No Sysmem Fallback".
+
+## Kod incelemesi
+
+Dense kod, eğitimden önce çok ajanlı bir incelemeden geçti (4 boyut: model matematiği, eğitim
+döngüsü, veri/tokenizer, platform tuzakları + açıklama yorumlarının doğruluğu; her bulgu ayrı bir
+şüpheci tarafından çürütülmeye çalışıldı). Kritik (sonucu bozan) hata çıkmadı; doğrulanan
+düzeltmeler: weight tying ve GradScaler açıklamalarının düzeltilmesi, RoPE'yi gerçekten sınayan
+testler, veri yükleyicide 1 tokenlık off-by-one, resume uç durumları (optimizer ayarları, metrics
+tekrarları, max_steps), fp16'nın reddedilmesi, fsync'li checkpoint, indirme betiğinde kısa okuma.

@@ -5,7 +5,7 @@
 Örnekleme parametreleri:
   --temperature : logit'leri böler. 0 = greedy (hep en olası token; tekrara düşmeye meyilli),
                   0.7-0.9 = tutarlı ama çeşitli, >1 = giderek rastgele.
-  --top_k       : her adımda yalnızca en olası k token arasından seç.
+  --top_k       : her adımda yalnızca en olası k token arasından seç (0 = filtre kapalı).
 """
 from __future__ import annotations
 

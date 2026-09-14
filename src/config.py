@@ -58,7 +58,10 @@ class TrainConfig:
     resume: bool = False
     # Windows'ta NVIDIA sürücüsü VRAM taşınca OOM vermek yerine sistem RAM'ine taşar ("sysmem
     # fallback") ve eğitim sessizce ~3-20x yavaşlar. PyTorch'un ayırıcısını VRAM'in bu oranıyla
-    # sınırlayarak bunu açık bir OutOfMemoryError'a çeviriyoruz (0 = sınır yok).
+    # sınırlayarak *kendi* büyümemizi açık bir OutOfMemoryError'a çeviriyoruz (0 = sınır yok).
+    # En iyi çaba: başka uygulamalar (tarayıcı, oyun) VRAM'i doldurursa taşma bu sınırın altında da
+    # olabilir. Kesin çözüm (sistem ayarı, elle yapılır): NVIDIA Denetim Masası -> 3D ayarları ->
+    # "CUDA - Sysmem Fallback Policy" = "Prefer No Sysmem Fallback".
     vram_limit_frac: float = 0.92
 
 

@@ -34,6 +34,10 @@ def _fetch(name: str, tmp: str, total: int) -> None:
                 if pct // 10 != last:
                     print(f"{name}: {done / 1e6:,.0f}/{total / 1e6:,.0f} MB ({pct}%)", flush=True)
                     last = pct // 10
+    # Sunucu bağlantıyı hatasız ama erken kapatırsa read() b"" döner ve döngü sessizce biter;
+    # bunu da bir bağlantı hatası sayıp yeniden deneme yoluna sok.
+    if total and done != total:
+        raise ConnectionError(f"kısa okuma: {done}/{total} bayt")
 
 
 def download(name: str) -> None:
@@ -58,6 +62,7 @@ def download(name: str) -> None:
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # Windows yönlendirmesinde Türkçe karakterler
     os.makedirs(OUT_DIR, exist_ok=True)
     for n in FILES:
         download(n)

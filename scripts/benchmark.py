@@ -26,6 +26,7 @@ from src.model import GPT  # noqa: E402
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument("--batch_sizes", default="16,32,48,64")
     p.add_argument("--steps", type=int, default=8)

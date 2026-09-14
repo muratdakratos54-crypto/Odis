@@ -33,7 +33,11 @@ def iter_stories(path: str, max_bytes: int | None = None, pbar: tqdm | None = No
     read = 0
     buf = b""
     with open(path, "rb") as f:
-        while chunk := f.read(16 << 20):
+        while True:
+            n = 16 << 20 if max_bytes is None else min(16 << 20, max_bytes - read)
+            chunk = f.read(n) if n > 0 else b""
+            if not chunk:
+                break
             read += len(chunk)
             if pbar is not None:
                 pbar.update(len(chunk))
@@ -44,7 +48,7 @@ def iter_stories(path: str, max_bytes: int | None = None, pbar: tqdm | None = No
                 if s:
                     yield s
             if max_bytes is not None and read >= max_bytes:
-                return
+                return  # bayt bütçesi doldu: sondaki yarım hikâye atılır
     s = buf.decode("utf-8", errors="replace").strip()
     if s:
         yield s
@@ -82,6 +86,7 @@ def encode_file(tok: Tokenizer, src: str, dst: str, max_bytes: int | None, batch
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # Windows yönlendirmesinde Türkçe karakterler
     p = argparse.ArgumentParser()
     p.add_argument("--tokenizer", choices=["sp", "gpt2"], default="sp")
     p.add_argument("--vocab_size", type=int, default=8192)
@@ -111,6 +116,8 @@ def main() -> None:
             print(f"tokenizer eğitiliyor (BPE, V={args.vocab_size}) ...")
             SentencePieceTokenizer.train(sample, prefix, args.vocab_size)
         tok: Tokenizer = SentencePieceTokenizer(prefix + ".model")
+        if tok.vocab_size != args.vocab_size:
+            sys.exit(f"{prefix}.model V={tok.vocab_size}, istenen {args.vocab_size}: farklı bir --out kullanın.")
         meta = {"tokenizer": "sentencepiece", "model_file": "tokenizer.model"}
     else:
         tok = TiktokenTokenizer("gpt2")

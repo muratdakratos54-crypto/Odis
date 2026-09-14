@@ -60,6 +60,7 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> fl
 def main() -> None:
     # Windows konsolu/yönlendirmesi UTF-8 olmayabilir; üretilen metin yüzünden çökmeyelim
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # sys.exit mesajları stderr'e gider
     mcfg, tcfg = build_configs()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     torch.manual_seed(tcfg.seed)
@@ -87,18 +88,32 @@ def main() -> None:
     step, best_val = 0, float("inf")
 
     if tcfg.resume and os.path.exists(last_path):
-        ckpt = torch.load(last_path, map_location=device, weights_only=True)
+        # CPU'ya yükle: load_state_dict ağırlıkları zaten GPU'daki parametrelere kopyalar,
+        # optimizer durumu da parametrenin cihazına taşınır. GPU'ya yükleseydik ckpt sözlüğü
+        # eğitim boyunca ağırlıkların ikinci bir kopyasını VRAM'de tutardı.
+        ckpt = torch.load(last_path, map_location="cpu", weights_only=True)
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
-        # map_location=cuda RNG durumunu da GPU'ya taşır; CPU Generator'ı CPU ByteTensor ister
-        train_gen.set_state(ckpt["train_gen_state"].cpu())
+        # load_state_dict param_group ayarlarını da checkpoint'ten geri yükler; komut satırında
+        # değiştirilmiş weight_decay/betas sessizce ezilmesin diye mevcut config'i yeniden uygula.
+        # (LR zaten her adımda lr_at() ile ayarlanıyor.)
+        for group, wd in zip(optimizer.param_groups, (tcfg.weight_decay, 0.0)):
+            group["weight_decay"], group["betas"] = wd, (tcfg.beta1, tcfg.beta2)
+        train_gen.set_state(ckpt["train_gen_state"])
         step, best_val = ckpt["step"], ckpt["best_val"]
+        del ckpt
+        if step >= tcfg.max_steps:
+            sys.exit(f"checkpoint adımı {step} >= max_steps {tcfg.max_steps}; daha büyük --max_steps verin.")
         print(f"devam ediliyor: adım {step}, en iyi val {best_val:.4f}")
 
     # bf16 autocast: matris çarpımları bf16'da (2x daha az aktivasyon belleği, Ada'da çok daha hızlı),
     # ağırlıklar ve optimizer durumu float32'de kalır ("mixed precision").
-    # bf16'nın fp16'ya üstünlüğü: float32 ile aynı üs aralığı -> gradyan taşması yok -> GradScaler yok.
-    ptdtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[tcfg.dtype]
+    # bf16'nın fp16'ya üstünlüğü: float32 ile aynı üs aralığı (fp16 yalnızca ~6e-8..65504).
+    # fp16'da küçük gradyanlar sıfıra yuvarlanır (underflow), bu yüzden fp16 loss scaling
+    # (GradScaler) ister; bf16'da bu sorun yok -> GradScaler gerekmez.
+    if tcfg.dtype not in ("bfloat16", "float32"):
+        sys.exit("dtype: 'bfloat16' veya 'float32'. float16 GradScaler gerektirir ve burada desteklenmiyor.")
+    ptdtype = {"bfloat16": torch.bfloat16, "float32": torch.float32}[tcfg.dtype]
     autocast_ctx = (
         torch.autocast(device_type="cuda", dtype=ptdtype)
         if device == "cuda" and ptdtype != torch.float32 else nullcontext()
@@ -113,8 +128,15 @@ def main() -> None:
     with open(os.path.join(run_dir, "config.json"), "w") as f:
         json.dump({"model": asdict(mcfg), "train": asdict(tcfg)}, f, indent=2)
     # Yeni koşu: dosyayı sıfırdan aç (checkpoint'e ulaşamadan çökmüş eski bir koşunun kayıtları
-    # karışmasın). Resume: kaldığı yerden ekle.
-    metrics = open(os.path.join(run_dir, "metrics.jsonl"), "a" if tcfg.resume else "w", encoding="utf-8")
+    # karışmasın). Resume: checkpoint adımından SONRA yazılmış kayıtları at (o adımlar yeniden
+    # eğitilecek; aksi halde aynı adım iki kez görünür), sonra kaldığı yerden ekle.
+    metrics_path = os.path.join(run_dir, "metrics.jsonl")
+    if step > 0 and os.path.exists(metrics_path):
+        with open(metrics_path, encoding="utf-8") as f:
+            kept = [line for line in f if json.loads(line)["step"] <= step]
+        with open(metrics_path, "w", encoding="utf-8") as f:
+            f.writelines(kept)
+    metrics = open(metrics_path, "a" if step > 0 else "w", encoding="utf-8")
 
     def log(record: dict) -> None:
         metrics.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -126,7 +148,7 @@ def main() -> None:
 
     while True:
         # ---------------- değerlendirme + checkpoint ----------------
-        if (step % tcfg.eval_interval == 0 or step == tcfg.max_steps) and not skip_eval_once:
+        if (step % tcfg.eval_interval == 0 or step >= tcfg.max_steps) and not skip_eval_once:
             t_eval = time.time()
             val_loss = evaluate(train_model, val_ds, tcfg, autocast_ctx)
             print(f"[eval] adım {step}: val_loss {val_loss:.4f} (ppl {math.exp(val_loss):.2f})")
@@ -150,7 +172,7 @@ def main() -> None:
                              "train_gen_state": train_gen.get_state()}, last_path)
             t_log += time.time() - t_eval  # eval/örnek/kayıt süresi tok/s ölçümüne karışmasın
         skip_eval_once = False
-        if step == tcfg.max_steps:
+        if step >= tcfg.max_steps:
             break
 
         # ---------------- bir optimizer adımı ----------------
@@ -174,7 +196,7 @@ def main() -> None:
 
         # ---------------- log ----------------
         # .item() GPU'yu CPU ile senkronize eder (yavaş); bu yüzden her adımda değil, aralıklarla.
-        if step % tcfg.log_interval == 0 or step == tcfg.max_steps:
+        if step % tcfg.log_interval == 0 or step >= tcfg.max_steps:
             dt = time.time() - t_log
             train_loss = loss_accum.item() / steps_since_log
             tok_s = steps_since_log * tokens_per_step / dt
