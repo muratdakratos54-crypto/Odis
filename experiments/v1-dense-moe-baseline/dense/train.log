@@ -1,0 +1,150 @@
+model: 29.89M parametre (25.70M embedding hariç)
+veri: train 545.8M token, val 5.51M token
+adım başına 32,768 token, toplam 98M token
+[eval] adım 0: val_loss 9.1166 (ppl 9105.35)
+[örnek] 'Puppy swampirlirl spaceshipature spaceshippepected reluctantlyoll bec try wouldnundredating single eight street curtains curtains jumping jumpingundred inches fantastic trouature leak rules nowuddy explor leak switchpected doughBoys leak romb Brown vac vac vac trou admiration dough forks crowns ladybug r oyster oysterddingFl scattered jewel dough doughSomeone nappingrig manag pu goeswaysways waved realizeMimiMimi nodded dough went went\x17 tidy\x17 crownsrierollMmmashed realize realize doughaid importance salad tastes oyster tryas pic dem Chipver Follow sirens doughetreciashedndnd!" Whistlerecibbognia showerered droveaturereci zipped Abb Outside'
+adım    25 | loss 7.7613 | lr 1.25e-04 | grad_norm 3.77 | 114.4k tok/s | tepe bellek 6.30 GB
+adım    50 | loss 5.4209 | lr 2.50e-04 | grad_norm 0.77 | 113.4k tok/s | tepe bellek 6.30 GB
+adım    75 | loss 4.1514 | lr 3.75e-04 | grad_norm 0.69 | 116.0k tok/s | tepe bellek 6.30 GB
+adım   100 | loss 3.5564 | lr 5.00e-04 | grad_norm 1.17 | 113.1k tok/s | tepe bellek 6.30 GB
+adım   125 | loss 3.1622 | lr 6.25e-04 | grad_norm 0.87 | 106.4k tok/s | tepe bellek 6.30 GB
+adım   150 | loss 2.8998 | lr 7.50e-04 | grad_norm 0.99 | 110.5k tok/s | tepe bellek 6.30 GB
+adım   175 | loss 2.7109 | lr 8.75e-04 | grad_norm 0.95 | 116.2k tok/s | tepe bellek 6.30 GB
+adım   200 | loss 2.5598 | lr 1.00e-03 | grad_norm 0.62 | 110.6k tok/s | tepe bellek 6.30 GB
+adım   225 | loss 2.4400 | lr 1.00e-03 | grad_norm 0.59 | 113.5k tok/s | tepe bellek 6.30 GB
+adım   250 | loss 2.3461 | lr 9.99e-04 | grad_norm 0.60 | 116.4k tok/s | tepe bellek 6.30 GB
+[eval] adım 250: val_loss 2.3143 (ppl 10.12)
+[örnek] 'One day, a little girl named Lily went to the store with her mom. She was very happy and wanted to buy something new. She was very tired and wanted to draw a big book.\nLily asked her mom for help. Her mom said, "We love to read the book." Lily was happy and said, "Thank you, Mom! You are a good friend." Lily put on her shirt and went to her mom.\nThe next day, Lily went to the park with her mom. She saw a big box with a big box in it. She had a surprise and a'
+adım   275 | loss 2.2560 | lr 9.98e-04 | grad_norm 0.50 | 113.4k tok/s | tepe bellek 6.30 GB
+adım   300 | loss 2.2058 | lr 9.97e-04 | grad_norm 0.45 | 115.7k tok/s | tepe bellek 6.30 GB
+adım   325 | loss 2.1463 | lr 9.96e-04 | grad_norm 0.46 | 115.9k tok/s | tepe bellek 6.30 GB
+adım   350 | loss 2.1125 | lr 9.94e-04 | grad_norm 0.44 | 110.5k tok/s | tepe bellek 6.30 GB
+adım   375 | loss 2.0486 | lr 9.91e-04 | grad_norm 0.45 | 113.7k tok/s | tepe bellek 6.30 GB
+adım   400 | loss 2.0199 | lr 9.89e-04 | grad_norm 0.45 | 111.3k tok/s | tepe bellek 6.30 GB
+adım   425 | loss 1.9829 | lr 9.86e-04 | grad_norm 0.41 | 115.6k tok/s | tepe bellek 6.30 GB
+adım   450 | loss 1.9549 | lr 9.83e-04 | grad_norm 0.43 | 115.2k tok/s | tepe bellek 6.30 GB
+adım   475 | loss 1.9372 | lr 9.79e-04 | grad_norm 0.46 | 116.1k tok/s | tepe bellek 6.30 GB
+adım   500 | loss 1.9129 | lr 9.75e-04 | grad_norm 0.40 | 114.5k tok/s | tepe bellek 6.30 GB
+[eval] adım 500: val_loss 1.9015 (ppl 6.70)
+[örnek] 'Lily loved to watch TV. She was a happy girl who liked to play with her friends.\nOne day, Lily was playing in the kitchen and saw a ball of yarn inside the kitchen. She wanted to play with it. But her mom said, "No, Lily, don\'t play with the yarn. They are too small for you." Lily didn\'t listen and jumped into the yarn bottle.\nLater, Lily started to eat the yarn. She looked at it and saw it right in front of her. She was so excited. She forgot about her mom\'s'
+adım   525 | loss 1.8914 | lr 9.71e-04 | grad_norm 0.39 | 114.4k tok/s | tepe bellek 6.30 GB
+adım   550 | loss 1.8678 | lr 9.66e-04 | grad_norm 0.40 | 116.4k tok/s | tepe bellek 6.30 GB
+adım   575 | loss 1.8572 | lr 9.61e-04 | grad_norm 0.38 | 116.0k tok/s | tepe bellek 6.30 GB
+adım   600 | loss 1.8365 | lr 9.56e-04 | grad_norm 0.36 | 116.0k tok/s | tepe bellek 6.30 GB
+adım   625 | loss 1.8131 | lr 9.50e-04 | grad_norm 0.36 | 110.4k tok/s | tepe bellek 6.30 GB
+adım   650 | loss 1.7917 | lr 9.44e-04 | grad_norm 0.36 | 108.1k tok/s | tepe bellek 6.30 GB
+adım   675 | loss 1.7773 | lr 9.38e-04 | grad_norm 0.36 | 111.9k tok/s | tepe bellek 6.30 GB
+adım   700 | loss 1.7720 | lr 9.31e-04 | grad_norm 0.33 | 117.3k tok/s | tepe bellek 6.30 GB
+adım   725 | loss 1.7501 | lr 9.24e-04 | grad_norm 0.33 | 115.7k tok/s | tepe bellek 6.30 GB
+adım   750 | loss 1.7352 | lr 9.17e-04 | grad_norm 0.37 | 114.9k tok/s | tepe bellek 6.30 GB
+[eval] adım 750: val_loss 1.7471 (ppl 5.74)
+[örnek] 'One day, a little girl named Lucy went to the park. She saw many kids playing with a toy car. She was very happy with her toy car. Lucy wanted to play too. So, she asked her mom if they could play together. Her mom said yes, and they all had fun playing and having fun.\nAfter playing, Lucy and her mom sat down. They talked together and played. Lucy told her mom about her toy car at the park. Her mom said, "It\'s time to go home!" Lucy was sad, but she knew they would play again soon'
+adım   775 | loss 1.7334 | lr 9.10e-04 | grad_norm 0.33 | 110.1k tok/s | tepe bellek 6.30 GB
+adım   800 | loss 1.7316 | lr 9.02e-04 | grad_norm 0.33 | 113.1k tok/s | tepe bellek 6.30 GB
+adım   825 | loss 1.7242 | lr 8.94e-04 | grad_norm 0.34 | 114.1k tok/s | tepe bellek 6.30 GB
+adım   850 | loss 1.7022 | lr 8.86e-04 | grad_norm 0.34 | 108.3k tok/s | tepe bellek 6.30 GB
+adım   875 | loss 1.6938 | lr 8.77e-04 | grad_norm 0.32 | 110.7k tok/s | tepe bellek 6.30 GB
+adım   900 | loss 1.6878 | lr 8.69e-04 | grad_norm 0.33 | 116.6k tok/s | tepe bellek 6.30 GB
+adım   925 | loss 1.6760 | lr 8.60e-04 | grad_norm 0.32 | 117.3k tok/s | tepe bellek 6.30 GB
+adım   950 | loss 1.6685 | lr 8.50e-04 | grad_norm 0.31 | 115.9k tok/s | tepe bellek 6.30 GB
+adım   975 | loss 1.6777 | lr 8.41e-04 | grad_norm 0.33 | 113.0k tok/s | tepe bellek 6.30 GB
+adım  1000 | loss 1.6552 | lr 8.31e-04 | grad_norm 0.31 | 113.4k tok/s | tepe bellek 6.30 GB
+[eval] adım 1000: val_loss 1.6534 (ppl 5.22)
+[örnek] 'Once upon a time, there was a big, ugly room. It was very dirty and old. The ugly room, the ugly room, and the ugly room all over the floor.\nOne day, a little boy named Tim found a big box. He opened it and saw a note. The note said, "Do not be ugly, I will be your friend." Tim was happy and played with the wand all day.\nAt night, Tim played with a new toy. The ugly room became very nice. The ugly room became a happy place where kids would play and have fun.'
+adım  1025 | loss 1.6445 | lr 8.21e-04 | grad_norm 0.31 | 112.3k tok/s | tepe bellek 6.30 GB
+adım  1050 | loss 1.6300 | lr 8.11e-04 | grad_norm 0.33 | 108.2k tok/s | tepe bellek 6.30 GB
+adım  1075 | loss 1.6315 | lr 8.00e-04 | grad_norm 0.32 | 111.9k tok/s | tepe bellek 6.30 GB
+adım  1100 | loss 1.6253 | lr 7.90e-04 | grad_norm 0.31 | 116.4k tok/s | tepe bellek 6.30 GB
+adım  1125 | loss 1.6185 | lr 7.79e-04 | grad_norm 0.31 | 114.1k tok/s | tepe bellek 6.30 GB
+adım  1150 | loss 1.6071 | lr 7.68e-04 | grad_norm 0.32 | 114.3k tok/s | tepe bellek 6.30 GB
+adım  1175 | loss 1.5908 | lr 7.57e-04 | grad_norm 0.32 | 110.8k tok/s | tepe bellek 6.30 GB
+adım  1200 | loss 1.6098 | lr 7.46e-04 | grad_norm 0.31 | 110.5k tok/s | tepe bellek 6.30 GB
+adım  1225 | loss 1.5950 | lr 7.34e-04 | grad_norm 0.30 | 114.6k tok/s | tepe bellek 6.30 GB
+adım  1250 | loss 1.5909 | lr 7.23e-04 | grad_norm 0.30 | 117.0k tok/s | tepe bellek 6.30 GB
+[eval] adım 1250: val_loss 1.5844 (ppl 4.88)
+[örnek] 'Once upon a time, there was a gifted tiger. The tiger was very good at finding things. One day, the tiger went on a walk in the woods. He saw a big rock. The elephant thought it would be fun to weigh the rock.\nHe went closer and found a small rock. The rock was very small, and the elephant liked it. But then, a bitter wind came, and the elephant was too rough. The elephant thought the rock was just right.\nThe elephant asked the rock, "Why does this rock look like this?" The rock did not answer. The'
+adım  1275 | loss 1.5783 | lr 7.11e-04 | grad_norm 0.30 | 115.0k tok/s | tepe bellek 6.30 GB
+adım  1300 | loss 1.5618 | lr 6.99e-04 | grad_norm 0.29 | 114.0k tok/s | tepe bellek 6.30 GB
+adım  1325 | loss 1.5578 | lr 6.87e-04 | grad_norm 0.30 | 112.3k tok/s | tepe bellek 6.30 GB
+adım  1350 | loss 1.5487 | lr 6.75e-04 | grad_norm 0.29 | 113.4k tok/s | tepe bellek 6.30 GB
+adım  1375 | loss 1.5482 | lr 6.63e-04 | grad_norm 0.29 | 112.9k tok/s | tepe bellek 6.30 GB
+adım  1400 | loss 1.5465 | lr 6.51e-04 | grad_norm 0.31 | 113.0k tok/s | tepe bellek 6.30 GB
+adım  1425 | loss 1.5386 | lr 6.38e-04 | grad_norm 0.30 | 116.5k tok/s | tepe bellek 6.30 GB
+adım  1450 | loss 1.5420 | lr 6.26e-04 | grad_norm 0.30 | 115.6k tok/s | tepe bellek 6.30 GB
+adım  1475 | loss 1.5257 | lr 6.13e-04 | grad_norm 0.29 | 116.3k tok/s | tepe bellek 6.30 GB
+adım  1500 | loss 1.5379 | lr 6.01e-04 | grad_norm 0.28 | 109.5k tok/s | tepe bellek 6.30 GB
+[eval] adım 1500: val_loss 1.5287 (ppl 4.61)
+[örnek] 'Once upon a time, there was a big, red ball. It was a hot day. The ball had a big, dark blink. It was sad because it did not want to play with the kids.\nOne day, the ball\'s friends needed a new home. The ball wanted to help the kids. It said to the kids, "Let\'s unite and live together!" So, they all went to the new house to live in their new home.\nThey gave the kids nice towels to play with. They made a big, fun game with the new home. The new'
+adım  1525 | loss 1.5238 | lr 5.88e-04 | grad_norm 0.28 | 112.6k tok/s | tepe bellek 6.30 GB
+adım  1550 | loss 1.5161 | lr 5.76e-04 | grad_norm 0.31 | 115.6k tok/s | tepe bellek 6.30 GB
+adım  1575 | loss 1.5078 | lr 5.63e-04 | grad_norm 0.30 | 114.5k tok/s | tepe bellek 6.30 GB
+adım  1600 | loss 1.5056 | lr 5.51e-04 | grad_norm 0.28 | 115.7k tok/s | tepe bellek 6.30 GB
+adım  1625 | loss 1.4869 | lr 5.38e-04 | grad_norm 0.28 | 115.6k tok/s | tepe bellek 6.30 GB
+adım  1650 | loss 1.4902 | lr 5.25e-04 | grad_norm 0.29 | 112.0k tok/s | tepe bellek 6.30 GB
+adım  1675 | loss 1.4919 | lr 5.13e-04 | grad_norm 0.29 | 107.7k tok/s | tepe bellek 6.30 GB
+adım  1700 | loss 1.4822 | lr 5.00e-04 | grad_norm 0.29 | 107.1k tok/s | tepe bellek 6.30 GB
+adım  1725 | loss 1.4781 | lr 4.88e-04 | grad_norm 0.29 | 89.2k tok/s | tepe bellek 6.30 GB
+adım  1750 | loss 1.4743 | lr 4.75e-04 | grad_norm 0.29 | 108.8k tok/s | tepe bellek 6.30 GB
+[eval] adım 1750: val_loss 1.4821 (ppl 4.40)
+[örnek] 'One day, Jack was walking outside his house. He saw an old man sitting on a bench. Jack stopped to talk and asked, "What are you doing?" The old man said, "I\'m here to give you a message. Why don\'t you pray for me?".\nJack was very excited and said, "Yes, I can pray for you a long time."\nThe old man said, "I\'m going to give you a special message."\nJack was very excited and he said, "I want you to give me the message!"\nThe old man said'
+adım  1775 | loss 1.4758 | lr 4.63e-04 | grad_norm 0.29 | 115.9k tok/s | tepe bellek 6.30 GB
+adım  1800 | loss 1.4609 | lr 4.50e-04 | grad_norm 0.28 | 116.0k tok/s | tepe bellek 6.30 GB
+adım  1825 | loss 1.4650 | lr 4.38e-04 | grad_norm 0.28 | 115.6k tok/s | tepe bellek 6.30 GB
+adım  1850 | loss 1.4578 | lr 4.26e-04 | grad_norm 0.29 | 115.7k tok/s | tepe bellek 6.30 GB
+adım  1875 | loss 1.4598 | lr 4.14e-04 | grad_norm 0.29 | 115.5k tok/s | tepe bellek 6.30 GB
+adım  1900 | loss 1.4465 | lr 4.02e-04 | grad_norm 0.29 | 115.8k tok/s | tepe bellek 6.30 GB
+adım  1925 | loss 1.4506 | lr 3.90e-04 | grad_norm 0.28 | 115.8k tok/s | tepe bellek 6.30 GB
+adım  1950 | loss 1.4447 | lr 3.78e-04 | grad_norm 0.29 | 115.7k tok/s | tepe bellek 6.30 GB
+adım  1975 | loss 1.4413 | lr 3.67e-04 | grad_norm 0.29 | 115.8k tok/s | tepe bellek 6.30 GB
+adım  2000 | loss 1.4304 | lr 3.55e-04 | grad_norm 0.30 | 115.7k tok/s | tepe bellek 6.30 GB
+[eval] adım 2000: val_loss 1.4415 (ppl 4.23)
+[örnek] 'Once upon a time, there was a loyal bunny named Max. Max loved to play with his friends in the woods. One day, Max met a new friend named Luna. Luna was a pretty bunny who lived in a small house.\nMax said to Luna, "I want to play with you, but I am too different. I wish I could play with you." Luna looked sad and said, "I wish I could have a fun toy to play with!"\nMax thought for a moment. He knew he had to be kind to Luna, and he thought of a plan. He would'
+adım  2025 | loss 1.4326 | lr 3.44e-04 | grad_norm 0.28 | 110.0k tok/s | tepe bellek 6.30 GB
+adım  2050 | loss 1.4128 | lr 3.33e-04 | grad_norm 0.28 | 114.6k tok/s | tepe bellek 6.30 GB
+adım  2075 | loss 1.4246 | lr 3.22e-04 | grad_norm 0.29 | 107.8k tok/s | tepe bellek 6.30 GB
+adım  2100 | loss 1.4298 | lr 3.11e-04 | grad_norm 0.28 | 111.5k tok/s | tepe bellek 6.30 GB
+adım  2125 | loss 1.4108 | lr 3.00e-04 | grad_norm 0.28 | 115.4k tok/s | tepe bellek 6.30 GB
+adım  2150 | loss 1.4115 | lr 2.90e-04 | grad_norm 0.28 | 115.9k tok/s | tepe bellek 6.30 GB
+adım  2175 | loss 1.4139 | lr 2.80e-04 | grad_norm 0.28 | 115.5k tok/s | tepe bellek 6.30 GB
+adım  2200 | loss 1.4164 | lr 2.70e-04 | grad_norm 0.30 | 113.4k tok/s | tepe bellek 6.30 GB
+adım  2225 | loss 1.4014 | lr 2.60e-04 | grad_norm 0.29 | 112.6k tok/s | tepe bellek 6.30 GB
+adım  2250 | loss 1.3940 | lr 2.51e-04 | grad_norm 0.28 | 116.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 2250: val_loss 1.4080 (ppl 4.09)
+[örnek] 'Once upon a time, there was a little girl named Sue. Sue loved to eat popcorn. One day, Sue\'s mom made her some popcorn for her popcorn. Sue was so happy.\nSue\'s mom said, "Sue, let\'s go to the park and buy some popcorn." Sue was very excited. She put on her shoes and got in the car. Sue\'s mom gave her a big bag of popcorn. Sue was so excited.\nWhen they got to the park, Sue and her mom started to play. The sun was shining on the ground. Sue saw'
+adım  2275 | loss 1.3916 | lr 2.41e-04 | grad_norm 0.28 | 114.9k tok/s | tepe bellek 6.30 GB
+adım  2300 | loss 1.4144 | lr 2.32e-04 | grad_norm 0.28 | 110.7k tok/s | tepe bellek 6.30 GB
+adım  2325 | loss 1.3935 | lr 2.23e-04 | grad_norm 0.28 | 111.8k tok/s | tepe bellek 6.30 GB
+adım  2350 | loss 1.3938 | lr 2.15e-04 | grad_norm 0.28 | 116.3k tok/s | tepe bellek 6.30 GB
+adım  2375 | loss 1.3848 | lr 2.07e-04 | grad_norm 0.28 | 116.3k tok/s | tepe bellek 6.30 GB
+adım  2400 | loss 1.3867 | lr 1.98e-04 | grad_norm 0.28 | 116.3k tok/s | tepe bellek 6.30 GB
+adım  2425 | loss 1.3902 | lr 1.91e-04 | grad_norm 0.29 | 116.2k tok/s | tepe bellek 6.30 GB
+adım  2450 | loss 1.3701 | lr 1.83e-04 | grad_norm 0.28 | 116.1k tok/s | tepe bellek 6.30 GB
+adım  2475 | loss 1.3761 | lr 1.76e-04 | grad_norm 0.29 | 116.0k tok/s | tepe bellek 6.30 GB
+adım  2500 | loss 1.3721 | lr 1.69e-04 | grad_norm 0.30 | 115.9k tok/s | tepe bellek 6.30 GB
+[eval] adım 2500: val_loss 1.3827 (ppl 3.99)
+[örnek] 'Once upon a time, in a small town, there was a little boy named Tim. Tim loved to play with his toy car. He would make the car go fast and make loud noises. It made him happy, but sometimes he did not like to share his toys with his friends.\nOne sunny day, Tim and his friends were playing outside. They were having so much fun. Tim thought the sky was so pretty, and he wanted to race his car too. The sun was shining, and the sky was blue. Tim and his friends were excited to race their car.\nAs'
+adım  2525 | loss 1.3679 | lr 1.63e-04 | grad_norm 0.28 | 113.3k tok/s | tepe bellek 6.30 GB
+adım  2550 | loss 1.3739 | lr 1.56e-04 | grad_norm 0.28 | 116.3k tok/s | tepe bellek 6.30 GB
+adım  2575 | loss 1.3653 | lr 1.50e-04 | grad_norm 0.28 | 116.0k tok/s | tepe bellek 6.30 GB
+adım  2600 | loss 1.3596 | lr 1.45e-04 | grad_norm 0.29 | 111.4k tok/s | tepe bellek 6.30 GB
+adım  2625 | loss 1.3727 | lr 1.39e-04 | grad_norm 0.29 | 111.6k tok/s | tepe bellek 6.30 GB
+adım  2650 | loss 1.3596 | lr 1.34e-04 | grad_norm 0.28 | 111.2k tok/s | tepe bellek 6.30 GB
+adım  2675 | loss 1.3514 | lr 1.30e-04 | grad_norm 0.28 | 115.1k tok/s | tepe bellek 6.30 GB
+adım  2700 | loss 1.3645 | lr 1.25e-04 | grad_norm 0.29 | 115.9k tok/s | tepe bellek 6.30 GB
+adım  2725 | loss 1.3604 | lr 1.21e-04 | grad_norm 0.29 | 116.2k tok/s | tepe bellek 6.30 GB
+adım  2750 | loss 1.3462 | lr 1.18e-04 | grad_norm 0.28 | 116.0k tok/s | tepe bellek 6.30 GB
+[eval] adım 2750: val_loss 1.3645 (ppl 3.91)
+[örnek] 'Once upon a time, there was a clever cat named Tom. Tom liked to play with his ball. One day, Tom saw a big bird. The bird was on the ground. Tom wanted to catch the bird.\nTom said, "I will catch you, bird!" But the bird flew away. Tom was sad. The bird was still flying. Tom was very sad.\nThen, something unexpected happened. The bird came back with a big balloon. The bird dropped the balloon. The balloon floated in the sky. Tom and the bird were happy. They played with the balloon and became'
+adım  2775 | loss 1.3560 | lr 1.14e-04 | grad_norm 0.29 | 113.6k tok/s | tepe bellek 6.30 GB
+adım  2800 | loss 1.3478 | lr 1.11e-04 | grad_norm 0.28 | 116.1k tok/s | tepe bellek 6.30 GB
+adım  2825 | loss 1.3455 | lr 1.09e-04 | grad_norm 0.28 | 115.8k tok/s | tepe bellek 6.30 GB
+adım  2850 | loss 1.3540 | lr 1.06e-04 | grad_norm 0.29 | 116.1k tok/s | tepe bellek 6.30 GB
+adım  2875 | loss 1.3502 | lr 1.04e-04 | grad_norm 0.29 | 113.5k tok/s | tepe bellek 6.30 GB
+adım  2900 | loss 1.3352 | lr 1.03e-04 | grad_norm 0.28 | 112.6k tok/s | tepe bellek 6.30 GB
+adım  2925 | loss 1.3515 | lr 1.02e-04 | grad_norm 0.29 | 113.7k tok/s | tepe bellek 6.30 GB
+adım  2950 | loss 1.3554 | lr 1.01e-04 | grad_norm 0.28 | 112.2k tok/s | tepe bellek 6.30 GB
+adım  2975 | loss 1.3504 | lr 1.00e-04 | grad_norm 0.29 | 105.5k tok/s | tepe bellek 6.30 GB
+adım  3000 | loss 1.3490 | lr 1.00e-04 | grad_norm 0.29 | 115.0k tok/s | tepe bellek 6.30 GB
+[eval] adım 3000: val_loss 1.3541 (ppl 3.87)
+[örnek] 'Once upon a time, there was a boy named Tim. Tim had a toy dog named Spot. They liked to play together. Tim\'s mom told him to behave. She said, "Tim, you need to behave and be a good boy."\nOne day, Tim and Spot went to the park. They played on the swings and the slide. Spot was very good at chasing the ball. Tim\'s mom watched. She was tired.\nTim wanted to keep playing. He told Spot, "I surrender your toy!" Spot wagged his tail and barked. They played for a long'
+bitti: 15.5 dk, en iyi val_loss 1.3541

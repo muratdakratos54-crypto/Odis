@@ -31,6 +31,7 @@ scripts/
   analyze_experts.py        eğitilmiş MoE'de expert yükü ve hangi tokenlarda uzmanlaştıkları
 tests/           CPU'da çalışan doğruluk testleri (nedensellik, RoPE, init, overfit, MoE dispatch ...)
 docs/            README'deki grafikler
+experiments/     donmuş deney kayıtları: config, metrics.jsonl, train.log, ortam, checksum'lar
 data/            ham metin + token dosyaları (git'e girmez)
 checkpoints/     eğitim çıktıları: last.pt, best.pt, metrics.jsonl, train.log (git'e girmez)
 ```
@@ -82,7 +83,12 @@ adım  3000 | loss 1.3214 | lr 1.00e-04 | grad_norm 0.25 | 81.7k tok/s | tepe be
 [expert] katman 4: |▄▄▄▄▄▄▄▄▄▄▄▄▄▃▄▄| min 0.84x maks 1.09x
 ```
 
-## Sonuçlar
+## Deney kaydı: `v1-dense-moe-baseline` (2026-09-15)
+
+> **Donmuş kayıt.** Bu bölüm referans noktamızdır; sonraki deneyler yeni bir bölüm olarak
+> eklenmeli, buradaki sayılar değiştirilmemelidir. Kod + kayıt git tag'inde saklıdır:
+> `git checkout v1-dense-moe-baseline`. Ham metrikler, config'ler ve loglar
+> [`experiments/v1-dense-moe-baseline/`](experiments/v1-dense-moe-baseline/) altında.
 
 ### Adım 1: Dense baseline (`--preset dense`)
 
@@ -113,7 +119,7 @@ router z-loss (0.001), dropless routing, router float32'de. Üç koşu da aynı 
 | toplam / aktif parametre | 29.9M / 29.9M | 79.2M / 30.0M | 79.2M / 30.0M |
 | val loss @1000 / @2000 | 1.653 / 1.442 | **1.622 / 1.406** | 1.637 / 1.423 |
 | **val loss @3000** | 1.354 (ppl 3.87) | **1.317 (ppl 3.73)** | 1.337 (ppl 3.81) |
-| süre / throughput (medyan) | 15.4 dk / 115k tok/s | 23.2 dk / 79k tok/s | 22.0 dk / 81k tok/s |
+| toplam süre (eval dahil) / throughput (medyan) | 15.5 dk / 115k tok/s | 23.3 dk / 79k tok/s | 22.1 dk / 81k tok/s |
 | tepe VRAM (batch 32) | 6.3 GB | 8.9 GB | 8.9 GB |
 | yük CV (0 = denge) | – | **0.097** | 1.206 |
 | en çok / en az yüklü expert | – | 1.70x / 0.79x | 4.18x / 0.00x |
@@ -128,6 +134,18 @@ router z-loss (0.001), dropless routing, router float32'de. Üç koşu da aynı 
 - **Aux loss olmadan expert collapse gerçekten oluyor ve çok erken**: 100. adımda 30, sonunda 49
   expert (%44) ölü; aşırı yüklü expert'ler ideal payın 4 katını alıyor. Bedeli: val loss
   1.317 → 1.337; MoE'nin dense'e karşı kazancının (0.037) yarısından fazlası kayboluyor.
+  Çöküş ilk birkaç yüz adımda kilitleniyor ve sonra geri dönmüyor (eğitim log aralığı başına,
+  7 MoE katmanı x 16 = 112 expert üzerinden):
+
+  | adım | 100 | 500 | 1000 | 2000 | 3000 |
+  |---|---|---|---|---|---|
+  | moe — ölü expert / yük CV | 0 / 0.244 | 0 / 0.187 | 0 / 0.150 | 0 / 0.120 | 0 / 0.097 |
+  | moe-noaux — ölü expert / yük CV | 30 / 1.021 | 45 / 1.134 | 48 / 1.187 | 50 / 1.205 | 49 / 1.206 |
+  | moe-noaux — aux loss değeri | 1.642 | 2.068 | 2.215 | 2.248 | 2.246 |
+
+  Aux loss'lu modelde dengesizlik eğitim boyunca azalmaya devam ediyor; aux'suz modelde ise
+  aux değeri (katsayı 0 olsa da ölçülüyor) ~2.25'e tırmanıp orada kalıyor (1.0 = denge,
+  E/k = 5.33 = tam çöküş).
 - **Uzmanlaşma** (`analyze_experts.py`, katman 4, lift = P(expert|token)/P(expert)):
   aux'lu modelde expert 5 özne/isimler (`▁She ▁He ▁Tim ▁girl ▁Lily`), expert 7 noktalama ve cümle
   sonları (`. ." ! ?" <0x0A>`), expert 13 hikâye açılışları (`▁Once ▁upon </s>`) — lift'ler 4-6.
@@ -146,12 +164,35 @@ router z-loss (0.001), dropless routing, router float32'de. Üç koşu da aynı 
 > voice called out from behind him. It was his friend, the butterfly. "What are you doing?"
 > "I'm baking a strawberry pie," said the dragon. [...]
 
-Notlar: `moe` koşusu dense ile birebir aynı veri sırasını gördü; `moe-noaux`, veri yükleyicideki
-off-by-one düzeltmesinden sonra başladığı için örneklenen pencereler farklı (gürültü düzeyinde bir
-fark). MoE incelemesinden sonra yapılan kod düzeltmeleri bu konfigürasyonun (top-3, float32 ağırlık)
-matematiğini değiştirmiyor.
+### Ortam ve tekrar üretim
 
-### Sonraki adımlar
+- **Donanım/yazılım**: RTX 4070 SUPER 12 GB (sürücü 616.64), Windows 11, Python 3.13.14,
+  torch 2.14.0+cu130. Tam `pip freeze`: `experiments/v1-dense-moe-baseline/environment.txt`
+- **Veri**: TinyStoriesV2-GPT4, SentencePiece BPE V=8192 (`data/sp8k`), train 545 813 247 token,
+  val 5 512 219 token. Her koşu yalnızca 98M token gördü (tek epoch'un ~%18'i).
+- **Ortak eğitim ayarları**: seq 512, mikro-batch 32 x grad_accum 2, AdamW (β 0.9/0.95, wd 0.1),
+  lr 1e-3 → 1e-4 cosine, 200 adım warmup, grad clip 1.0, bf16 autocast, seed 1337. Val loss:
+  sabit seed'li 40 x 32 pencere. Koşu başına tam config: `experiments/.../<koşu>/config.json`
+- **Her koşunun eğitildiği kod durumu** (koşular commit'ler arasında başlatıldı):
+
+  | koşu | kod | tag'e göre fark |
+  |---|---|---|
+  | dense | `f0f8494` | inceleme düzeltmeleri yok: veri penceresi üst sınırı 1 token dar (farklı veri sırası) |
+  | moe | `f0f8494` + commit'lenmemiş MoE kodu | yukarıdakine ek olarak MoE inceleme düzeltmeleri yok |
+  | moe-noaux | `2b13e7d` + commit'lenmemiş MoE kodu | MoE inceleme düzeltmeleri yok |
+
+  MoE inceleme düzeltmeleri bu konfigürasyonun (top-3, float32 ağırlık) matematiğini değiştirmiyor
+  (router `F.linear`'a geçti, `bincount` tekrar kullanılıyor, top-1 kuralı, yorumlar). `dense` ve
+  `moe` birebir aynı veri sırasını gördü; `moe-noaux`'unkiler farklı (gürültü düzeyinde fark).
+- **Tekrar üretmek**: `git checkout v1-dense-moe-baseline`, ardından Kullanım bölümündeki veri
+  hazırlama + `--preset dense|moe|moe-noaux` komutları. GPU çekirdekleri deterministik olmadığından
+  birebir aynı sayılar değil, aynı eğilimler beklenmeli.
+- **Grafiği arşivden yeniden çizmek** (checkpoint gerekmez; `docs/dense_vs_moe.png` ile bayt bayt aynı):
+  `python scripts/plot_metrics.py --runs dense moe moe-noaux --ckpt_dir experiments/v1-dense-moe-baseline`
+- **Model ağırlıkları git'te değil** (`checkpoints/<koşu>/best.pt`, `last.pt`; toplam ~2.9 GB).
+  Yedeklerin doğrulanması için SHA-256 değerleri: `experiments/v1-dense-moe-baseline/checksums.txt`
+
+## Sonraki adımlar
 
 - **Aux-loss-free dengeleme** (DeepSeek-V3 / Kimi K2): aux loss yerine her expert'e yalnızca
   seçimde kullanılan bir bias ekleyip yüküne göre ayarlamak; + softmax yerine sigmoid gating

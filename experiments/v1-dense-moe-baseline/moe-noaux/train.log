@@ -1,0 +1,355 @@
+model: 79.15M parametre (74.96M embedding hariç)
+MoE: 7 katman x 16 expert, top-3 + 1 shared | token başına aktif: 29.95M (25.76M embedding hariç)
+veri: train 545.8M token, val 5.51M token
+adım başına 32,768 token, toplam 98M token
+[eval] adım 0: val_loss 9.1188 (ppl 9125.04)
+[örnek] 'orm brighter cr zebrasibbact behaving b b latehes Jessie incrediblestickact beak Grandmapes Finally sorry tangled magnif magnif Salere beak baseballpes makes late Finally cornernies chalkA ray ray asleep chosen Woo magnif whateverena lower tangled sorryd.. struggled shoot shootdcean magnif struggled actiondg clues threadMoo Tillyhind knocked boats peeredcond browngroundground grabbed� motorcycle queensoughtoughtought late put put put whatever cluesefenaNotNotNot struggledd Tr silver magnif action red tipto shined put beak sobbedceanallenaelNot bone Finally Empes regretted Tilly sorry Lisa bushopperpesought selought..ipper'
+adım    25 | loss 7.8949 | lr 1.25e-04 | grad_norm 19.03 | 75.5k tok/s | tepe bellek 8.91 GB
+           ce 7.8874 | aux 1.594 | z 7.48 | yük CV 1.291 | maks 4.57x | min 0.02x | ölü expert 22
+adım    50 | loss 5.5935 | lr 2.50e-04 | grad_norm 0.91 | 80.7k tok/s | tepe bellek 8.91 GB
+           ce 5.5876 | aux 1.602 | z 5.87 | yük CV 1.201 | maks 4.86x | min 0.00x | ölü expert 33
+adım    75 | loss 4.1964 | lr 3.75e-04 | grad_norm 0.87 | 81.5k tok/s | tepe bellek 8.91 GB
+           ce 4.1912 | aux 1.600 | z 5.20 | yük CV 1.041 | maks 4.88x | min 0.00x | ölü expert 29
+adım   100 | loss 3.5697 | lr 5.00e-04 | grad_norm 1.15 | 81.4k tok/s | tepe bellek 8.91 GB
+           ce 3.5650 | aux 1.642 | z 4.72 | yük CV 1.021 | maks 4.51x | min 0.00x | ölü expert 30
+adım   125 | loss 3.1493 | lr 6.25e-04 | grad_norm 1.01 | 81.7k tok/s | tepe bellek 8.91 GB
+           ce 3.1448 | aux 1.659 | z 4.54 | yük CV 0.997 | maks 4.29x | min 0.00x | ölü expert 32
+adım   150 | loss 2.8743 | lr 7.50e-04 | grad_norm 0.85 | 81.0k tok/s | tepe bellek 8.91 GB
+           ce 2.8699 | aux 1.692 | z 4.37 | yük CV 0.992 | maks 4.07x | min 0.00x | ölü expert 31
+adım   175 | loss 2.6866 | lr 8.75e-04 | grad_norm 0.95 | 79.4k tok/s | tepe bellek 8.91 GB
+           ce 2.6825 | aux 1.722 | z 4.13 | yük CV 0.993 | maks 3.89x | min 0.00x | ölü expert 32
+adım   200 | loss 2.5458 | lr 1.00e-03 | grad_norm 0.59 | 79.3k tok/s | tepe bellek 8.91 GB
+           ce 2.5419 | aux 1.770 | z 3.91 | yük CV 1.014 | maks 3.77x | min 0.00x | ölü expert 35
+adım   225 | loss 2.4255 | lr 1.00e-03 | grad_norm 0.49 | 79.3k tok/s | tepe bellek 8.91 GB
+           ce 2.4219 | aux 1.802 | z 3.60 | yük CV 1.023 | maks 3.93x | min 0.00x | ölü expert 38
+adım   250 | loss 2.3299 | lr 9.99e-04 | grad_norm 0.51 | 80.2k tok/s | tepe bellek 8.91 GB
+           ce 2.3267 | aux 1.838 | z 3.27 | yük CV 1.044 | maks 3.88x | min 0.00x | ölü expert 40
+[eval] adım 250: val_loss 2.2931 (ppl 9.91)
+[expert] katman 1: |▂▃▂▃▄▂▇▆▅▇▆▆▁▂▃▄| min 0.31x maks 1.68x
+[expert] katman 2: |▁███ ▃ ▆▄ ▆█▅ ▄▂| min 0.00x maks 2.24x
+[expert] katman 3: |   ▃ █▄ █▁  ███▁| min 0.00x maks 3.88x
+[expert] katman 4: |▇█ ▁  ▃▆   █ ▁▆█| min 0.00x maks 3.52x
+[expert] katman 5: |▅▅█    ██   ▃ █▅| min 0.00x maks 3.56x
+[expert] katman 6: |▄ ▃█▁  █ █  ▁ ▇█| min 0.00x maks 3.69x
+[expert] katman 7: |▃▇█  ██    ▆ ▄ █| min 0.00x maks 3.25x
+[örnek] 'One day, a little girl named Lily went to the park. She saw a big, purple ball and wanted to play with it. She was very alert and wanted to play with the ball too.\nAs she walked, the ball went up to the ball and said, "Wow, that is a big red ball that is very pretty!" But the ball was too fast and made a loud noise. The ball looked at Lily and said, "Don\'t worry, cat. I will come to the park and have a plan."\nLily went to the park to play with the ball'
+adım   275 | loss 2.2489 | lr 9.98e-04 | grad_norm 0.48 | 78.3k tok/s | tepe bellek 8.91 GB
+           ce 2.2459 | aux 1.884 | z 2.99 | yük CV 1.061 | maks 4.15x | min 0.00x | ölü expert 39
+adım   300 | loss 2.1800 | lr 9.97e-04 | grad_norm 0.44 | 77.7k tok/s | tepe bellek 8.91 GB
+           ce 2.1773 | aux 1.912 | z 2.69 | yük CV 1.076 | maks 4.12x | min 0.00x | ölü expert 42
+adım   325 | loss 2.1256 | lr 9.96e-04 | grad_norm 0.50 | 81.5k tok/s | tepe bellek 8.91 GB
+           ce 2.1232 | aux 1.933 | z 2.46 | yük CV 1.085 | maks 4.17x | min 0.00x | ölü expert 42
+adım   350 | loss 2.0840 | lr 9.94e-04 | grad_norm 0.41 | 81.5k tok/s | tepe bellek 8.91 GB
+           ce 2.0818 | aux 1.951 | z 2.22 | yük CV 1.086 | maks 4.14x | min 0.00x | ölü expert 43
+adım   375 | loss 2.0393 | lr 9.91e-04 | grad_norm 0.42 | 80.8k tok/s | tepe bellek 8.91 GB
+           ce 2.0373 | aux 1.977 | z 1.94 | yük CV 1.099 | maks 4.17x | min 0.00x | ölü expert 43
+adım   400 | loss 1.9964 | lr 9.89e-04 | grad_norm 0.38 | 81.5k tok/s | tepe bellek 8.91 GB
+           ce 1.9945 | aux 1.994 | z 1.81 | yük CV 1.100 | maks 4.08x | min 0.00x | ölü expert 43
+adım   425 | loss 1.9657 | lr 9.86e-04 | grad_norm 0.41 | 81.3k tok/s | tepe bellek 8.91 GB
+           ce 1.9640 | aux 2.019 | z 1.63 | yük CV 1.117 | maks 4.24x | min 0.00x | ölü expert 43
+adım   450 | loss 1.9337 | lr 9.83e-04 | grad_norm 0.37 | 83.2k tok/s | tepe bellek 8.91 GB
+           ce 1.9323 | aux 2.031 | z 1.47 | yük CV 1.114 | maks 4.13x | min 0.00x | ölü expert 44
+adım   475 | loss 1.9032 | lr 9.79e-04 | grad_norm 0.37 | 83.0k tok/s | tepe bellek 8.91 GB
+           ce 1.9018 | aux 2.057 | z 1.35 | yük CV 1.131 | maks 4.17x | min 0.00x | ölü expert 44
+adım   500 | loss 1.8874 | lr 9.75e-04 | grad_norm 0.35 | 83.2k tok/s | tepe bellek 8.91 GB
+           ce 1.8861 | aux 2.068 | z 1.26 | yük CV 1.134 | maks 4.17x | min 0.00x | ölü expert 45
+[eval] adım 500: val_loss 1.8816 (ppl 6.56)
+[expert] katman 1: |▁▁▂▄▄▁██▆█▇█ ▂ ▄| min 0.09x maks 2.08x
+[expert] katman 2: | ███ ▃ ▅▁ ▅█▄ ▃▁| min 0.00x maks 3.02x
+[expert] katman 3: |   ▁ █▃ █   ███ | min 0.00x maks 4.17x
+[expert] katman 4: |██ ▁  ▃▆   █▁▁▄█| min 0.00x maks 3.62x
+[expert] katman 5: |▆▇█    ██   ▁ █▅| min 0.00x maks 3.52x
+[expert] katman 6: |▄ ▄█▂  █ █  ▂ ▇█| min 0.00x maks 3.48x
+[expert] katman 7: |▄▇█  ██    ▇ ▄ █| min 0.00x maks 3.14x
+[örnek] 'Lily had a doll. She liked to play with it. She wore it to her dad\'s house. "Look, Tom, a doll!" she said. Tom was happy.\n"Okay, Lily, but can you play with the doll?" Tom asked. He took the doll\'s hand. "No, I saw it first! This is my doll."\nLily was sad and angry. She did not like the doll. She did not mean to make Tom angry. She did not want to share.\n"No, Tom, that is my doll! You can\'t'
+adım   525 | loss 1.8752 | lr 9.71e-04 | grad_norm 0.35 | 80.3k tok/s | tepe bellek 8.91 GB
+           ce 1.8740 | aux 2.081 | z 1.16 | yük CV 1.138 | maks 4.13x | min 0.00x | ölü expert 44
+adım   550 | loss 1.8530 | lr 9.66e-04 | grad_norm 0.38 | 80.6k tok/s | tepe bellek 8.91 GB
+           ce 1.8519 | aux 2.087 | z 1.09 | yük CV 1.145 | maks 4.04x | min 0.00x | ölü expert 44
+adım   575 | loss 1.8302 | lr 9.61e-04 | grad_norm 0.35 | 80.0k tok/s | tepe bellek 8.91 GB
+           ce 1.8292 | aux 2.108 | z 1.03 | yük CV 1.150 | maks 4.26x | min 0.00x | ölü expert 44
+adım   600 | loss 1.8089 | lr 9.56e-04 | grad_norm 0.33 | 82.2k tok/s | tepe bellek 8.91 GB
+           ce 1.8080 | aux 2.117 | z 0.95 | yük CV 1.150 | maks 4.18x | min 0.00x | ölü expert 44
+adım   625 | loss 1.7844 | lr 9.50e-04 | grad_norm 0.32 | 81.4k tok/s | tepe bellek 8.91 GB
+           ce 1.7835 | aux 2.130 | z 0.88 | yük CV 1.159 | maks 4.07x | min 0.00x | ölü expert 44
+adım   650 | loss 1.7808 | lr 9.44e-04 | grad_norm 0.33 | 77.0k tok/s | tepe bellek 8.91 GB
+           ce 1.7800 | aux 2.137 | z 0.82 | yük CV 1.161 | maks 4.25x | min 0.00x | ölü expert 45
+adım   675 | loss 1.7591 | lr 9.38e-04 | grad_norm 0.32 | 77.1k tok/s | tepe bellek 8.91 GB
+           ce 1.7584 | aux 2.145 | z 0.78 | yük CV 1.163 | maks 4.16x | min 0.00x | ölü expert 45
+adım   700 | loss 1.7703 | lr 9.31e-04 | grad_norm 0.32 | 81.5k tok/s | tepe bellek 8.91 GB
+           ce 1.7696 | aux 2.147 | z 0.74 | yük CV 1.166 | maks 4.09x | min 0.00x | ölü expert 45
+adım   725 | loss 1.7453 | lr 9.24e-04 | grad_norm 0.32 | 82.7k tok/s | tepe bellek 8.91 GB
+           ce 1.7446 | aux 2.146 | z 0.71 | yük CV 1.160 | maks 4.22x | min 0.00x | ölü expert 45
+adım   750 | loss 1.7302 | lr 9.17e-04 | grad_norm 0.31 | 55.1k tok/s | tepe bellek 8.91 GB
+           ce 1.7295 | aux 2.157 | z 0.66 | yük CV 1.168 | maks 4.18x | min 0.00x | ölü expert 45
+[eval] adım 750: val_loss 1.7271 (ppl 5.62)
+[expert] katman 1: |▁▁▁▃▅▁██▆███ ▁ ▅| min 0.05x maks 2.30x
+[expert] katman 2: | ███ ▂ ▄▁ ▅█▄ ▃▁| min 0.00x maks 3.46x
+[expert] katman 3: |   ▁ █▃ █   ███ | min 0.00x maks 4.18x
+[expert] katman 4: |██ ▁  ▃▆   █▁▁▅█| min 0.00x maks 3.86x
+[expert] katman 5: |▆▇█    ██   ▁ █▅| min 0.00x maks 3.68x
+[expert] katman 6: |▄ ▄█▂  █ █  ▁ ▇█| min 0.00x maks 3.60x
+[expert] katman 7: |▄██  ██    ▆ ▄ █| min 0.00x maks 3.29x
+[örnek] "One day, a little boy named Tim went to the park with his mom.\nWhile they were playing, Tim saw a shiny thing on the ground. He picked it up and picked it up. But, the thing did make his mouth hurt. He did not like the thing it had made of metal.\nTim's mom saw him and came to help. She took the shiny thing away from Tim and told him to stay away from it at home. Tim was sad, but he listened to his mom. From that day on, Tim always hid things in his mom's house"
+adım   775 | loss 1.7214 | lr 9.10e-04 | grad_norm 0.33 | 80.8k tok/s | tepe bellek 8.91 GB
+           ce 1.7208 | aux 2.174 | z 0.63 | yük CV 1.173 | maks 4.30x | min 0.00x | ölü expert 45
+adım   800 | loss 1.7115 | lr 9.02e-04 | grad_norm 0.31 | 82.3k tok/s | tepe bellek 8.91 GB
+           ce 1.7109 | aux 2.176 | z 0.60 | yük CV 1.173 | maks 4.21x | min 0.00x | ölü expert 46
+adım   825 | loss 1.6995 | lr 8.94e-04 | grad_norm 0.31 | 82.6k tok/s | tepe bellek 8.91 GB
+           ce 1.6989 | aux 2.177 | z 0.58 | yük CV 1.171 | maks 4.26x | min 0.00x | ölü expert 45
+adım   850 | loss 1.6846 | lr 8.86e-04 | grad_norm 0.30 | 82.8k tok/s | tepe bellek 8.91 GB
+           ce 1.6840 | aux 2.189 | z 0.57 | yük CV 1.176 | maks 4.33x | min 0.00x | ölü expert 46
+adım   875 | loss 1.6801 | lr 8.77e-04 | grad_norm 0.31 | 83.1k tok/s | tepe bellek 8.91 GB
+           ce 1.6796 | aux 2.187 | z 0.53 | yük CV 1.172 | maks 4.29x | min 0.00x | ölü expert 46
+adım   900 | loss 1.6658 | lr 8.69e-04 | grad_norm 0.31 | 83.0k tok/s | tepe bellek 8.91 GB
+           ce 1.6652 | aux 2.205 | z 0.53 | yük CV 1.183 | maks 4.26x | min 0.00x | ölü expert 48
+adım   925 | loss 1.6594 | lr 8.60e-04 | grad_norm 0.29 | 83.4k tok/s | tepe bellek 8.91 GB
+           ce 1.6589 | aux 2.198 | z 0.52 | yük CV 1.180 | maks 4.16x | min 0.00x | ölü expert 48
+adım   950 | loss 1.6327 | lr 8.50e-04 | grad_norm 0.30 | 83.3k tok/s | tepe bellek 8.91 GB
+           ce 1.6322 | aux 2.221 | z 0.48 | yük CV 1.189 | maks 4.30x | min 0.00x | ölü expert 49
+adım   975 | loss 1.6430 | lr 8.41e-04 | grad_norm 0.31 | 83.3k tok/s | tepe bellek 8.91 GB
+           ce 1.6426 | aux 2.209 | z 0.47 | yük CV 1.185 | maks 4.28x | min 0.00x | ölü expert 48
+adım  1000 | loss 1.6203 | lr 8.31e-04 | grad_norm 0.30 | 83.2k tok/s | tepe bellek 8.91 GB
+           ce 1.6198 | aux 2.215 | z 0.47 | yük CV 1.187 | maks 4.36x | min 0.00x | ölü expert 48
+[eval] adım 1000: val_loss 1.6370 (ppl 5.14)
+[expert] katman 1: |  ▁▃▅ ██▆██▇ ▁ ▄| min 0.01x maks 2.35x
+[expert] katman 2: | ███ ▂ ▅  ▄█▄ ▂▁| min 0.00x maks 3.59x
+[expert] katman 3: |     █▃ █   ███ | min 0.00x maks 4.36x
+[expert] katman 4: |██ ▁  ▄▆   █▁▁▄█| min 0.00x maks 3.83x
+[expert] katman 5: |▅▆█    ██   ▁ █▅| min 0.00x maks 3.66x
+[expert] katman 6: |▄ ▅█▂  █ █  ▁ ▇█| min 0.00x maks 3.57x
+[expert] katman 7: |▄██  ██    ▆ ▃ █| min 0.00x maks 3.32x
+[örnek] 'Once upon a time, there was a little boy named Tim. Tim loved to play with his friends. They would run, jump, and laugh all day long. Tim\'s birthday was very good. He was always happy when he played with his friends.\nOne day, Tim saw a big box. He said, "Mom, can I open the box?" His mom said, "Yes, but be careful. We don\'t know what it might be. If you open it, you might get lost." Tim was excited and said, "Okay, mom!"\nWhen they opened'
+adım  1025 | loss 1.6258 | lr 8.21e-04 | grad_norm 0.29 | 80.5k tok/s | tepe bellek 8.91 GB
+           ce 1.6253 | aux 2.218 | z 0.47 | yük CV 1.188 | maks 4.30x | min 0.00x | ölü expert 47
+adım  1050 | loss 1.6206 | lr 8.11e-04 | grad_norm 0.28 | 82.6k tok/s | tepe bellek 8.91 GB
+           ce 1.6202 | aux 2.216 | z 0.44 | yük CV 1.189 | maks 4.07x | min 0.00x | ölü expert 47
+adım  1075 | loss 1.5983 | lr 8.00e-04 | grad_norm 0.29 | 83.2k tok/s | tepe bellek 8.91 GB
+           ce 1.5979 | aux 2.231 | z 0.42 | yük CV 1.194 | maks 4.26x | min 0.00x | ölü expert 49
+adım  1100 | loss 1.5940 | lr 7.90e-04 | grad_norm 0.28 | 83.0k tok/s | tepe bellek 8.91 GB
+           ce 1.5936 | aux 2.230 | z 0.41 | yük CV 1.194 | maks 4.22x | min 0.00x | ölü expert 48
+adım  1125 | loss 1.5898 | lr 7.79e-04 | grad_norm 0.29 | 83.4k tok/s | tepe bellek 8.91 GB
+           ce 1.5894 | aux 2.226 | z 0.42 | yük CV 1.192 | maks 4.21x | min 0.00x | ölü expert 48
+adım  1150 | loss 1.5886 | lr 7.68e-04 | grad_norm 0.28 | 83.1k tok/s | tepe bellek 8.91 GB
+           ce 1.5882 | aux 2.219 | z 0.40 | yük CV 1.185 | maks 4.19x | min 0.00x | ölü expert 48
+adım  1175 | loss 1.5765 | lr 7.57e-04 | grad_norm 0.28 | 83.2k tok/s | tepe bellek 8.91 GB
+           ce 1.5761 | aux 2.218 | z 0.39 | yük CV 1.184 | maks 4.25x | min 0.00x | ölü expert 49
+adım  1200 | loss 1.5718 | lr 7.46e-04 | grad_norm 0.28 | 83.4k tok/s | tepe bellek 8.91 GB
+           ce 1.5714 | aux 2.230 | z 0.39 | yük CV 1.190 | maks 4.26x | min 0.00x | ölü expert 49
+adım  1225 | loss 1.5618 | lr 7.34e-04 | grad_norm 0.29 | 83.4k tok/s | tepe bellek 8.91 GB
+           ce 1.5614 | aux 2.226 | z 0.38 | yük CV 1.189 | maks 4.13x | min 0.00x | ölü expert 49
+adım  1250 | loss 1.5526 | lr 7.23e-04 | grad_norm 0.27 | 83.4k tok/s | tepe bellek 8.91 GB
+           ce 1.5522 | aux 2.220 | z 0.36 | yük CV 1.190 | maks 4.02x | min 0.00x | ölü expert 50
+[eval] adım 1250: val_loss 1.5664 (ppl 4.79)
+[expert] katman 1: |  ▁▃▅ ██▆███ ▁ ▄| min 0.01x maks 2.30x
+[expert] katman 2: | ███ ▂ ▅  ▄█▃ ▃▁| min 0.00x maks 3.56x
+[expert] katman 3: |     █▄ █   ███ | min 0.00x maks 4.02x
+[expert] katman 4: |██ ▁  ▃▆   █▁▁▄█| min 0.00x maks 3.80x
+[expert] katman 5: |▅▇█    ██   ▁ █▅| min 0.00x maks 3.66x
+[expert] katman 6: |▄ ▅█▂  █ █  ▁ ▇█| min 0.00x maks 3.63x
+[expert] katman 7: |▄██  ██    ▆ ▃ ▇| min 0.00x maks 3.35x
+[örnek] 'Once upon a time, there was a gifted dog named Spot. Spot could do many things. He could help people say funny things. One day, Spot saw a man with a big bag. The man had a big bag with him.\nSpot wanted to know what was in the bag. He asked the man, "Can you help me open my bag?" The man said, "Yes, I can help you."\nSpot tried to open the bag, but it was too heavy. He asked the man for help. The man gave the bag to Spot. The man put the bag in'
+adım  1275 | loss 1.5445 | lr 7.11e-04 | grad_norm 0.28 | 81.8k tok/s | tepe bellek 8.91 GB
+           ce 1.5442 | aux 2.240 | z 0.35 | yük CV 1.199 | maks 4.21x | min 0.00x | ölü expert 50
+adım  1300 | loss 1.5426 | lr 6.99e-04 | grad_norm 0.28 | 82.5k tok/s | tepe bellek 8.91 GB
+           ce 1.5423 | aux 2.237 | z 0.36 | yük CV 1.197 | maks 4.28x | min 0.00x | ölü expert 49
+adım  1325 | loss 1.5337 | lr 6.87e-04 | grad_norm 0.27 | 81.1k tok/s | tepe bellek 8.91 GB
+           ce 1.5333 | aux 2.229 | z 0.35 | yük CV 1.193 | maks 4.26x | min 0.00x | ölü expert 50
+adım  1350 | loss 1.5514 | lr 6.75e-04 | grad_norm 0.27 | 81.1k tok/s | tepe bellek 8.91 GB
+           ce 1.5510 | aux 2.231 | z 0.35 | yük CV 1.195 | maks 4.17x | min 0.00x | ölü expert 49
+adım  1375 | loss 1.5293 | lr 6.63e-04 | grad_norm 0.27 | 81.1k tok/s | tepe bellek 8.91 GB
+           ce 1.5289 | aux 2.239 | z 0.34 | yük CV 1.199 | maks 4.25x | min 0.00x | ölü expert 50
+adım  1400 | loss 1.5240 | lr 6.51e-04 | grad_norm 0.27 | 81.9k tok/s | tepe bellek 8.91 GB
+           ce 1.5237 | aux 2.248 | z 0.34 | yük CV 1.205 | maks 4.20x | min 0.00x | ölü expert 48
+adım  1425 | loss 1.5336 | lr 6.38e-04 | grad_norm 0.27 | 81.3k tok/s | tepe bellek 8.91 GB
+           ce 1.5332 | aux 2.242 | z 0.33 | yük CV 1.200 | maks 4.21x | min 0.00x | ölü expert 49
+adım  1450 | loss 1.5180 | lr 6.26e-04 | grad_norm 0.27 | 82.2k tok/s | tepe bellek 8.91 GB
+           ce 1.5177 | aux 2.236 | z 0.33 | yük CV 1.196 | maks 4.21x | min 0.00x | ölü expert 50
+adım  1475 | loss 1.5081 | lr 6.13e-04 | grad_norm 0.28 | 82.5k tok/s | tepe bellek 8.91 GB
+           ce 1.5078 | aux 2.248 | z 0.32 | yük CV 1.203 | maks 4.27x | min 0.00x | ölü expert 50
+adım  1500 | loss 1.5043 | lr 6.01e-04 | grad_norm 0.27 | 82.5k tok/s | tepe bellek 8.91 GB
+           ce 1.5040 | aux 2.246 | z 0.31 | yük CV 1.202 | maks 4.19x | min 0.00x | ölü expert 50
+[eval] adım 1500: val_loss 1.5110 (ppl 4.53)
+[expert] katman 1: |  ▁▃▃ ██▆███ ▁ ▄| min 0.01x maks 2.56x
+[expert] katman 2: | ███ ▁ ▅  ▄█▃ ▃▁| min 0.00x maks 3.83x
+[expert] katman 3: |     █▃ █   ███ | min 0.00x maks 4.19x
+[expert] katman 4: |██ ▁  ▄▆   █▁▁▅█| min 0.00x maks 3.74x
+[expert] katman 5: |▅▆█    ██   ▁ █▄| min 0.00x maks 3.71x
+[expert] katman 6: |▄ ▆█▂  █ █  ▂ ▇█| min 0.00x maks 3.66x
+[expert] katman 7: |▄██  ██    ▅ ▃ ▇| min 0.00x maks 3.48x
+[örnek] "Once upon a time, there was a big, old box. It was full of jewelry. A boy named Tim found the box. He opened the box and saw many jewelry inside. He wanted to wear the jewelry, but he didn't know if it was good for his little boy.\nTim had an idea. He found a magic wand. The wand could make his toy car run fast. Tim waved the wand and the toy car rolled fast. The toy car went very fast and made a loud noise. Tim was so happy.\nBut then, something unexpected happened. The magic wand"
+adım  1525 | loss 1.5001 | lr 5.88e-04 | grad_norm 0.26 | 82.3k tok/s | tepe bellek 8.91 GB
+           ce 1.4998 | aux 2.239 | z 0.31 | yük CV 1.196 | maks 4.28x | min 0.00x | ölü expert 49
+adım  1550 | loss 1.4909 | lr 5.76e-04 | grad_norm 0.26 | 83.3k tok/s | tepe bellek 8.91 GB
+           ce 1.4905 | aux 2.234 | z 0.31 | yük CV 1.193 | maks 4.22x | min 0.00x | ölü expert 48
+adım  1575 | loss 1.4905 | lr 5.63e-04 | grad_norm 0.26 | 82.3k tok/s | tepe bellek 8.91 GB
+           ce 1.4902 | aux 2.235 | z 0.31 | yük CV 1.195 | maks 4.18x | min 0.00x | ölü expert 49
+adım  1600 | loss 1.4769 | lr 5.51e-04 | grad_norm 0.27 | 78.8k tok/s | tepe bellek 8.91 GB
+           ce 1.4766 | aux 2.242 | z 0.30 | yük CV 1.197 | maks 4.19x | min 0.00x | ölü expert 49
+adım  1625 | loss 1.4770 | lr 5.38e-04 | grad_norm 0.26 | 79.0k tok/s | tepe bellek 8.91 GB
+           ce 1.4767 | aux 2.243 | z 0.29 | yük CV 1.200 | maks 4.29x | min 0.00x | ölü expert 50
+adım  1650 | loss 1.4744 | lr 5.25e-04 | grad_norm 0.26 | 74.8k tok/s | tepe bellek 8.91 GB
+           ce 1.4741 | aux 2.235 | z 0.29 | yük CV 1.197 | maks 4.13x | min 0.00x | ölü expert 50
+adım  1675 | loss 1.4721 | lr 5.13e-04 | grad_norm 0.27 | 78.0k tok/s | tepe bellek 8.91 GB
+           ce 1.4719 | aux 2.243 | z 0.29 | yük CV 1.202 | maks 4.14x | min 0.00x | ölü expert 49
+adım  1700 | loss 1.4571 | lr 5.00e-04 | grad_norm 0.25 | 82.4k tok/s | tepe bellek 8.91 GB
+           ce 1.4568 | aux 2.240 | z 0.29 | yük CV 1.199 | maks 4.15x | min 0.00x | ölü expert 49
+adım  1725 | loss 1.4571 | lr 4.88e-04 | grad_norm 0.26 | 81.1k tok/s | tepe bellek 8.91 GB
+           ce 1.4569 | aux 2.252 | z 0.28 | yük CV 1.204 | maks 4.24x | min 0.00x | ölü expert 49
+adım  1750 | loss 1.4512 | lr 4.75e-04 | grad_norm 0.26 | 81.7k tok/s | tepe bellek 8.91 GB
+           ce 1.4509 | aux 2.251 | z 0.27 | yük CV 1.203 | maks 4.14x | min 0.00x | ölü expert 49
+[eval] adım 1750: val_loss 1.4641 (ppl 4.32)
+[expert] katman 1: |   ▄▄▁██▆██▇ ▂ ▄| min 0.01x maks 2.37x
+[expert] katman 2: | ███ ▂ ▅  ▄█▃ ▂▁| min 0.00x maks 3.70x
+[expert] katman 3: |     █▃ █   ███ | min 0.00x maks 4.14x
+[expert] katman 4: |██ ▁  ▄▆   █ ▁▄█| min 0.00x maks 3.88x
+[expert] katman 5: |▅▆█    ██   ▁ █▄| min 0.00x maks 3.73x
+[expert] katman 6: |▄ ▆█▂  █ █  ▁ ▇█| min 0.00x maks 3.72x
+[expert] katman 7: |▄██  ██    ▅ ▃ ▇| min 0.00x maks 3.52x
+[örnek] 'One day, a big boat and a small boat were in the water. The big boat was very careful. The small boat was slow and liked to swim. They saw a big boat near the water. The big boat and the small boat wanted to see the boat up close.\nThe big boat said to the small boat, "Let\'s go see the boat!" The small boat said, "Okay, let\'s go!" They both went to the big boat. The big boat was scared, but the small boat said, "Don\'t worry, I will help you."\n'
+adım  1775 | loss 1.4574 | lr 4.63e-04 | grad_norm 0.27 | 80.6k tok/s | tepe bellek 8.91 GB
+           ce 1.4571 | aux 2.245 | z 0.28 | yük CV 1.203 | maks 4.14x | min 0.00x | ölü expert 49
+adım  1800 | loss 1.4434 | lr 4.50e-04 | grad_norm 0.26 | 78.9k tok/s | tepe bellek 8.91 GB
+           ce 1.4431 | aux 2.238 | z 0.27 | yük CV 1.198 | maks 4.14x | min 0.00x | ölü expert 49
+adım  1825 | loss 1.4553 | lr 4.38e-04 | grad_norm 0.26 | 76.5k tok/s | tepe bellek 8.91 GB
+           ce 1.4551 | aux 2.236 | z 0.27 | yük CV 1.200 | maks 4.14x | min 0.00x | ölü expert 49
+adım  1850 | loss 1.4230 | lr 4.26e-04 | grad_norm 0.26 | 81.1k tok/s | tepe bellek 8.91 GB
+           ce 1.4228 | aux 2.251 | z 0.26 | yük CV 1.205 | maks 4.15x | min 0.00x | ölü expert 49
+adım  1875 | loss 1.4472 | lr 4.14e-04 | grad_norm 0.26 | 82.0k tok/s | tepe bellek 8.91 GB
+           ce 1.4470 | aux 2.255 | z 0.26 | yük CV 1.209 | maks 4.17x | min 0.00x | ölü expert 48
+adım  1900 | loss 1.4235 | lr 4.02e-04 | grad_norm 0.25 | 81.0k tok/s | tepe bellek 8.91 GB
+           ce 1.4233 | aux 2.251 | z 0.26 | yük CV 1.206 | maks 4.20x | min 0.00x | ölü expert 49
+adım  1925 | loss 1.4239 | lr 3.90e-04 | grad_norm 0.26 | 78.2k tok/s | tepe bellek 8.91 GB
+           ce 1.4237 | aux 2.255 | z 0.26 | yük CV 1.208 | maks 4.21x | min 0.00x | ölü expert 49
+adım  1950 | loss 1.4193 | lr 3.78e-04 | grad_norm 0.26 | 76.9k tok/s | tepe bellek 8.91 GB
+           ce 1.4190 | aux 2.248 | z 0.25 | yük CV 1.205 | maks 4.20x | min 0.00x | ölü expert 49
+adım  1975 | loss 1.4238 | lr 3.67e-04 | grad_norm 0.26 | 79.5k tok/s | tepe bellek 8.91 GB
+           ce 1.4235 | aux 2.242 | z 0.25 | yük CV 1.201 | maks 4.21x | min 0.00x | ölü expert 49
+adım  2000 | loss 1.4139 | lr 3.55e-04 | grad_norm 0.26 | 81.8k tok/s | tepe bellek 8.91 GB
+           ce 1.4136 | aux 2.248 | z 0.25 | yük CV 1.205 | maks 4.21x | min 0.00x | ölü expert 50
+[eval] adım 2000: val_loss 1.4230 (ppl 4.15)
+[expert] katman 1: |  ▁▃▄ ██▆██▇ ▂ ▄| min 0.01x maks 2.58x
+[expert] katman 2: | ███ ▁ ▅  ▄█▃ ▂▁| min 0.00x maks 3.91x
+[expert] katman 3: |     █▃ █   ███ | min 0.00x maks 4.21x
+[expert] katman 4: |██ ▁  ▃▆   █ ▁▅█| min 0.00x maks 3.81x
+[expert] katman 5: |▅▆█    ██   ▁ █▄| min 0.00x maks 3.72x
+[expert] katman 6: |▄ ▆█▂  █ █  ▂ ▇█| min 0.00x maks 3.62x
+[expert] katman 7: |▄██  ██    ▆ ▃ ▇| min 0.00x maks 3.46x
+[örnek] 'Once upon a time, there was a big, attractive tree. A little boy named Tim and his dog, Spot, loved to play near the tree. One day, they found a shiny buckle on the ground. It was a pretty buckle with a big heart.\nTim and Spot wanted to play a game with the buckle. They took turns touching it. They had so much fun playing the game. Tim would throw the buckle up high, and Spot would try to catch it. They were very happy.\nAfter a while, Tim and Spot got tired and had an idea. They took'
+adım  2025 | loss 1.4128 | lr 3.44e-04 | grad_norm 0.27 | 80.9k tok/s | tepe bellek 8.91 GB
+           ce 1.4125 | aux 2.253 | z 0.25 | yük CV 1.207 | maks 4.17x | min 0.00x | ölü expert 50
+adım  2050 | loss 1.4095 | lr 3.33e-04 | grad_norm 0.26 | 82.7k tok/s | tepe bellek 8.91 GB
+           ce 1.4092 | aux 2.252 | z 0.24 | yük CV 1.207 | maks 4.16x | min 0.00x | ölü expert 49
+adım  2075 | loss 1.4036 | lr 3.22e-04 | grad_norm 0.25 | 82.1k tok/s | tepe bellek 8.91 GB
+           ce 1.4034 | aux 2.249 | z 0.24 | yük CV 1.208 | maks 4.12x | min 0.00x | ölü expert 49
+adım  2100 | loss 1.3979 | lr 3.11e-04 | grad_norm 0.26 | 80.7k tok/s | tepe bellek 8.91 GB
+           ce 1.3977 | aux 2.251 | z 0.23 | yük CV 1.207 | maks 4.19x | min 0.00x | ölü expert 50
+adım  2125 | loss 1.3912 | lr 3.00e-04 | grad_norm 0.27 | 78.0k tok/s | tepe bellek 8.91 GB
+           ce 1.3909 | aux 2.245 | z 0.23 | yük CV 1.203 | maks 4.21x | min 0.00x | ölü expert 49
+adım  2150 | loss 1.4006 | lr 2.90e-04 | grad_norm 0.26 | 76.8k tok/s | tepe bellek 8.91 GB
+           ce 1.4004 | aux 2.248 | z 0.24 | yük CV 1.205 | maks 4.15x | min 0.00x | ölü expert 49
+adım  2175 | loss 1.3848 | lr 2.80e-04 | grad_norm 0.25 | 78.5k tok/s | tepe bellek 8.91 GB
+           ce 1.3845 | aux 2.248 | z 0.23 | yük CV 1.205 | maks 4.20x | min 0.00x | ölü expert 49
+adım  2200 | loss 1.3867 | lr 2.70e-04 | grad_norm 0.26 | 81.3k tok/s | tepe bellek 8.91 GB
+           ce 1.3865 | aux 2.246 | z 0.23 | yük CV 1.203 | maks 4.16x | min 0.00x | ölü expert 48
+adım  2225 | loss 1.3875 | lr 2.60e-04 | grad_norm 0.26 | 81.2k tok/s | tepe bellek 8.91 GB
+           ce 1.3873 | aux 2.245 | z 0.23 | yük CV 1.205 | maks 4.14x | min 0.00x | ölü expert 49
+adım  2250 | loss 1.3856 | lr 2.51e-04 | grad_norm 0.27 | 81.6k tok/s | tepe bellek 8.91 GB
+           ce 1.3854 | aux 2.245 | z 0.23 | yük CV 1.205 | maks 4.21x | min 0.00x | ölü expert 49
+[eval] adım 2250: val_loss 1.3896 (ppl 4.01)
+[expert] katman 1: |  ▁▃▄ ██▆██▇ ▁ ▄| min 0.01x maks 2.56x
+[expert] katman 2: | ███ ▁ ▅  ▄█▃ ▂▁| min 0.00x maks 3.88x
+[expert] katman 3: |     █▃ █   ███ | min 0.00x maks 4.21x
+[expert] katman 4: |██ ▁  ▃▆   █ ▁▅█| min 0.00x maks 3.82x
+[expert] katman 5: |▅▆█    ██   ▁ █▄| min 0.00x maks 3.76x
+[expert] katman 6: |▄ ▆█▂  █ █  ▂ ▇█| min 0.00x maks 3.69x
+[expert] katman 7: |▄██  ██    ▅ ▃ ▇| min 0.00x maks 3.50x
+[örnek] 'Once upon a time, there was a little girl named Sue. Sue loved to eat popcorn. One day, she went to the park with her mom. They saw a big tree with lots of red cherries on it. Sue was so happy!\nSue said, "Mom, can I have some cherries, please?" Her mom said, "Yes, you can have some, Sue. But you must share with your brother, Tim." Sue agreed and took some cherries from the tree. She also gave a big bag of cherries to Tim.\nSue ate the cherries on the ground and started to'
+adım  2275 | loss 1.3845 | lr 2.41e-04 | grad_norm 0.25 | 79.3k tok/s | tepe bellek 8.91 GB
+           ce 1.3843 | aux 2.249 | z 0.22 | yük CV 1.206 | maks 4.17x | min 0.00x | ölü expert 49
+adım  2300 | loss 1.3782 | lr 2.32e-04 | grad_norm 0.26 | 80.9k tok/s | tepe bellek 8.91 GB
+           ce 1.3779 | aux 2.240 | z 0.22 | yük CV 1.201 | maks 4.14x | min 0.00x | ölü expert 50
+adım  2325 | loss 1.3755 | lr 2.23e-04 | grad_norm 0.26 | 81.2k tok/s | tepe bellek 8.91 GB
+           ce 1.3753 | aux 2.252 | z 0.22 | yük CV 1.207 | maks 4.21x | min 0.00x | ölü expert 49
+adım  2350 | loss 1.3629 | lr 2.15e-04 | grad_norm 0.26 | 80.7k tok/s | tepe bellek 8.91 GB
+           ce 1.3627 | aux 2.253 | z 0.22 | yük CV 1.209 | maks 4.16x | min 0.00x | ölü expert 50
+adım  2375 | loss 1.3568 | lr 2.07e-04 | grad_norm 0.26 | 81.7k tok/s | tepe bellek 8.91 GB
+           ce 1.3566 | aux 2.249 | z 0.22 | yük CV 1.205 | maks 4.21x | min 0.00x | ölü expert 49
+adım  2400 | loss 1.3679 | lr 1.98e-04 | grad_norm 0.25 | 81.0k tok/s | tepe bellek 8.91 GB
+           ce 1.3677 | aux 2.253 | z 0.22 | yük CV 1.207 | maks 4.18x | min 0.00x | ölü expert 51
+adım  2425 | loss 1.3619 | lr 1.91e-04 | grad_norm 0.25 | 81.8k tok/s | tepe bellek 8.91 GB
+           ce 1.3616 | aux 2.243 | z 0.22 | yük CV 1.203 | maks 4.13x | min 0.00x | ölü expert 49
+adım  2450 | loss 1.3635 | lr 1.83e-04 | grad_norm 0.26 | 82.0k tok/s | tepe bellek 8.91 GB
+           ce 1.3633 | aux 2.246 | z 0.22 | yük CV 1.207 | maks 4.15x | min 0.00x | ölü expert 49
+adım  2475 | loss 1.3527 | lr 1.76e-04 | grad_norm 0.25 | 81.9k tok/s | tepe bellek 8.91 GB
+           ce 1.3525 | aux 2.244 | z 0.22 | yük CV 1.206 | maks 4.17x | min 0.00x | ölü expert 50
+adım  2500 | loss 1.3562 | lr 1.69e-04 | grad_norm 0.26 | 80.4k tok/s | tepe bellek 8.91 GB
+           ce 1.3560 | aux 2.244 | z 0.21 | yük CV 1.205 | maks 4.20x | min 0.00x | ölü expert 49
+[eval] adım 2500: val_loss 1.3651 (ppl 3.92)
+[expert] katman 1: |  ▁▃▄ ██▆██▇ ▂ ▄| min 0.01x maks 2.43x
+[expert] katman 2: | ███ ▂ ▅  ▄█▃ ▃▁| min 0.00x maks 3.90x
+[expert] katman 3: |     █▃ █   ███ | min 0.00x maks 4.20x
+[expert] katman 4: |██ ▁  ▃▆   █ ▁▅█| min 0.00x maks 3.83x
+[expert] katman 5: |▅▆█    ██   ▁ █▄| min 0.00x maks 3.78x
+[expert] katman 6: |▄ ▆█▂  █ █  ▁ ▇█| min 0.00x maks 3.66x
+[expert] katman 7: |▄██  ██    ▅ ▃ ▇| min 0.00x maks 3.53x
+[örnek] 'Once upon a time, in a small town, there was an honest boy named Tim. Tim loved to play with his toy car and drive it around the town. One sunny day, Tim decided to drive his toy car to the park every day.\nAs Tim drove his toy car to the park, he saw a big box. He was very curious about what could be inside the box. Tim walked up to the box and opened it. Inside, he found a toy car that he had never seen before. Tim was very happy and decided to drive his toy car around the box.\n'
+adım  2525 | loss 1.3466 | lr 1.63e-04 | grad_norm 0.27 | 75.4k tok/s | tepe bellek 8.91 GB
+           ce 1.3464 | aux 2.253 | z 0.21 | yük CV 1.208 | maks 4.21x | min 0.00x | ölü expert 49
+adım  2550 | loss 1.3530 | lr 1.56e-04 | grad_norm 0.25 | 77.9k tok/s | tepe bellek 8.91 GB
+           ce 1.3528 | aux 2.242 | z 0.21 | yük CV 1.203 | maks 4.15x | min 0.00x | ölü expert 49
+adım  2575 | loss 1.3525 | lr 1.50e-04 | grad_norm 0.27 | 81.7k tok/s | tepe bellek 8.91 GB
+           ce 1.3523 | aux 2.244 | z 0.21 | yük CV 1.205 | maks 4.14x | min 0.00x | ölü expert 50
+adım  2600 | loss 1.3408 | lr 1.45e-04 | grad_norm 0.26 | 82.1k tok/s | tepe bellek 8.91 GB
+           ce 1.3406 | aux 2.248 | z 0.21 | yük CV 1.207 | maks 4.15x | min 0.00x | ölü expert 49
+adım  2625 | loss 1.3434 | lr 1.39e-04 | grad_norm 0.25 | 79.9k tok/s | tepe bellek 8.91 GB
+           ce 1.3432 | aux 2.245 | z 0.21 | yük CV 1.206 | maks 4.15x | min 0.00x | ölü expert 50
+adım  2650 | loss 1.3376 | lr 1.34e-04 | grad_norm 0.26 | 79.3k tok/s | tepe bellek 8.91 GB
+           ce 1.3374 | aux 2.246 | z 0.20 | yük CV 1.206 | maks 4.20x | min 0.00x | ölü expert 50
+adım  2675 | loss 1.3342 | lr 1.30e-04 | grad_norm 0.26 | 80.9k tok/s | tepe bellek 8.91 GB
+           ce 1.3340 | aux 2.240 | z 0.20 | yük CV 1.203 | maks 4.14x | min 0.00x | ölü expert 49
+adım  2700 | loss 1.3325 | lr 1.25e-04 | grad_norm 0.26 | 78.7k tok/s | tepe bellek 8.91 GB
+           ce 1.3323 | aux 2.243 | z 0.20 | yük CV 1.203 | maks 4.18x | min 0.00x | ölü expert 49
+adım  2725 | loss 1.3346 | lr 1.21e-04 | grad_norm 0.26 | 79.8k tok/s | tepe bellek 8.91 GB
+           ce 1.3344 | aux 2.245 | z 0.20 | yük CV 1.204 | maks 4.18x | min 0.00x | ölü expert 49
+adım  2750 | loss 1.3294 | lr 1.18e-04 | grad_norm 0.26 | 79.8k tok/s | tepe bellek 8.91 GB
+           ce 1.3292 | aux 2.242 | z 0.20 | yük CV 1.204 | maks 4.22x | min 0.00x | ölü expert 49
+[eval] adım 2750: val_loss 1.3475 (ppl 3.85)
+[expert] katman 1: |  ▁▃▄▁██▅██▇ ▂ ▄| min 0.01x maks 2.43x
+[expert] katman 2: | ███ ▂ ▅  ▄█▃ ▂▁| min 0.00x maks 3.87x
+[expert] katman 3: |     █▄ █   ███ | min 0.00x maks 4.22x
+[expert] katman 4: |██ ▁  ▃▆   █ ▁▅█| min 0.00x maks 3.85x
+[expert] katman 5: |▅▆█    ██   ▂ █▄| min 0.00x maks 3.77x
+[expert] katman 6: |▄ ▆█▂  █ █  ▂ ▇█| min 0.00x maks 3.67x
+[expert] katman 7: |▄██  ██    ▅ ▃ ▇| min 0.00x maks 3.52x
+[örnek] 'Once upon a time, there was a clever cat named Tom. Tom had a friend named Sam. They liked to play together. One day, they found a big cardboard box. They did not know what was inside.\nTom said, "Let\'s open it!" Sam was scared, but he wanted to know. They opened the box together. Inside the box, they found many toys. The toys were fun to play with. They played with the toys all day long.\nBut then, something unexpected happened. A little dog came and took all the toys away. Tom and Sam were'
+adım  2775 | loss 1.3392 | lr 1.14e-04 | grad_norm 0.26 | 80.8k tok/s | tepe bellek 8.91 GB
+           ce 1.3390 | aux 2.244 | z 0.20 | yük CV 1.205 | maks 4.21x | min 0.00x | ölü expert 49
+adım  2800 | loss 1.3264 | lr 1.11e-04 | grad_norm 0.25 | 82.1k tok/s | tepe bellek 8.91 GB
+           ce 1.3262 | aux 2.244 | z 0.19 | yük CV 1.204 | maks 4.20x | min 0.00x | ölü expert 49
+adım  2825 | loss 1.3244 | lr 1.09e-04 | grad_norm 0.26 | 82.6k tok/s | tepe bellek 8.91 GB
+           ce 1.3242 | aux 2.246 | z 0.19 | yük CV 1.205 | maks 4.17x | min 0.00x | ölü expert 49
+adım  2850 | loss 1.3241 | lr 1.06e-04 | grad_norm 0.27 | 82.6k tok/s | tepe bellek 8.91 GB
+           ce 1.3239 | aux 2.242 | z 0.19 | yük CV 1.203 | maks 4.16x | min 0.00x | ölü expert 49
+adım  2875 | loss 1.3225 | lr 1.04e-04 | grad_norm 0.26 | 80.4k tok/s | tepe bellek 8.91 GB
+           ce 1.3223 | aux 2.246 | z 0.19 | yük CV 1.204 | maks 4.21x | min 0.00x | ölü expert 49
+adım  2900 | loss 1.3457 | lr 1.03e-04 | grad_norm 0.26 | 78.3k tok/s | tepe bellek 8.91 GB
+           ce 1.3455 | aux 2.248 | z 0.19 | yük CV 1.206 | maks 4.19x | min 0.00x | ölü expert 49
+adım  2925 | loss 1.3338 | lr 1.02e-04 | grad_norm 0.26 | 76.9k tok/s | tepe bellek 8.91 GB
+           ce 1.3336 | aux 2.245 | z 0.19 | yük CV 1.204 | maks 4.17x | min 0.00x | ölü expert 49
+adım  2950 | loss 1.3266 | lr 1.01e-04 | grad_norm 0.26 | 79.1k tok/s | tepe bellek 8.91 GB
+           ce 1.3264 | aux 2.245 | z 0.19 | yük CV 1.205 | maks 4.17x | min 0.00x | ölü expert 49
+adım  2975 | loss 1.3193 | lr 1.00e-04 | grad_norm 0.26 | 80.7k tok/s | tepe bellek 8.91 GB
+           ce 1.3191 | aux 2.245 | z 0.19 | yük CV 1.205 | maks 4.21x | min 0.00x | ölü expert 49
+adım  3000 | loss 1.3166 | lr 1.00e-04 | grad_norm 0.26 | 78.0k tok/s | tepe bellek 8.91 GB
+           ce 1.3164 | aux 2.246 | z 0.19 | yük CV 1.206 | maks 4.18x | min 0.00x | ölü expert 49
+[eval] adım 3000: val_loss 1.3369 (ppl 3.81)
+[expert] katman 1: |  ▁▃▄▁██▆██▇ ▂ ▄| min 0.01x maks 2.45x
+[expert] katman 2: | ███ ▁ ▅  ▄█▃ ▃▁| min 0.00x maks 3.84x
+[expert] katman 3: |     █▄ █   ███ | min 0.00x maks 4.18x
+[expert] katman 4: |██ ▁  ▃▅   █ ▁▄█| min 0.00x maks 3.88x
+[expert] katman 5: |▅▆█    ██   ▂ █▄| min 0.00x maks 3.76x
+[expert] katman 6: |▄ ▆█▂  █ █  ▂ ▇█| min 0.00x maks 3.70x
+[expert] katman 7: |▄██  ██    ▅ ▃ ▇| min 0.00x maks 3.59x
+[örnek] 'Once upon a time, there was a boy named Tim. Tim had a toy car with a zipper. One day, Tim was playing with his car outside. He saw a big tree and wanted to climb it. But he was scared.\nA bird saw Tim and said, "Don\'t be scared, little boy. The bird is nice. It will stop the zipper." The bird was confused but wanted to be friends. So, the bird flew up to the sky and told Tim to be brave.\nTim looked out the window and saw the bird. He knew he was a brave'
+bitti: 22.1 dk, en iyi val_loss 1.3369

@@ -1,0 +1,8 @@
+# SHA-256 (checkpoint'ler git'te DEĞİL; yedeklerin bütünlüğünü doğrulamak için)
+25c1c4ef7bcd28f4ba30de00c8d39f74837e7275f1000994371e03bd24ef8052  115M  checkpoints/dense/best.pt
+2bb4a95c2192ecfd905d08719b7f9f7c86ecb9824a9a67b79c2c175f3ab11313  343M  checkpoints/dense/last.pt
+6165b78539875056af3d52ff3156ee47fb9be6350c9f8d31a8b326036eb6838c  303M  checkpoints/moe/best.pt
+5884cb3df83205e50d400b9bd10a27e7c15c2a98d0c2818f44409cafeed54e37  907M  checkpoints/moe/last.pt
+790df41f50462bbb2f622a9e4582f055954b7232877919eb8be4d6768c0674da  303M  checkpoints/moe-noaux/best.pt
+bb2235aa2f1c914939d8531a5e7cec5f4c81066a1ecbee7b5c1255c1f7e71d4b  907M  checkpoints/moe-noaux/last.pt
+691d5e2ac3c0d8726953d0651c717a1e3db2a921af7ba1d6cb81ac9203aee6a4  132K  data/sp8k/tokenizer.model
