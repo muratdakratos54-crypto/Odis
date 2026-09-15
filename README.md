@@ -29,6 +29,7 @@ scripts/
   benchmark.py              batch boyutuna göre VRAM ve throughput ölçümü
   plot_metrics.py           koşuları karşılaştıran grafikler (loss, yük dengesi, ısı haritası)
   analyze_experts.py        eğitilmiş MoE'de expert yükü ve hangi tokenlarda uzmanlaştıkları
+  backup_bundle.py          git deposunun tamamını doğrulanmış tek bir bundle dosyasına yedekle
 tests/           CPU'da çalışan doğruluk testleri (nedensellik, RoPE, init, overfit, MoE dispatch ...)
 docs/            README'deki grafikler
 experiments/     donmuş deney kayıtları: config, metrics.jsonl, train.log, ortam, checksum'lar
@@ -72,6 +73,15 @@ py -3.13 -m venv .venv
 # 5) Analiz
 .\.venv\Scripts\python scripts\plot_metrics.py --runs dense moe moe-noaux --out docs\dense_vs_moe.png
 .\.venv\Scripts\python scripts\analyze_experts.py --ckpt checkpoints\moe\best.pt --layer 4
+
+# 6) Yedek: her kilometre taşından (commit + tag) sonra tüm git geçmişini D:'ye al.
+#    Önce doğrular (ref'ler + temiz klon + fsck), sonra değiştirir; önceki kilometre taşı .prev'de kalır.
+#    Eski bir yedek, geçmişinin tamamı yenisinde yoksa (tag silinmiş, reset/rebase/amend) ya da bozuksa silinmez:
+#    tarihli bir kopya olarak kenara alınır ve betik uyarır.
+#    data/ ve checkpoints/ git'te olmadığı için bundle'a girmez.
+.\.venv\Scripts\python scripts\backup_bundle.py
+git clone "D:\foton gama v1 yedek\moe-llm.bundle" moe-llm          # geri yükleme (diğer branch'ler origin/<ad> olarak gelir)
+git clone --mirror "D:\foton gama v1 yedek\moe-llm.bundle" moe-llm.git   # tüm ref'ler aynen (stash dahil)
 ```
 
 MoE koşularında konsol logu her log aralığında denge özetini, her eval'de de katman başına
