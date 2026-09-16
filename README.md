@@ -16,6 +16,10 @@ Amaç: öğrenmek ve tek bir tüketici GPU'sunda (RTX 4070 Super, 12 GB VRAM) e�
 4. ✅ **Router dengeleme ablasyonu** — router davranışı bir regularizer artefaktı mı? Altı dengeleme
    koşulu (aux katsayısı 0 / 0.001 / 0.01 / 0.1 / 1.0 ve aux-loss'suz seçim bias'ı) × 3 seed, denge ile
    uzmanlaşmayı ayıran ölçütler, "sahte denge" ve "sözlükleşme" testleri
+5. ⏳ **FOTON v0.1** — sequence düzeyinde top-1 routing ile üç modül. Deney ön-kaydı **koddan önce**
+   sabitlendi ve `foton-v01-prereg` tag'iyle donduruldu: [`PREREGISTRATION.md`](PREREGISTRATION.md).
+   Birincil ölçüt önceden belirlenmiş val loss hedefine (L\* = 1.3592) ulaşmak için gereken aktif FLOP;
+   karar tablosu, seed politikası, test aileleri ve güç kalibrasyonu orada
 
 ## Klasör yapısı
 
@@ -28,6 +32,7 @@ src/
   data.py        memmap üzerinden rastgele pencere örnekleyen veri yükleyici
   train.py       eğitim döngüsü (bf16, grad accumulation, token tabanlı cosine LR, eval, checkpoint, expert logları)
   flops.py       analitik aktif FLOP hesabı (türetim: docs/flops.md)
+  stats.py       karar istatistiği: seed eşleştirmeli fark, Holm/BH, ön-kayıt karar tablosu (kod olarak)
   checkpoint.py  atomik kaydetme, checkpoint'ten model yükleme
   sample.py      metin üretimi
 scripts/
@@ -44,10 +49,12 @@ scripts/
   compare_runs.py           hız benchmark'ı + dört karşılaştırma (aynı token / FLOP / süre / aktif parametre)
   router_analysis.py        bir checkpoint'te router: denge, uzmanlaşma, karşı-olgusal CE, dengeleme kuvveti
   compare_router.py         dengeleme koşullarını karşılaştır (tablo + eşleştirilmiş farklar + grafik)
+  power_analysis.py         ön-kaydın güç kalibrasyonu (yalnızca baseline gürültüsünden)
 tests/           CPU'da çalışan doğruluk testleri (nedensellik, RoPE, init, overfit, MoE dispatch, LR schedule,
-                 FLOP, router, router ölçütlerinin null'ları ve istatistik) — 160 test
+                 FLOP, router, ölçüt null'ları, karar istatistiği ve karar tablosu) — 196 test
 docs/            README'deki grafikler + flops.md (FLOP türetimi) + router_metrics.md (router ölçütleri)
 experiments/     donmuş deney kayıtları: config, metrics.jsonl, train.log, ortam, checksum'lar
+PREREGISTRATION.md  FOTON v0.1 ön-kaydı: hedef, karar tablosu, test aileleri, kalibrasyon (dondurulmuş)
 data/            ham metin + token dosyaları (git'e girmez)
 checkpoints/     eğitim çıktıları: last.pt, best.pt, metrics.jsonl, train.log (git'e girmez)
 ```

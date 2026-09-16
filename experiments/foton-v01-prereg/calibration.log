@@ -1,0 +1,154 @@
+# FOTON v0.1 ön-kaydı — güç kalibrasyonu (yalnızca baseline gürültüsü)
+L* = 1.3592 (dondurulmuş) | referans bütçe = 98,304,000 token | koşul 7, koşu 21, seed/koşul 3
+
+## 1. Koşullar içi (within-condition) seed varyansı
+  koşul      val loss ort    val sd   N* ort (token)        N* sd  N* sd %
+  auxfree          1.3195    0.0002       78,654,246       80,317    0.10%
+  aux0.1           1.3207    0.0011       78,884,247      470,205    0.60%
+  aux0.01          1.3231    0.0023       79,736,216      421,272    0.53%
+  aux0.001         1.3334    0.0013       83,298,409      815,599    0.98%
+  aux1.0           1.3339    0.0030       83,752,150    1,507,160    1.80%
+  aux0             1.3383    0.0019       85,427,509    1,090,139    1.28%
+  dense            1.3575    0.0009       97,027,766      708,352    0.73%
+
+  HAVUZLANMIŞ içsel sd: val loss 0.00175 nat (df 14) | N* 1.00% (df 14)
+  eğri eğimi L* civarında: d(val)/d(ln token) = -0.2439 nat
+  -> val loss sd'si 0.00175 nat, hesap cinsinden 0.72% (doğrudan ölçülen N* sd'si 1.00% ile tutarlı olmalı)
+  KULLANICI SORUSU: gözlenen tek-koşu gürültüsü ±%6 DEĞİL, ±1.00% (1 sd).
+
+## 2. Eşleştirilmiş (paired) vs eşleştirilmemiş (unpaired) fark varyansı
+  s = 100 x (1 - N*_A / N*_B).  paired: aynı seed eşleşir (n=3).  unpaired: 3x3=9 çapraz eşleşme.
+  çift                          tip       s̄  sd paired  sd unpaired   kazanç
+  auxfree / aux0.1       aynı mimari    +0.29       0.49         0.52    1.06x
+  auxfree / aux0.01      aynı mimari    +1.35       0.62         0.46    0.74x
+  auxfree / aux0.001     aynı mimari    +5.57       0.83         0.80    0.97x
+  auxfree / aux1.0       aynı mimari    +6.07       1.65         1.48    0.90x
+  auxfree / aux0         aynı mimari    +7.92       1.13         1.02    0.91x
+  auxfree / dense        mimari-ötesi   +18.93       0.62         0.52    0.84x
+  aux0.1 / aux0.01       aynı mimari    +1.06       1.11         0.68    0.61x
+  aux0.1 / aux0.001      aynı mimari    +5.30       0.48         0.94    1.94x
+  aux0.1 / aux1.0        aynı mimari    +5.80       1.35         1.56    1.16x
+  aux0.1 / aux0          aynı mimari    +7.65       1.07         1.13    1.06x
+  aux0.1 / dense         mimari-ötesi   +18.70       0.90         0.66    0.73x
+  aux0.01 / aux0.001     aynı mimari    +4.27       1.41         0.92    0.65x
+  aux0.01 / aux1.0       aynı mimari    +4.77       2.11         1.56    0.74x
+  aux0.01 / aux0         aynı mimari    +6.65       1.49         1.12    0.75x
+  aux0.01 / dense        mimari-ötesi   +17.82       0.61         0.64    1.06x
+  aux0.001 / aux1.0      aynı mimari    +0.52       1.70         1.78    1.04x
+  aux0.001 / aux0        aynı mimari    +2.49       0.78         1.36    1.74x
+  aux0.001 / dense       mimari-ötesi   +14.15       1.03         0.91    0.88x
+  aux1.0 / aux0          aynı mimari    +1.95       2.47         1.88    0.76x
+  aux1.0 / dense         mimari-ötesi   +13.67       2.14         1.45    0.68x
+  aux0 / dense           mimari-ötesi   +11.96       0.86         1.12    1.30x
+
+  HAVUZLANMIŞ  aynı mimari : paired sd 1.37 puan (df 30) | unpaired sd 1.22 puan | kazanç 0.90x
+  HAVUZLANMIŞ  mimari-ötesi: paired sd 1.15 puan (df 12) | unpaired sd 0.94 puan | kazanç 0.82x
+  'mimari-ötesi' = dense ile MoE çiftleri: FOTON-baseline eşleştirmesinin en yakın proxy'si,
+  çünkü orada da weight init birebir eşleşemiyor, yalnızca veri/batch sırası ortak.
+
+## 2b. Eşleştirme niye kazandırmıyor: seed'in PAYLAŞILAN etkisi var mı?
+  Eşleştirilmiş tasarım yalnızca seed'in koşullar arasında TUTARLI bir etkisi varsa varyans düşürür
+  (Var_paired = Var_A + Var_B - 2*Cov). Rastgele blok ayrışımı: her koşulun N*'ı kendi ortalamasına
+  normalize edilir, sonra seed sütunlarının ortalaması alınır.
+
+  koşul          s1337     s1338     s1339
+  auxfree       99.97%   100.11%    99.92%
+  aux0.1        99.96%   100.62%    99.43%
+  aux0.01      100.07%    99.44%   100.49%
+  aux0.001      99.45%   101.13%    99.42%
+  aux1.0       101.33%   100.72%    97.95%
+  aux0          98.64%   101.16%   100.20%
+  dense         99.25%   100.04%   100.71%
+  SEED ETKİSİ    -0.19%    +0.46%    -0.27%
+
+  seed etkisinin sd'si          : 0.401%  (df 2)
+  koşul içi toplam sd           : 1.000%  (df 14)
+  seed etkisi çıkarıldıktan sonra: 0.990%  (df 12)
+  -> seed'in açıkladığı varyans payı ~ %16.0
+     ama SAF GÜRÜLTÜDE beklenen pay = df_seed/df_toplam = 2/14 = %14.3: gözlenen pay bundan AYIRT EDİLEMİYOR.
+  koşul çiftleri arası seed korelasyonu: ortalama ρ = +0.068 (n=21 çift, medyan +0.355)
+  ρ ~ 0 => aynı veri sırasını paylaşmak 3000 adım sonunda ortak bir sapma bırakmıyor: eğitim
+  kaotik biçimde ayrışıyor. Eşleştirme bu yüzden kazanç sağlamıyor (v2'de de gözlenmişti).
+
+## 3. Karar kuralının gücü (Monte Carlo, ön-kayıttaki BİLEŞİK kural)
+  Kural: 'başarılı' <=> s̄ >= 5 VE %95 GA alt sınırı > 0 (GA örneklem sd'siyle, t(n-1)).
+  'belirsiz' <=> s̄ > 2 ve (GA sıfırı kesiyor veya s̄ < 5).  Tripwire: örneklem sd > 5 puan.
+
+  --- sd = 1.15 puan (gözlenen, mimari-ötesi) ---
+   gerçek etki   n  başarılı+  belirsiz    nötr  başarısız  tripwire  GA yarı-gen.
+         +0.0%   5       0.0%      0.0%  100.0%       0.0%      0.0%         1.35p
+         +0.0%  10       0.0%      0.0%  100.0%       0.0%      0.0%         0.80p
+         +2.0%   5       0.0%     50.0%   50.0%       0.0%      0.0%         1.34p
+         +2.0%  10       0.0%     50.1%   49.9%       0.0%      0.0%         0.80p
+         +5.0%   5      49.8%     50.2%    0.0%       0.0%      0.0%         1.34p
+         +5.0%  10      49.9%     50.1%    0.0%       0.0%      0.0%         0.80p
+         +7.0%   5     100.0%      0.0%    0.0%       0.0%      0.0%         1.34p
+         +7.0%  10     100.0%      0.0%    0.0%       0.0%      0.0%         0.80p
+        +10.0%   5     100.0%      0.0%    0.0%       0.0%      0.0%         1.35p
+        +10.0%  10     100.0%      0.0%    0.0%       0.0%      0.0%         0.80p
+
+  --- sd = 1.37 puan (gözlenen, aynı mimari) ---
+   gerçek etki   n  başarılı+  belirsiz    nötr  başarısız  tripwire  GA yarı-gen.
+         +0.0%   5       0.0%      0.1%   99.9%       0.1%      0.0%         1.59p
+         +0.0%  10       0.0%      0.0%  100.0%       0.0%      0.0%         0.95p
+         +2.0%   5       0.0%     50.0%   50.0%       0.0%      0.0%         1.60p
+         +2.0%  10       0.0%     50.0%   50.0%       0.0%      0.0%         0.95p
+         +5.0%   5      50.1%     49.9%    0.0%       0.0%      0.0%         1.60p
+         +5.0%  10      50.1%     49.9%    0.0%       0.0%      0.0%         0.95p
+         +7.0%   5     100.0%      0.0%    0.0%       0.0%      0.0%         1.59p
+         +7.0%  10     100.0%      0.0%    0.0%       0.0%      0.0%         0.95p
+        +10.0%   5     100.0%      0.0%    0.0%       0.0%      0.0%         1.60p
+        +10.0%  10     100.0%      0.0%    0.0%       0.0%      0.0%         0.95p
+
+  --- sd = 3.00 puan (kötümser 3.0) ---
+   gerçek etki   n  başarılı+  belirsiz    nötr  başarısız  tripwire  GA yarı-gen.
+         +0.0%   5       0.0%      6.6%   84.1%       6.7%      2.6%         3.50p
+         +0.0%  10       0.0%      1.7%   96.2%       1.7%      0.3%         2.09p
+         +2.0%   5       1.2%     47.5%   48.7%       0.1%      2.5%         3.50p
+         +2.0%  10       0.1%     49.8%   49.8%       0.0%      0.3%         2.09p
+         +5.0%   5      47.3%     48.9%    1.2%       0.0%      2.6%         3.50p
+         +5.0%  10      49.8%     49.8%    0.1%       0.0%      0.3%         2.09p
+         +7.0%   5      90.1%      7.3%    0.0%       0.0%      2.5%         3.50p
+         +7.0%  10      98.0%      1.8%    0.0%       0.0%      0.3%         2.09p
+        +10.0%   5      97.5%      0.0%    0.0%       0.0%      2.5%         3.50p
+        +10.0%  10      99.7%      0.0%    0.0%       0.0%      0.3%         2.09p
+
+  --- sd = 5.00 puan (çok kötümser 5.0) ---
+   gerçek etki   n  başarılı+  belirsiz    nötr  başarısız  tripwire  GA yarı-gen.
+         +0.0%   5       0.6%     10.4%   37.6%      10.9%     40.5%         5.83p
+         +0.0%  10       0.0%      5.8%   44.7%       5.8%     43.6%         3.48p
+         +2.0%   5       4.6%     25.1%   27.3%       2.2%     40.8%         5.84p
+         +2.0%  10       1.6%     26.6%   28.1%       0.3%     43.4%         3.47p
+         +5.0%   5      27.4%     26.7%    5.2%       0.1%     40.7%         5.83p
+         +5.0%  10      28.1%     26.4%    1.7%       0.0%     43.9%         3.48p
+         +7.0%   5      46.8%     12.1%    0.8%       0.0%     40.3%         5.83p
+         +7.0%  10      50.5%      5.7%    0.0%       0.0%     43.7%         3.48p
+        +10.0%   5      58.4%      1.0%    0.0%       0.0%     40.5%         5.83p
+        +10.0%  10      56.2%      0.0%    0.0%       0.0%     43.8%         3.48p
+
+  --- sd = 6.00 puan (kullanıcının korktuğu 6.0) ---
+   gerçek etki   n  başarılı+  belirsiz    nötr  başarısız  tripwire  GA yarı-gen.
+         +0.0%   5       1.0%      8.2%   22.0%       9.3%     59.5%         7.00p
+         +0.0%  10       0.1%      4.0%   20.2%       4.2%     71.5%         4.18p
+         +2.0%   5       4.6%     15.5%   17.5%       2.7%     59.7%         7.01p
+         +2.0%  10       1.6%     12.7%   13.8%       0.5%     71.4%         4.18p
+         +5.0%   5      18.7%     16.5%    5.2%       0.2%     59.5%         7.00p
+         +5.0%  10      14.1%     12.7%    1.6%       0.0%     71.6%         4.18p
+         +7.0%   5      29.7%      9.3%    1.2%       0.0%     59.8%         7.01p
+         +7.0%  10      24.4%      4.1%    0.1%       0.0%     71.4%         4.17p
+        +10.0%   5      38.9%      1.5%    0.1%       0.0%     59.5%         7.00p
+        +10.0%  10      28.3%      0.1%    0.0%       0.0%     71.6%         4.18p
+
+## 4. Sonuç
+  (a) Gözlenen gürültü: tek koşu ±1.00% (1 sd) hesap cinsinden; eşleştirilmiş farkın sd'si
+      mimari-ötesi çiftlerde 1.15 puan. Kullanıcının hipotezindeki ±%6 DEĞİL.
+  (b) n=5'te %95 GA yarı-genişliği ~1.43 puan, yani 'GA alt sınırı > 0' şartı s̄ > 1.43
+      puandan itibaren sağlanıyor. Gürültü, +%5 eşiği için BAĞLAYICI DEĞİL.
+  (c) Bağlayıcı olan şey nokta-tahmin şartı: gerçek etki tam +%5 iken P(s̄ >= 5) ~ %50, bu
+      gürültüden bağımsızdır ve seed sayısıyla DÜZELMEZ (yukarıdaki tabloda n=5 ile n=10
+      karşılaştırılabilir). Eşiğin sınırındaki bir etkinin yarı yarıya 'belirsiz' çıkması
+      eşiğin tanımının sonucudur, tasarım hatası değildir; ölçek yükseltme hakkı bunun içindir.
+  (d) Bu yüzden ne eşik yükseltilmeli ne seed artırılmalı. Gözlenen gürültü eşiği yutmuyor;
+      seed artırmak GA'yı daraltır ama zaten bağlayıcı olmayan şartı iyileştirir.
+      Tripwire (örneklem sd > 5 puan) gözlenen gürültünün ~4-10 katı: yalnızca gerçekten
+      anormal varyansta ateşlenir, ki o zaman 10 seed'e çıkmak doğru tepkidir.

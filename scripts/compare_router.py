@@ -31,7 +31,10 @@ import os
 import statistics as st
 import sys
 
-T975 = {1: 12.706205, 2: 4.302653, 3: 3.182446, 4: 2.776445, 5: 2.570582}
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from src.stats import T975, multiplicity, paired, t_crit, t_sf  # noqa: E402
+_t_sf = t_sf  # geriye uyumluluk: testler bu adı kullanıyor
+
 CONDITIONS = [
     ("a_aux0.01", "aux 0.01 (normal)", "checkpoints/v2", "moe-tok-s{s}"),
     ("b_aux0.001", "aux 0.001 (zayıf)", "checkpoints/v3", "aux0.001-s{s}"),
@@ -73,84 +76,9 @@ def ms(xs: list[float], fmt: str = ".4f") -> str:
     return f"{st.mean(xs):{fmt}} ± {st.stdev(xs):{fmt}}" if len(xs) > 1 else f"{xs[0]:{fmt}}"
 
 
-def paired(a: list[float], b: list[float], seeds_a=None, seeds_b=None) -> dict:
-    """Seed KİMLİĞİNE göre eşleştirilmiş fark. Konuma göre zip, bir koşulda eksik analiz olduğunda sessizce
-    yanlış seed'leri eşleştiriyordu; t kritik değeri de n'den bağımsız sabitti (n=2'de GA 3 kat dar çıkardı)."""
-    if seeds_a is not None and seeds_b is not None:
-        pos = {s: i for i, s in enumerate(seeds_b)}
-        pairs = [(a[i], b[pos[s]]) for i, s in enumerate(seeds_a) if s in pos]
-    else:
-        pairs = list(zip(a, b))
-    d = [x - y for x, y in pairs]
-    out = {"per_seed": d, "n": len(d), "mean": st.mean(d) if d else float("nan")}
-    if len(d) > 1:
-        sd = st.stdev(d)
-        out["sd"] = sd
-        if sd > 0:
-            out["t"] = out["mean"] / (sd / math.sqrt(len(d)))
-            out["p"] = _t_sf(abs(out["t"]), len(d) - 1) * 2
-        h = T975.get(len(d) - 1, 1.96) * sd / math.sqrt(len(d))
-        out["ci95"] = [out["mean"] - h, out["mean"] + h]
-    return out
-
-
-def _t_sf(t: float, df: int) -> float:
-    """P(T > t), Student-t. Küçük df için düzenlenmiş inkomplet beta; scipy yok."""
-    x = df / (df + t * t)
-    return 0.5 * _betainc(df / 2, 0.5, x)
-
-
-def _betainc(a: float, b: float, x: float) -> float:
-    """Düzenlenmiş inkomplet beta I_x(a,b), sürekli kesir (Numerical Recipes 6.4)."""
-    if x <= 0:
-        return 0.0
-    if x >= 1:
-        return 1.0
-    lbeta = math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
-    front = math.exp(math.log(x) * a + math.log(1 - x) * b - lbeta)
-    if x < (a + 1) / (a + b + 2):
-        return front * _bcf(a, b, x) / a
-    return 1.0 - math.exp(math.log(1 - x) * b + math.log(x) * a - lbeta) * _bcf(b, a, 1 - x) / b
-
-
-def _bcf(a: float, b: float, x: float, itmax: int = 200, eps: float = 3e-16) -> float:
-    qab, qap, qam = a + b, a + 1.0, a - 1.0
-    c, d = 1.0, 1.0 - qab * x / qap
-    d = 1.0 / (d if abs(d) > 1e-30 else 1e-30)
-    h = d
-    for m in range(1, itmax + 1):
-        m2 = 2 * m
-        aa = m * (b - m) * x / ((qam + m2) * (a + m2))
-        d = 1.0 + aa * d
-        c = 1.0 + aa / (c if abs(c) > 1e-30 else 1e-30)
-        d = 1.0 / (d if abs(d) > 1e-30 else 1e-30)
-        h *= d * c
-        aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
-        d = 1.0 + aa * d
-        c = 1.0 + aa / (c if abs(c) > 1e-30 else 1e-30)
-        d = 1.0 / (d if abs(d) > 1e-30 else 1e-30)
-        delta = d * c
-        h *= delta
-        if abs(delta - 1.0) < eps:
-            break
-    return h
-
-
-def multiplicity(tests: list[tuple[str, float]]) -> dict:
-    """Holm (FWER .05) ve Benjamini-Hochberg (FDR .05): hangi nominal anlamlı testler ayakta kalıyor."""
-    rows = sorted(((n, p) for n, p in tests if p == p), key=lambda r: r[1])
-    m = len(rows)
-    holm, bh = set(), set()
-    for i, (name, pv) in enumerate(rows):  # Holm: adım adım, ilk başarısızlıkta dur
-        if pv <= 0.05 / (m - i):
-            holm.add(name)
-        else:
-            break
-    kmax = max((i for i, (_, pv) in enumerate(rows) if pv <= 0.05 * (i + 1) / m), default=None)
-    if kmax is not None:
-        bh = {name for name, _ in rows[:kmax + 1]}
-    return {"n_tests": m, "nominal": [n for n, pv in rows if pv <= 0.05], "holm": sorted(holm), "bh": sorted(bh)}
-
+# Karar istatistiği src/stats.py'de toplandı: eşleşme seed KİMLİĞİNE göre, t kritik değeri n'e
+# bağlı, Holm/BH düzeltmesi. v3 denetimi bu iki hatayı burada bulmuştu; tek kaynak ve regresyon
+# testi (tests/test_stats.py) için taşındı. FOTON'un karar betiği de aynı modülü kullanır.
 
 def fmt_paired(p: dict, fmt: str = "+.4f") -> str:
     s = f"{p['mean']:{fmt}}"
