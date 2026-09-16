@@ -1,0 +1,41 @@
+{
+  "src_sha256": "8552cc82ec52877ea4745dc1646dad60b7826fe58f5bbf2267a32e9ab134680c",
+  "git_head": "5338ce346421fbd87b5fe7a566b684518fca83e3",
+  "git_status": [
+    "M README.md",
+    " M src/config.py",
+    " M src/model.py",
+    " M src/moe.py",
+    " M src/train.py",
+    " M tests/test_moe.py",
+    "?? docs/flops.md",
+    "?? docs/router_metrics.md",
+    "?? docs/v2_comparisons.png",
+    "?? experiments/v2-grouped-dispatch/",
+    "?? experiments/v3-router-ablation/",
+    "?? scripts/compare_curves.py",
+    "?? scripts/compare_router.py",
+    "?? scripts/compare_runs.py",
+    "?? scripts/flops_report.py",
+    "?? scripts/router_analysis.py",
+    "?? scripts/run_queue.py",
+    "?? scripts/verify_dispatch.py",
+    "?? src/flops.py",
+    "?? tests/test_flops.py",
+    "?? tests/test_router.py",
+    "?? tests/test_router_metrics.py",
+    "?? tests/test_train.py"
+  ],
+  "python": "3.13.14 2.14.0+cu130 13.0",
+  "gpu": "NVIDIA GeForce RTX 4070 SUPER, 616.64",
+  "host": "Windows-11-10.0.26200-SP0",
+  "args": [
+    "--preset",
+    "moe-auxfree",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+  ],
+  "env": {}
+}

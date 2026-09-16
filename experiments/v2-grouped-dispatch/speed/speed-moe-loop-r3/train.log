@@ -1,0 +1,38 @@
+model: 79.15M parametre (74.96M embedding hariç)
+MoE: 7 katman x 16 expert, top-3 + 1 shared | token başına aktif: 29.95M (25.76M embedding hariç)
+veri: train 545.8M token, val 5.51M token
+adım başına 32,768 token, bütçe 9.83M token = 300 adım (warmup 6.55M token)
+[eval] adım 0: val_loss 9.1188 (ppl 9125.04)
+adım    25 | loss 7.8987 | lr 1.25e-04 | grad_norm 5.19 | 79.4k tok/s | tepe bellek 8.91 GB
+           ce 7.8773 | aux 1.337 | z 8.07 | yük CV 0.875 | maks 4.13x | min 0.02x | ölü expert 10
+adım    50 | loss 5.5554 | lr 2.50e-04 | grad_norm 0.85 | 83.2k tok/s | tepe bellek 8.91 GB
+           ce 5.5358 | aux 1.139 | z 8.20 | yük CV 0.627 | maks 3.55x | min 0.02x | ölü expert 2
+adım    75 | loss 4.1707 | lr 3.75e-04 | grad_norm 0.61 | 83.8k tok/s | tepe bellek 8.92 GB
+           ce 4.1529 | aux 1.037 | z 7.40 | yük CV 0.306 | maks 2.10x | min 0.27x | ölü expert 0
+adım   100 | loss 3.5432 | lr 5.00e-04 | grad_norm 1.09 | 82.8k tok/s | tepe bellek 8.92 GB
+           ce 3.5262 | aux 1.027 | z 6.70 | yük CV 0.255 | maks 1.83x | min 0.30x | ölü expert 0
+adım   125 | loss 3.1327 | lr 6.25e-04 | grad_norm 0.66 | 82.6k tok/s | tepe bellek 8.92 GB
+           ce 3.1160 | aux 1.023 | z 6.39 | yük CV 0.221 | maks 1.62x | min 0.31x | ölü expert 0
+adım   150 | loss 2.8597 | lr 7.50e-04 | grad_norm 0.80 | 82.8k tok/s | tepe bellek 8.92 GB
+           ce 2.8433 | aux 1.023 | z 6.13 | yük CV 0.211 | maks 1.49x | min 0.40x | ölü expert 0
+adım   175 | loss 2.6773 | lr 8.75e-04 | grad_norm 0.73 | 83.9k tok/s | tepe bellek 8.92 GB
+           ce 2.6613 | aux 1.025 | z 5.77 | yük CV 0.210 | maks 1.46x | min 0.32x | ölü expert 0
+adım   200 | loss 2.5421 | lr 1.00e-03 | grad_norm 0.52 | 83.5k tok/s | tepe bellek 8.92 GB
+           ce 2.5263 | aux 1.026 | z 5.44 | yük CV 0.209 | maks 1.49x | min 0.30x | ölü expert 0
+adım   225 | loss 2.4122 | lr 8.78e-04 | grad_norm 0.48 | 83.5k tok/s | tepe bellek 8.92 GB
+           ce 2.3969 | aux 1.027 | z 5.05 | yük CV 0.214 | maks 1.51x | min 0.31x | ölü expert 0
+adım   250 | loss 2.3063 | lr 5.64e-04 | grad_norm 0.43 | 82.6k tok/s | tepe bellek 8.92 GB
+           ce 2.2915 | aux 1.025 | z 4.58 | yük CV 0.212 | maks 1.61x | min 0.39x | ölü expert 0
+adım   275 | loss 2.2034 | lr 2.42e-04 | grad_norm 0.38 | 82.5k tok/s | tepe bellek 8.92 GB
+           ce 2.1889 | aux 1.023 | z 4.23 | yük CV 0.213 | maks 1.55x | min 0.40x | ölü expert 0
+adım   300 | loss 2.1257 | lr 1.00e-04 | grad_norm 0.36 | 82.3k tok/s | tepe bellek 8.92 GB
+           ce 2.1116 | aux 1.019 | z 3.93 | yük CV 0.202 | maks 1.57x | min 0.43x | ölü expert 0
+[eval] adım 300: val_loss 2.0983 (ppl 8.15)
+[expert] katman 1: |▃▂▄▄▅▄▅▄▅▅▅▄▄▃▃▄| min 0.55x maks 1.31x
+[expert] katman 2: |▃▆▄▅▂▃▄▄▅▃▄▄▅▃▄▄| min 0.48x maks 1.57x
+[expert] katman 3: |▅▅▄▄▃▄▄▃▅▄▂▃▄▅▄▄| min 0.57x maks 1.23x
+[expert] katman 4: |▃▄▄▄▄▅▄▄▄▅▄▄▄▄▄▄| min 0.68x maks 1.20x
+[expert] katman 5: |▅▅▃▃▃▄▄▅▃▅▅▄▃▄▃▄| min 0.66x maks 1.32x
+[expert] katman 6: |▅▄▄▅▄▄▃▄▄▅▃▃▄▅▃▄| min 0.65x maks 1.22x
+[expert] katman 7: |▄▃▄▄▅▆▂▄▅▃▅▄▃▅▄▄| min 0.43x maks 1.45x
+bitti: 2.1 dk (eğitim 2.0 dk), en iyi val_loss 2.0983

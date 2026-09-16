@@ -32,11 +32,21 @@ class ModelConfig:
     # daha çok token-yerel/genel özellik işler; burada routing'den kazanç az, dengesizlik riski yüksek.
     first_dense_layers: int = 1
     norm_topk_prob: bool = True  # seçilen k gate ağırlığını toplamı 1 olacak şekilde normalize et
+    # Router çıktısı: "softmax" (expert'ler arası dağılım, aux loss ile dengelenir) ya da "sigmoid" (expert başına
+    # bağımsız skor; DeepSeek-V3 / Kimi K2'nin aux-loss-free yolunda bununla gelir).
+    router_gate: str = "softmax"
+    # Aux-loss-free dengeleme adım büyüklüğü (gamma). >0 ise her expert'in yalnızca SEÇİMDE kullanılan bir bias'ı
+    # olur ve her optimizer adımında yük sapmasının işaretiyle güncellenir (bkz. src/moe.py MoE.update_bias).
+    # DeepSeek-V3 eğitiminin çoğunda 0.001 kullandı. aux_loss_coef ile birlikte de kullanılabilir (ikisi bağımsız).
+    bias_update_rate: float = 0.0
     # Katsayılar MoE katmanlarının ORTALAMASINA uygulanır (bkz. GPT.forward). Switch Transformer
     # (0.01) ve ST-MoE (0.001) aynı değerleri katman başına kullanıp toplar; bizdeki eşdeğeri
     # router başına coef / n_moe_katman.
     aux_loss_coef: float = 0.01  # load-balancing loss katsayısı
     z_loss_coef: float = 0.001   # router z-loss katsayısı
+    # Expert hesabının yolu (bkz. src/moe.py): "grouped" = gruplu matris çarpımı, "loop" = expert başına
+    # ayrı çağrı (v1). Matematik ve parametreler aynı; yalnızca hız ve kayan nokta yuvarlaması farklı olabilir.
+    moe_impl: str = "grouped"
 
 
 @dataclass
@@ -52,10 +62,16 @@ class TrainConfig:
     batch_size: int = 32        # GPU'ya tek seferde giren mikro-batch (VRAM belirler)
     grad_accum: int = 2         # 2 x 32 x 512 = 32 768 token / optimizer adımı
     max_steps: int = 3000
+    # Eğitim bütçesi ve LR schedule GÖRÜLEN TOKEN üzerinden tanımlıdır (bkz. train.lr_at). 0 -> adım
+    # sayısından türet: max_steps * token/adım. Farklı hızdaki modelleri aynı süre ya da aynı FLOP'ta
+    # karşılaştırırken bütçe token olarak verilir; warmup her modelde aynı token sayısında biter.
+    max_tokens: int = 0
+    stop_step: int = 0          # >0: bu adımda dur, schedule yine bütçeye göre (kısa doğrulama koşuları için)
     # --- optimizer ---
     lr: float = 1e-3            # küçük modeller büyük LR'ı tolere eder (GPT-3 tablosu: ~6e-4 @125M)
     min_lr: float = 1e-4        # cosine decay sonu = lr/10 (Chinchilla tarzı)
     warmup_steps: int = 200
+    warmup_tokens: int = 0      # 0 -> warmup_steps * token/adım
     weight_decay: float = 0.1
     beta1: float = 0.9
     beta2: float = 0.95         # 0.999 yerine 0.95: LLM eğitiminde loss spike'larına daha dayanıklı
@@ -70,6 +86,8 @@ class TrainConfig:
     dtype: str = "bfloat16"     # Ada (RTX 40xx) bf16 destekler -> GradScaler gerekmez
     compile: bool = False       # Windows'ta torch.compile için triton-windows gerekir; varsayılan kapalı
     resume: bool = False
+    # false: best.pt / last.pt yazılmaz (kısa doğrulama ve ölçüm koşuları için disk + zaman; resume mümkün olmaz)
+    save_checkpoints: bool = True
     # Windows'ta NVIDIA sürücüsü VRAM taşınca OOM vermek yerine sistem RAM'ine taşar ("sysmem
     # fallback") ve eğitim sessizce ~3-20x yavaşlar. PyTorch'un ayırıcısını VRAM'in bu oranıyla
     # sınırlayarak *kendi* büyümemizi açık bir OutOfMemoryError'a çeviriyoruz (0 = sınır yok).
@@ -103,6 +121,13 @@ PRESETS: dict[str, tuple[ModelConfig, TrainConfig]] = {
         ModelConfig(n_experts=16, top_k=3, expert_hidden=352, n_shared_experts=1, first_dense_layers=1,
                     aux_loss_coef=0.0),
         TrainConfig(run_name="moe-noaux"),
+    ),
+    # Aux loss YOK, dengeleme DeepSeek-V3 / Kimi K2 tarzı: sigmoid gating + seçim bias'ı (router ablasyonu, v3).
+    # z-loss diğer MoE presetleriyle aynı kalır ki tek değişken dengeleme yöntemi olsun.
+    "moe-auxfree": (
+        ModelConfig(n_experts=16, top_k=3, expert_hidden=352, n_shared_experts=1, first_dense_layers=1,
+                    aux_loss_coef=0.0, router_gate="sigmoid", bias_update_rate=0.001),
+        TrainConfig(run_name="moe-auxfree"),
     ),
     "tiny-moe": (
         ModelConfig(max_seq_len=128, d_model=128, n_layer=2, n_head=4, ffn_hidden=352,

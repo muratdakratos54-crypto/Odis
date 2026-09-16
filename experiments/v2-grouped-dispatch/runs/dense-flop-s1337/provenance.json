@@ -1,0 +1,36 @@
+{
+  "src_sha256": "970c99d6b89b4d5f20375c00b8515dc3dfab60c030e9b2e6e00cb7c7fe9fd49c",
+  "git_head": "5338ce346421fbd87b5fe7a566b684518fca83e3",
+  "git_status": [
+    "M README.md",
+    " M src/config.py",
+    " M src/model.py",
+    " M src/moe.py",
+    " M src/train.py",
+    " M tests/test_moe.py",
+    "?? docs/flops.md",
+    "?? experiments/v2-grouped-dispatch/",
+    "?? scripts/compare_curves.py",
+    "?? scripts/compare_runs.py",
+    "?? scripts/flops_report.py",
+    "?? scripts/run_queue.py",
+    "?? scripts/verify_dispatch.py",
+    "?? src/flops.py",
+    "?? tests/test_flops.py",
+    "?? tests/test_train.py"
+  ],
+  "python": "3.13.14 2.14.0+cu130 13.0",
+  "gpu": "NVIDIA GeForce RTX 4070 SUPER, 616.64",
+  "host": "Windows-11-10.0.26200-SP0",
+  "args": [
+    "--preset",
+    "dense",
+    "--max_tokens",
+    "98467840",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+  ],
+  "env": {}
+}

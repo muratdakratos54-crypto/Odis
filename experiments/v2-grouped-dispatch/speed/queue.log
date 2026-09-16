@@ -1,0 +1,32 @@
+2026-09-16 00:39:21 kuyruk: experiments/v2-grouped-dispatch/queues/speed.json | kod 970c99d6b89b | git 5338ce3464 (+15 değişiklik) | 3.13.14 2.14.0+cu130 13.0 | NVIDIA GeForce RTX 4070 SUPER, 616.64
+2026-09-16 00:39:22 [1/15] speed-dense-grouped-r1: başladı: --preset dense --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-dense-grouped-r1
+2026-09-16 00:40:53 [1/15] speed-dense-grouped-r1: bitti kod=0 (1.5 dk)
+2026-09-16 00:40:54 [2/15] speed-moe-loop-r1: başladı: --preset moe --moe_impl loop --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-loop-r1
+2026-09-16 00:43:03 [2/15] speed-moe-loop-r1: bitti kod=0 (2.1 dk)
+2026-09-16 00:43:04 [3/15] speed-moe-grouped-r1: başladı: --preset moe --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-grouped-r1
+2026-09-16 00:45:11 [3/15] speed-moe-grouped-r1: bitti kod=0 (2.1 dk)
+2026-09-16 00:45:12 [4/15] speed-moe-noaux-loop-r1: başladı: --preset moe-noaux --moe_impl loop --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-noaux-loop-r1
+2026-09-16 00:47:22 [4/15] speed-moe-noaux-loop-r1: bitti kod=0 (2.2 dk)
+2026-09-16 00:47:24 [5/15] speed-moe-noaux-grouped-r1: başladı: --preset moe-noaux --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-noaux-grouped-r1
+2026-09-16 00:49:27 [5/15] speed-moe-noaux-grouped-r1: bitti kod=0 (2.1 dk)
+2026-09-16 00:49:29 [6/15] speed-dense-grouped-r2: başladı: --preset dense --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-dense-grouped-r2
+2026-09-16 00:51:00 [6/15] speed-dense-grouped-r2: bitti kod=0 (1.5 dk)
+2026-09-16 00:51:01 [7/15] speed-moe-loop-r2: başladı: --preset moe --moe_impl loop --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-loop-r2
+2026-09-16 00:53:09 [7/15] speed-moe-loop-r2: bitti kod=0 (2.1 dk)
+2026-09-16 00:53:10 [8/15] speed-moe-grouped-r2: başladı: --preset moe --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-grouped-r2
+2026-09-16 00:55:15 [8/15] speed-moe-grouped-r2: bitti kod=0 (2.1 dk)
+2026-09-16 00:55:16 [9/15] speed-moe-noaux-loop-r2: başladı: --preset moe-noaux --moe_impl loop --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-noaux-loop-r2
+2026-09-16 00:57:26 [9/15] speed-moe-noaux-loop-r2: bitti kod=0 (2.2 dk)
+2026-09-16 00:57:27 [10/15] speed-moe-noaux-grouped-r2: başladı: --preset moe-noaux --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-noaux-grouped-r2
+2026-09-16 00:59:32 [10/15] speed-moe-noaux-grouped-r2: bitti kod=0 (2.1 dk)
+2026-09-16 00:59:33 [11/15] speed-dense-grouped-r3: başladı: --preset dense --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-dense-grouped-r3
+2026-09-16 01:01:04 [11/15] speed-dense-grouped-r3: bitti kod=0 (1.5 dk)
+2026-09-16 01:01:06 [12/15] speed-moe-loop-r3: başladı: --preset moe --moe_impl loop --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-loop-r3
+2026-09-16 01:03:13 [12/15] speed-moe-loop-r3: bitti kod=0 (2.1 dk)
+2026-09-16 01:03:15 [13/15] speed-moe-grouped-r3: başladı: --preset moe --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-grouped-r3
+2026-09-16 01:05:19 [13/15] speed-moe-grouped-r3: bitti kod=0 (2.1 dk)
+2026-09-16 01:05:21 [14/15] speed-moe-noaux-loop-r3: başladı: --preset moe-noaux --moe_impl loop --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-noaux-loop-r3
+2026-09-16 01:07:30 [14/15] speed-moe-noaux-loop-r3: bitti kod=0 (2.1 dk)
+2026-09-16 01:07:31 [15/15] speed-moe-noaux-grouped-r3: başladı: --preset moe-noaux --moe_impl grouped --max_steps 300 --eval_interval 1000000 --log_interval 25 --save_checkpoints false --seed 1337 --sample_tokens 0 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-speed --run_name speed-moe-noaux-grouped-r3
+2026-09-16 01:09:36 [15/15] speed-moe-noaux-grouped-r3: bitti kod=0 (2.1 dk)
+2026-09-16 01:09:36 kuyruk tamamlandı

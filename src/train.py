@@ -25,20 +25,40 @@ from src.checkpoint import save_atomic
 from src.config import TrainConfig, build_configs
 from src.data import TokenDataset, dataset_paths
 from src.model import GPT
-from src.moe import load_balance_metrics, load_sparkline
+from src.moe import load_balance_metrics, load_sparkline, update_expert_biases
 from src.tokenizer import load_tokenizer
 
 
-def lr_at(step: int, cfg: TrainConfig) -> float:
-    """Lineer warmup + cosine decay.
+def token_budget(cfg: TrainConfig, tokens_per_step: int) -> tuple[int, int]:
+    """(warmup_tokens, max_tokens). 0 bırakılan alan adım sayısından türetilir."""
+    warmup = cfg.warmup_tokens or cfg.warmup_steps * tokens_per_step
+    total = cfg.max_tokens or cfg.max_steps * tokens_per_step
+    if not 0 < warmup < total:
+        raise ValueError(f"warmup ({warmup} token) 0 ile toplam bütçe ({total} token) arasında olmalı")
+    return warmup, total
+
+
+def lr_at(tokens_seen: int, tokens_per_step: int, warmup_tokens: int, max_tokens: int, cfg: TrainConfig) -> float:
+    """GÖRÜLEN TOKEN'a göre lineer warmup + cosine decay. tokens_seen: bu adımdan önce görülen token.
 
     Warmup: başlangıçta Adam'ın moment tahminleri henüz oturmamıştır ve ağırlıklar rastgeledir;
     büyük LR ile ilk adımlar modeli kararsız bir bölgeye fırlatabilir. Cosine decay: sona doğru
     LR'ı düşürmek, loss vadisinin dibine yerleşmeyi sağlar (sabit LR'a göre belirgin kazanç).
+
+    Neden adım değil token: eşit süre karşılaştırmasında hızlı model aynı sürede daha çok adım atar.
+    Schedule adıma bağlı olsaydı warmup'ın uzunluğu ve decay'in nerede bittiği modelin hızına göre
+    değişirdi; token'a bağlıyken her model warmup'ı aynı token'da bitirir ve LR kendi bütçesinin sonunda
+    min_lr'a iner. (Token/adım bütün koşularda aynıyken bu, her modele kendi max_steps'ini veren bir adım
+    schedule'ına eşdeğerdir; bütçeyi token olarak tanımlamak onu hıza göre seçmeyi doğrudan yapar.)
+
+    v1 ile uyum: warmup'ta bu adımın tokenları da sayılır (v1'deki step + 1). Token/adım 2'nin kuvvetiyken
+    (tüm presetler: 32 768, 2 048) LR dizisi v1'in adım formülüyle bit bit aynıdır; başka değerlerde warmup LR'ları
+    1 ulp farklı olabilir, cosine kısmı yine bit bit aynıdır (bkz. tests/test_train.py). Warmup bir adımın ortasında
+    biterse LR tepe değerini aşmasın diye kırpılır.
     """
-    if step < cfg.warmup_steps:
-        return cfg.lr * (step + 1) / cfg.warmup_steps
-    progress = min(1.0, (step - cfg.warmup_steps) / max(1, cfg.max_steps - cfg.warmup_steps))
+    if tokens_seen < warmup_tokens:
+        return cfg.lr * min(tokens_seen + tokens_per_step, warmup_tokens) / warmup_tokens
+    progress = min(1.0, (tokens_seen - warmup_tokens) / max(1, max_tokens - warmup_tokens))
     return cfg.min_lr + 0.5 * (1.0 + math.cos(math.pi * progress)) * (cfg.lr - cfg.min_lr)
 
 
@@ -82,19 +102,40 @@ def main() -> None:
     run_dir = os.path.join(tcfg.out_dir, tcfg.run_name)
     os.makedirs(run_dir, exist_ok=True)
     last_path, best_path = os.path.join(run_dir, "last.pt"), os.path.join(run_dir, "best.pt")
+    metrics_path = os.path.join(run_dir, "metrics.jsonl")
+    resuming = tcfg.resume and os.path.exists(last_path)
     if os.path.exists(last_path) and not tcfg.resume:
         sys.exit(f"{last_path} zaten var. Devam için --resume true, yeni deney için farklı --run_name kullan.")
+    if not resuming and os.path.exists(metrics_path):
+        # save_checkpoints=false koşularında last.pt yok: bitmiş bir ölçüm sessizce ezilmesin
+        with open(metrics_path, encoding="utf-8") as f:
+            if any(json.loads(line).get("type") == "end" for line in f if line.strip()):
+                sys.exit(f"{metrics_path} bitmiş bir koşu içeriyor; yeni deney için farklı --run_name kullan.")
 
     model = GPT(mcfg).to(device)
     optimizer = model.configure_optimizer(tcfg.lr, tcfg.weight_decay, (tcfg.beta1, tcfg.beta2), device)
     train_gen = torch.Generator().manual_seed(tcfg.seed)
     step, best_val = 0, float("inf")
+    # Eğitim duvar saati: yalnızca optimizer adımları (eval, örnek üretimi ve checkpoint kaydı hariç).
+    # Eşit süre karşılaştırması bu sayıya dayanır; resume'da checkpoint'ten devam eder.
+    train_time = 0.0
+    tokens_per_step = tcfg.batch_size * tcfg.grad_accum * mcfg.max_seq_len
+    warmup_tokens, max_tokens = token_budget(tcfg, tokens_per_step)
+    # Bütçe tam adıma yukarı yuvarlanır: son adım bütçeyi en fazla (token/adım - 1) token aşar
+    max_steps = math.ceil(max_tokens / tokens_per_step)
+    # stop_step: schedule bütçeye göre kalır ama eğitim bu adımda durur (ör. gerçek schedule'ın ilk 100 adımı)
+    end_step = min(max_steps, tcfg.stop_step) if tcfg.stop_step > 0 else max_steps
 
-    if tcfg.resume and os.path.exists(last_path):
+    if resuming:
         # CPU'ya yükle: load_state_dict ağırlıkları zaten GPU'daki parametrelere kopyalar,
         # optimizer durumu da parametrenin cihazına taşınır. GPU'ya yükleseydik ckpt sözlüğü
         # eğitim boyunca ağırlıkların ikinci bir kopyasını VRAM'de tutardı.
         ckpt = torch.load(last_path, map_location="cpu", weights_only=True)
+        ckpt_tps = ckpt["train_cfg"]["batch_size"] * ckpt["train_cfg"]["grad_accum"] * ckpt["model_cfg"]["max_seq_len"]
+        if ckpt_tps != tokens_per_step:
+            # adım sayısı token'a çevrilirken (step * token/adım) yanlış olurdu: schedule ve bütçe kayardı
+            sys.exit(f"checkpoint {ckpt_tps} token/adım ile yazılmış, şimdiki ayar {tokens_per_step}; "
+                     f"token/adım değişince resume desteklenmiyor.")
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
         # load_state_dict param_group ayarlarını da checkpoint'ten geri yükler; komut satırında
@@ -104,10 +145,12 @@ def main() -> None:
             group["weight_decay"], group["betas"] = wd, (tcfg.beta1, tcfg.beta2)
         train_gen.set_state(ckpt["train_gen_state"])
         step, best_val = ckpt["step"], ckpt["best_val"]
+        train_time = ckpt.get("train_time", 0.0)  # v1 checkpoint'lerinde yok
         del ckpt
-        if step >= tcfg.max_steps:
-            sys.exit(f"checkpoint adımı {step} >= max_steps {tcfg.max_steps}; daha büyük --max_steps verin.")
-        print(f"devam ediliyor: adım {step}, en iyi val {best_val:.4f}")
+        if step >= end_step:
+            sys.exit(f"checkpoint adımı {step} >= bütçenin adım sayısı {end_step}; daha büyük --max_steps "
+                     f"ya da --max_tokens verin.")
+        print(f"devam ediliyor: adım {step}, en iyi val {best_val:.4f}, eğitim süresi {train_time / 60:.1f} dk")
 
     # bf16 autocast: matris çarpımları bf16'da (2x daha az aktivasyon belleği, Ada'da çok daha hızlı),
     # ağırlıklar ve optimizer durumu float32'de kalır ("mixed precision").
@@ -123,7 +166,6 @@ def main() -> None:
     )
     train_model = torch.compile(model) if tcfg.compile else model
 
-    tokens_per_step = tcfg.batch_size * tcfg.grad_accum * mcfg.max_seq_len
     print(f"model: {model.num_params() / 1e6:.2f}M parametre "
           f"({model.num_params(exclude_embedding=True) / 1e6:.2f}M embedding hariç)")
     if mcfg.n_experts > 0:
@@ -132,16 +174,17 @@ def main() -> None:
               f"token başına aktif: {model.num_params(active_only=True) / 1e6:.2f}M "
               f"({model.num_params(exclude_embedding=True, active_only=True) / 1e6:.2f}M embedding hariç)")
     print(f"veri: train {len(train_ds) / 1e6:.1f}M token, val {len(val_ds) / 1e6:.2f}M token")
-    print(f"adım başına {tokens_per_step:,} token, toplam {tokens_per_step * tcfg.max_steps / 1e6:.0f}M token")
+    print(f"adım başına {tokens_per_step:,} token, bütçe {max_tokens / 1e6:.2f}M token = {max_steps} adım "
+          f"(warmup {warmup_tokens / 1e6:.2f}M token)" + (f", {end_step}. adımda durulacak" if end_step < max_steps else ""))
     with open(os.path.join(run_dir, "config.json"), "w") as f:
         json.dump({"model": asdict(mcfg), "train": asdict(tcfg)}, f, indent=2)
     # Yeni koşu: dosyayı sıfırdan aç (checkpoint'e ulaşamadan çökmüş eski bir koşunun kayıtları
     # karışmasın). Resume: checkpoint adımından SONRA yazılmış kayıtları at (o adımlar yeniden
     # eğitilecek; aksi halde aynı adım iki kez görünür), sonra kaldığı yerden ekle.
-    metrics_path = os.path.join(run_dir, "metrics.jsonl")
     if step > 0 and os.path.exists(metrics_path):
         with open(metrics_path, encoding="utf-8") as f:
-            kept = [line for line in f if json.loads(line)["step"] <= step]
+            # eski "end" kaydı da atılır: devam eden koşu bitmiş sayılmasın (bitince yenisi yazılır)
+            kept = [line for line in f if (r := json.loads(line))["step"] <= step and r["type"] != "end"]
         with open(metrics_path, "w", encoding="utf-8") as f:
             f.writelines(kept)
     metrics = open(metrics_path, "a" if step > 0 else "w", encoding="utf-8")
@@ -150,7 +193,14 @@ def main() -> None:
         metrics.write(json.dumps(record, ensure_ascii=False) + "\n")
         metrics.flush()
 
-    t_start = t_log = time.time()
+    def sync() -> None:
+        # CUDA çağrıları asenkron: saati okumadan önce kuyruğun bitmesini bekle, yoksa bir aralığın GPU işi
+        # sonrakine (ya da eval süresine) yazılır
+        if device == "cuda":
+            torch.cuda.synchronize()
+
+    # Aralıklar monoton saatle: time.time() sistem saati ayarlanınca (NTP) geri/ileri atlayabilir
+    t_start = t_log = time.perf_counter()
     # Log aralığı boyunca GPU'da biriken değerler (her adımda .item() çağırmamak için tensör olarak)
     accum = {k: torch.zeros((), device=device) for k in ("loss", "ce", "aux_loss", "z_loss")}
     load_accum: torch.Tensor | None = None  # (MoE katmanı, E) expert atama sayıları
@@ -160,11 +210,15 @@ def main() -> None:
 
     while True:
         # ---------------- değerlendirme + checkpoint ----------------
-        if (step % tcfg.eval_interval == 0 or step >= tcfg.max_steps) and not skip_eval_once:
-            t_eval = time.time()
+        if (step % tcfg.eval_interval == 0 or step >= end_step) and not skip_eval_once:
+            sync()
+            t_eval = time.perf_counter()
+            # eval, log aralığının ortasına düşerse son logdan beri geçen eğitim süresi de sayılır
+            train_time_now = train_time + (t_eval - t_log if steps_since_log else 0.0)
             val_loss = evaluate(train_model, val_ds, tcfg, autocast_ctx)
             print(f"[eval] adım {step}: val_loss {val_loss:.4f} (ppl {math.exp(val_loss):.2f})")
-            log({"type": "val", "step": step, "val_loss": val_loss, "time": time.time() - t_start})
+            log({"type": "val", "step": step, "tokens": step * tokens_per_step, "val_loss": val_loss,
+                 "train_time": train_time_now, "time": time.perf_counter() - t_start})
             if last_load is not None:
                 # Expert kullanım tablosu: her satır bir MoE katmanı, her karakter bir expert.
                 # '▄' ideal pay; '█' ~1.9x+ aşırı yüklü; boşluk = ideal payın %10'undan az (ölü).
@@ -185,17 +239,18 @@ def main() -> None:
                      "step": step, "val_loss": val_loss}
             if val_loss < best_val:
                 best_val = val_loss
-                save_atomic(state, best_path)
-            if step > 0:
+                if tcfg.save_checkpoints:
+                    save_atomic(state, best_path)
+            if step > 0 and tcfg.save_checkpoints:
                 save_atomic({**state, "optimizer": optimizer.state_dict(), "best_val": best_val,
-                             "train_gen_state": train_gen.get_state()}, last_path)
-            t_log += time.time() - t_eval  # eval/örnek/kayıt süresi tok/s ölçümüne karışmasın
+                             "train_gen_state": train_gen.get_state(), "train_time": train_time_now}, last_path)
+            t_log += time.perf_counter() - t_eval  # eval/örnek/kayıt süresi tok/s ölçümüne karışmasın
         skip_eval_once = False
-        if step >= tcfg.max_steps:
+        if step >= end_step:
             break
 
         # ---------------- bir optimizer adımı ----------------
-        lr = lr_at(step, tcfg)
+        lr = lr_at(step * tokens_per_step, tokens_per_step, warmup_tokens, max_tokens, tcfg)
         for group in optimizer.param_groups:
             group["lr"] = lr
         for _ in range(tcfg.grad_accum):
@@ -215,19 +270,23 @@ def main() -> None:
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), tcfg.grad_clip)
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)  # None: sıfır tensörü tutmaktan daha az bellek
+        # Aux-loss-free dengeleme (bias_update_rate > 0): gradyandan bağımsız, adım başına bir işaret güncellemesi
+        bias_range = update_expert_biases(model)
         step += 1
         steps_since_log += 1
 
         # ---------------- log ----------------
         # .item() GPU'yu CPU ile senkronize eder (yavaş); bu yüzden her adımda değil, aralıklarla.
-        if step % tcfg.log_interval == 0 or step >= tcfg.max_steps:
-            dt = time.time() - t_log
+        if step % tcfg.log_interval == 0 or step >= end_step:
+            sync()
+            dt = time.perf_counter() - t_log
+            train_time += dt
             avg = {k: v.item() / steps_since_log for k, v in accum.items()}
             tok_s = steps_since_log * tokens_per_step / dt
             mem = torch.cuda.max_memory_allocated() / 1e9 if device == "cuda" else 0.0
-            record = {"type": "train", "step": step, "loss": avg["loss"], "ce": avg["ce"], "lr": lr,
-                      "grad_norm": grad_norm.item(), "tok_per_sec": tok_s, "peak_mem_gb": mem,
-                      "time": time.time() - t_start}
+            record = {"type": "train", "step": step, "tokens": step * tokens_per_step, "loss": avg["loss"],
+                      "ce": avg["ce"], "lr": lr, "grad_norm": grad_norm.item(), "tok_per_sec": tok_s,
+                      "peak_mem_gb": mem, "train_time": train_time, "time": time.perf_counter() - t_start}
             line = (f"adım {step:5d} | loss {avg['loss']:.4f} | lr {lr:.2e} | grad_norm {grad_norm.item():.2f} "
                     f"| {tok_s / 1e3:.1f}k tok/s | tepe bellek {mem:.2f} GB")
             if load_accum is not None:
@@ -237,15 +296,21 @@ def main() -> None:
                 line += (f"\n           ce {avg['ce']:.4f} | aux {avg['aux_loss']:.3f} | z {avg['z_loss']:.2f} "
                          f"| yük CV {bal['load_cv']:.3f} | maks {bal['load_max_ratio']:.2f}x "
                          f"| min {bal['load_min_ratio']:.2f}x | ölü expert {bal['dead_experts']}")
+                if mcfg.bias_update_rate > 0:
+                    record["bias_range"] = bias_range
+                    line += f" | bias aralığı {bias_range:.3f}"
                 load_accum = None
             print(line)
             log(record)
             for v in accum.values():
                 v.zero_()
-            steps_since_log, t_log = 0, time.time()
+            steps_since_log, t_log = 0, time.perf_counter()
 
+    log({"type": "end", "step": step, "tokens": step * tokens_per_step, "train_time": train_time,
+         "time": time.perf_counter() - t_start, "best_val": best_val})
     metrics.close()
-    print(f"bitti: {(time.time() - t_start) / 60:.1f} dk, en iyi val_loss {best_val:.4f}")
+    print(f"bitti: {(time.perf_counter() - t_start) / 60:.1f} dk (eğitim {train_time / 60:.1f} dk), "
+          f"en iyi val_loss {best_val:.4f}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,26 @@
+USDT:2026-09-16 07:25:32 24624:25572 C:\actions-runner\_work\pytorch\pytorch\third_party\kineto\libkineto\src\SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-09-16 07:25:32 24624:25572 C:\actions-runner\_work\pytorch\pytorch\third_party\kineto\libkineto\src\SyncActivityProfilerHandler.cpp:46] profiler_stop
+USDT:2026-09-16 07:25:32 24624:25572 C:\actions-runner\_work\pytorch\pytorch\third_party\kineto\libkineto\src\SyncActivityProfilerHandler.cpp:39] profiler_start
+USDT:2026-09-16 07:25:32 24624:25572 C:\actions-runner\_work\pytorch\pytorch\third_party\kineto\libkineto\src\SyncActivityProfilerHandler.cpp:46] profiler_stop
+counts: [3132, 2998, 3070, 3118, 3091, 3096, 3077, 3074, 2926, 3099, 3039, 3037, 3076, 3118, 3180, 3021]
+grouped: max|diff| vs loop 0.000e+00, rel 0.000e+00
+bmm: max|diff| vs loop 9.766e-04, rel 3.704e-03
+loop     fwd+bwd: 14.21 ms
+grouped  fwd+bwd: 11.27 ms
+bmm      fwd+bwd: 11.60 ms
+--- grouped CUDA kernels (top 12 by count)
+     53  Memset (Device)
+     48  ampere_bf16_s16816gemm_bf16_128x64_ldg8_f2f_stages_64x4_nt
+     48  ampere_bf16_s1688gemm_bf16_128x128_ldg8_f2f_stages_32x1_nn
+     30  ampere_bf16_s16816gemm_bf16_128x64_ldg8_f2f_tn
+     16  ampere_bf16_s1688gemm_bf16_128x128_ldg8_f2f_stages_32x1_tn
+      9  Memcpy DtoH (Device -> Pageable)
+--- loop CUDA kernels (top 12 by count)
+     81  _ZN2at6native29vectorized_elementwise_kernelILi4EZNS0_25bfloat16_copy_kernel_cudaERNS_18TensorIteratorBaseEEUl
+     81  _ZN2at6native27unrolled_elementwise_kernelIZZZNS0_23direct_copy_kernel_cudaERNS_18TensorIteratorBaseEENKUlvE1_
+     65  _ZN2at6native29vectorized_elementwise_kernelILi4ENS0_15CUDAFunctor_addIfEESt5arrayIPcLy3EELb0EEEviT0_T1_
+     53  Memset (Device)
+     50  _ZN2at6native29vectorized_elementwise_kernelILi4ENS0_11FillFunctorIfEESt5arrayIPcLy1EELb0EEEviT0_T1_
+     49  Memcpy DtoD (Device -> Device)
+     48  _ZN2at6native29vectorized_elementwise_kernelILi4ENS0_13BinaryFunctorIN3c108BFloat16ES4_S4_NS0_15binary_interna
+     48  ampere_bf16_s16816gemm_bf16_128x64_ldg8_f2f_stages_64x4_nt

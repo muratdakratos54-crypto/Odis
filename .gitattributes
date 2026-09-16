@@ -1,0 +1,8 @@
+# Satır sonu normalizasyonu KAPALI: bu depo dosyaları hash'lerle çiviliyor.
+#   * PREREGISTRATION.md, baseline eğrilerinin (metrics.jsonl) SHA-256'sını sabitliyor
+#   * experiments/*/checksums.txt, checkpoint'lerin SHA-256'sını tutuyor
+#   * provenance.json'daki src_sha256, src/*.py dosyalarının içeriğinden hesaplanıyor
+# core.autocrlf açıkken git dosyaları depoda LF, Windows çalışma ağacında CRLF tutar; o zaman aynı
+# commit'in hash'leri platforma göre değişir ve yukarıdaki çivilerin hiçbiri temiz klonda doğrulanamaz.
+# Bu yüzden her dosya bit bit korunuyor.
+* -text

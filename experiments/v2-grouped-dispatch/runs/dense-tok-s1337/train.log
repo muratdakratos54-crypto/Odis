@@ -1,0 +1,137 @@
+model: 29.89M parametre (25.70M embedding hariç)
+veri: train 545.8M token, val 5.51M token
+adım başına 32,768 token, bütçe 98.30M token = 3000 adım (warmup 6.55M token)
+[eval] adım 0: val_loss 9.1163 (ppl 9102.33)
+adım    25 | loss 7.7659 | lr 1.25e-04 | grad_norm 3.53 | 114.5k tok/s | tepe bellek 6.30 GB
+adım    50 | loss 5.4278 | lr 2.50e-04 | grad_norm 0.85 | 116.7k tok/s | tepe bellek 6.30 GB
+adım    75 | loss 4.1523 | lr 3.75e-04 | grad_norm 0.84 | 116.7k tok/s | tepe bellek 6.30 GB
+adım   100 | loss 3.5686 | lr 5.00e-04 | grad_norm 0.93 | 116.9k tok/s | tepe bellek 6.30 GB
+adım   125 | loss 3.1604 | lr 6.25e-04 | grad_norm 0.77 | 116.9k tok/s | tepe bellek 6.30 GB
+adım   150 | loss 2.8900 | lr 7.50e-04 | grad_norm 0.74 | 116.6k tok/s | tepe bellek 6.30 GB
+adım   175 | loss 2.7063 | lr 8.75e-04 | grad_norm 0.73 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   200 | loss 2.5721 | lr 1.00e-03 | grad_norm 0.80 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   225 | loss 2.4487 | lr 1.00e-03 | grad_norm 0.59 | 116.5k tok/s | tepe bellek 6.30 GB
+adım   250 | loss 2.3544 | lr 9.99e-04 | grad_norm 0.52 | 116.7k tok/s | tepe bellek 6.30 GB
+[eval] adım 250: val_loss 2.3199 (ppl 10.17)
+adım   275 | loss 2.2759 | lr 9.98e-04 | grad_norm 0.57 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   300 | loss 2.2033 | lr 9.97e-04 | grad_norm 0.48 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   325 | loss 2.1523 | lr 9.96e-04 | grad_norm 0.50 | 116.6k tok/s | tepe bellek 6.30 GB
+adım   350 | loss 2.1088 | lr 9.94e-04 | grad_norm 0.48 | 117.1k tok/s | tepe bellek 6.30 GB
+adım   375 | loss 2.0661 | lr 9.91e-04 | grad_norm 0.48 | 117.1k tok/s | tepe bellek 6.30 GB
+adım   400 | loss 2.0197 | lr 9.89e-04 | grad_norm 0.42 | 117.0k tok/s | tepe bellek 6.30 GB
+adım   425 | loss 1.9916 | lr 9.86e-04 | grad_norm 0.41 | 116.9k tok/s | tepe bellek 6.30 GB
+adım   450 | loss 1.9597 | lr 9.83e-04 | grad_norm 0.40 | 116.9k tok/s | tepe bellek 6.30 GB
+adım   475 | loss 1.9286 | lr 9.79e-04 | grad_norm 0.41 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   500 | loss 1.9116 | lr 9.75e-04 | grad_norm 0.41 | 117.0k tok/s | tepe bellek 6.30 GB
+[eval] adım 500: val_loss 1.9096 (ppl 6.75)
+adım   525 | loss 1.9001 | lr 9.71e-04 | grad_norm 0.37 | 117.0k tok/s | tepe bellek 6.30 GB
+adım   550 | loss 1.8765 | lr 9.66e-04 | grad_norm 0.38 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   575 | loss 1.8539 | lr 9.61e-04 | grad_norm 0.40 | 116.9k tok/s | tepe bellek 6.30 GB
+adım   600 | loss 1.8323 | lr 9.56e-04 | grad_norm 0.37 | 117.1k tok/s | tepe bellek 6.30 GB
+adım   625 | loss 1.8076 | lr 9.50e-04 | grad_norm 0.36 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   650 | loss 1.8003 | lr 9.44e-04 | grad_norm 0.36 | 116.9k tok/s | tepe bellek 6.30 GB
+adım   675 | loss 1.7812 | lr 9.38e-04 | grad_norm 0.36 | 116.6k tok/s | tepe bellek 6.30 GB
+adım   700 | loss 1.7915 | lr 9.31e-04 | grad_norm 0.35 | 116.8k tok/s | tepe bellek 6.30 GB
+adım   725 | loss 1.7678 | lr 9.24e-04 | grad_norm 0.36 | 116.6k tok/s | tepe bellek 6.30 GB
+adım   750 | loss 1.7517 | lr 9.17e-04 | grad_norm 0.34 | 116.5k tok/s | tepe bellek 6.30 GB
+[eval] adım 750: val_loss 1.7518 (ppl 5.76)
+adım   775 | loss 1.7445 | lr 9.10e-04 | grad_norm 0.35 | 117.1k tok/s | tepe bellek 6.30 GB
+adım   800 | loss 1.7345 | lr 9.02e-04 | grad_norm 0.36 | 116.9k tok/s | tepe bellek 6.30 GB
+adım   825 | loss 1.7220 | lr 8.94e-04 | grad_norm 0.35 | 117.9k tok/s | tepe bellek 6.30 GB
+adım   850 | loss 1.7045 | lr 8.86e-04 | grad_norm 0.32 | 118.1k tok/s | tepe bellek 6.30 GB
+adım   875 | loss 1.7016 | lr 8.77e-04 | grad_norm 0.33 | 118.1k tok/s | tepe bellek 6.30 GB
+adım   900 | loss 1.6882 | lr 8.69e-04 | grad_norm 0.33 | 118.1k tok/s | tepe bellek 6.30 GB
+adım   925 | loss 1.6810 | lr 8.60e-04 | grad_norm 0.31 | 118.1k tok/s | tepe bellek 6.30 GB
+adım   950 | loss 1.6537 | lr 8.50e-04 | grad_norm 0.31 | 118.1k tok/s | tepe bellek 6.30 GB
+adım   975 | loss 1.6623 | lr 8.41e-04 | grad_norm 0.32 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1000 | loss 1.6434 | lr 8.31e-04 | grad_norm 0.32 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 1000: val_loss 1.6563 (ppl 5.24)
+adım  1025 | loss 1.6460 | lr 8.21e-04 | grad_norm 0.32 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  1050 | loss 1.6416 | lr 8.11e-04 | grad_norm 0.31 | 118.0k tok/s | tepe bellek 6.30 GB
+adım  1075 | loss 1.6198 | lr 8.00e-04 | grad_norm 0.31 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1100 | loss 1.6136 | lr 7.90e-04 | grad_norm 0.31 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1125 | loss 1.6093 | lr 7.79e-04 | grad_norm 0.31 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1150 | loss 1.6093 | lr 7.68e-04 | grad_norm 0.32 | 118.0k tok/s | tepe bellek 6.30 GB
+adım  1175 | loss 1.5964 | lr 7.57e-04 | grad_norm 0.30 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1200 | loss 1.5935 | lr 7.46e-04 | grad_norm 0.31 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1225 | loss 1.5825 | lr 7.34e-04 | grad_norm 0.32 | 117.9k tok/s | tepe bellek 6.30 GB
+adım  1250 | loss 1.5734 | lr 7.23e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 1250: val_loss 1.5867 (ppl 4.89)
+adım  1275 | loss 1.5650 | lr 7.11e-04 | grad_norm 0.30 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1300 | loss 1.5624 | lr 6.99e-04 | grad_norm 0.30 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1325 | loss 1.5536 | lr 6.87e-04 | grad_norm 0.31 | 118.0k tok/s | tepe bellek 6.30 GB
+adım  1350 | loss 1.5704 | lr 6.75e-04 | grad_norm 0.30 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1375 | loss 1.5485 | lr 6.63e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1400 | loss 1.5451 | lr 6.51e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1425 | loss 1.5529 | lr 6.38e-04 | grad_norm 0.30 | 117.9k tok/s | tepe bellek 6.30 GB
+adım  1450 | loss 1.5392 | lr 6.26e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1475 | loss 1.5291 | lr 6.13e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1500 | loss 1.5251 | lr 6.01e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 1500: val_loss 1.5326 (ppl 4.63)
+adım  1525 | loss 1.5221 | lr 5.88e-04 | grad_norm 0.30 | 117.7k tok/s | tepe bellek 6.30 GB
+adım  1550 | loss 1.5111 | lr 5.76e-04 | grad_norm 0.29 | 116.6k tok/s | tepe bellek 6.30 GB
+adım  1575 | loss 1.5107 | lr 5.63e-04 | grad_norm 0.29 | 117.2k tok/s | tepe bellek 6.30 GB
+adım  1600 | loss 1.4963 | lr 5.51e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1625 | loss 1.4973 | lr 5.38e-04 | grad_norm 0.28 | 118.0k tok/s | tepe bellek 6.30 GB
+adım  1650 | loss 1.4948 | lr 5.25e-04 | grad_norm 0.29 | 117.9k tok/s | tepe bellek 6.30 GB
+adım  1675 | loss 1.4940 | lr 5.13e-04 | grad_norm 0.29 | 117.9k tok/s | tepe bellek 6.30 GB
+adım  1700 | loss 1.4788 | lr 5.00e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1725 | loss 1.4772 | lr 4.88e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1750 | loss 1.4707 | lr 4.75e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 1750: val_loss 1.4863 (ppl 4.42)
+adım  1775 | loss 1.4778 | lr 4.63e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1800 | loss 1.4621 | lr 4.50e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1825 | loss 1.4758 | lr 4.38e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1850 | loss 1.4421 | lr 4.26e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1875 | loss 1.4672 | lr 4.14e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1900 | loss 1.4439 | lr 4.02e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1925 | loss 1.4449 | lr 3.90e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1950 | loss 1.4392 | lr 3.78e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  1975 | loss 1.4437 | lr 3.67e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2000 | loss 1.4346 | lr 3.55e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 2000: val_loss 1.4434 (ppl 4.23)
+adım  2025 | loss 1.4332 | lr 3.44e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2050 | loss 1.4302 | lr 3.33e-04 | grad_norm 0.30 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2075 | loss 1.4243 | lr 3.22e-04 | grad_norm 0.27 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2100 | loss 1.4175 | lr 3.11e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2125 | loss 1.4119 | lr 3.00e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2150 | loss 1.4206 | lr 2.90e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2175 | loss 1.4052 | lr 2.80e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2200 | loss 1.4078 | lr 2.70e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2225 | loss 1.4077 | lr 2.60e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2250 | loss 1.4052 | lr 2.51e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 2250: val_loss 1.4099 (ppl 4.10)
+adım  2275 | loss 1.4046 | lr 2.41e-04 | grad_norm 0.27 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2300 | loss 1.3980 | lr 2.32e-04 | grad_norm 0.28 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2325 | loss 1.3961 | lr 2.23e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2350 | loss 1.3838 | lr 2.15e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2375 | loss 1.3776 | lr 2.07e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2400 | loss 1.3864 | lr 1.98e-04 | grad_norm 0.27 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2425 | loss 1.3827 | lr 1.91e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2450 | loss 1.3831 | lr 1.83e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2475 | loss 1.3724 | lr 1.76e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2500 | loss 1.3772 | lr 1.69e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 2500: val_loss 1.3856 (ppl 4.00)
+adım  2525 | loss 1.3655 | lr 1.63e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2550 | loss 1.3719 | lr 1.56e-04 | grad_norm 0.28 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2575 | loss 1.3718 | lr 1.50e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2600 | loss 1.3600 | lr 1.45e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2625 | loss 1.3634 | lr 1.39e-04 | grad_norm 0.27 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2650 | loss 1.3569 | lr 1.34e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2675 | loss 1.3536 | lr 1.30e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2700 | loss 1.3526 | lr 1.25e-04 | grad_norm 0.29 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2725 | loss 1.3540 | lr 1.21e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+adım  2750 | loss 1.3484 | lr 1.18e-04 | grad_norm 0.28 | 118.1k tok/s | tepe bellek 6.30 GB
+[eval] adım 2750: val_loss 1.3671 (ppl 3.92)
+adım  2775 | loss 1.3582 | lr 1.14e-04 | grad_norm 0.28 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2800 | loss 1.3459 | lr 1.11e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2825 | loss 1.3437 | lr 1.09e-04 | grad_norm 0.28 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2850 | loss 1.3430 | lr 1.06e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2875 | loss 1.3422 | lr 1.04e-04 | grad_norm 0.28 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2900 | loss 1.3651 | lr 1.03e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2925 | loss 1.3531 | lr 1.02e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2950 | loss 1.3475 | lr 1.01e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  2975 | loss 1.3386 | lr 1.00e-04 | grad_norm 0.29 | 118.2k tok/s | tepe bellek 6.30 GB
+adım  3000 | loss 1.3363 | lr 1.00e-04 | grad_norm 0.28 | 118.2k tok/s | tepe bellek 6.30 GB
+[eval] adım 3000: val_loss 1.3566 (ppl 3.88)
+bitti: 14.4 dk (eğitim 13.9 dk), en iyi val_loss 1.3566

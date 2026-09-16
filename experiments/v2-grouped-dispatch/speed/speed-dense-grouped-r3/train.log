@@ -1,0 +1,18 @@
+model: 29.89M parametre (25.70M embedding hariç)
+veri: train 545.8M token, val 5.51M token
+adım başına 32,768 token, bütçe 9.83M token = 300 adım (warmup 6.55M token)
+[eval] adım 0: val_loss 9.1163 (ppl 9102.33)
+adım    25 | loss 7.7659 | lr 1.25e-04 | grad_norm 3.54 | 114.6k tok/s | tepe bellek 6.30 GB
+adım    50 | loss 5.4279 | lr 2.50e-04 | grad_norm 0.84 | 116.7k tok/s | tepe bellek 6.30 GB
+adım    75 | loss 4.1519 | lr 3.75e-04 | grad_norm 0.88 | 116.7k tok/s | tepe bellek 6.30 GB
+adım   100 | loss 3.5667 | lr 5.00e-04 | grad_norm 1.06 | 116.5k tok/s | tepe bellek 6.30 GB
+adım   125 | loss 3.1656 | lr 6.25e-04 | grad_norm 0.99 | 116.5k tok/s | tepe bellek 6.30 GB
+adım   150 | loss 2.8929 | lr 7.50e-04 | grad_norm 0.67 | 116.5k tok/s | tepe bellek 6.30 GB
+adım   175 | loss 2.7039 | lr 8.75e-04 | grad_norm 0.77 | 116.5k tok/s | tepe bellek 6.30 GB
+adım   200 | loss 2.5730 | lr 1.00e-03 | grad_norm 0.67 | 116.5k tok/s | tepe bellek 6.30 GB
+adım   225 | loss 2.4430 | lr 8.78e-04 | grad_norm 0.54 | 116.5k tok/s | tepe bellek 6.30 GB
+adım   250 | loss 2.3328 | lr 5.64e-04 | grad_norm 0.50 | 116.4k tok/s | tepe bellek 6.30 GB
+adım   275 | loss 2.2315 | lr 2.42e-04 | grad_norm 0.44 | 116.4k tok/s | tepe bellek 6.30 GB
+adım   300 | loss 2.1551 | lr 1.00e-04 | grad_norm 0.42 | 116.4k tok/s | tepe bellek 6.30 GB
+[eval] adım 300: val_loss 2.1403 (ppl 8.50)
+bitti: 1.5 dk (eğitim 1.4 dk), en iyi val_loss 2.1403

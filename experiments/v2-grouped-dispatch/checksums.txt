@@ -1,0 +1,19 @@
+# SHA-256 (checkpoint'ler git'te DEĞİL; v2 ana koşularının en iyi ağırlıkları)
+209441b013cb3f1f3bdcc04d196f048583da0b6892ce50e1049ebc8377fb054b *checkpoints/v2/dense-flop-s1337/best.pt
+3dc21db459aa272d6d7f25048ee3912c03d943b3fa2e682affc87af3cb2dbe70 *checkpoints/v2/dense-flop-s1338/best.pt
+667690333ce4a2dbad2856d34aadd7c73cf4ebcb412f87737a204ea53b20c9e3 *checkpoints/v2/dense-flop-s1339/best.pt
+cbaa067426f0aa9be19834729463034ae448f8eea16d780fd6c6f232ff3300ba *checkpoints/v2/dense-time-s1337/best.pt
+7e6c90310368ff32ed1be28f9110fa9a03306003eecf63071b45704eae23d2e8 *checkpoints/v2/dense-time-s1338/best.pt
+287da00531156136245fd79ea49633bfa10728aeeeb6d8b3cf0b64230c014cb1 *checkpoints/v2/dense-time-s1339/best.pt
+90cb83a9b342e7d15b99867906dde2a752aad7695869c07e41ac32320f694149 *checkpoints/v2/dense-tok-s1337/best.pt
+712378adc3bb5365ac2b7c3008e2f10d3897963cac4b1dc839c683126d81cd2f *checkpoints/v2/dense-tok-s1338/best.pt
+be1fbc820941f1bb19ab3a74378c357faf0acb248fce62e40c5be7b9a0179285 *checkpoints/v2/dense-tok-s1339/best.pt
+07893b0ce3a16a4f8838ad088a80ec7f22e71a45b90f767a6bae48e14257b4ae *checkpoints/v2/moe-noaux-time-s1337/best.pt
+b3a03295484d7ca4723c12afdceea6096f4614fd8ffdbf4d8a79b7c5109f102e *checkpoints/v2/moe-noaux-time-s1338/best.pt
+301048ece8325bfbd5fc733ae149a0b4bb9d59151f8449cae3befeaba3d66446 *checkpoints/v2/moe-noaux-time-s1339/best.pt
+3066556123176ccb98ade6b4db23da474724ab40124789856ecd2a02a15b0f80 *checkpoints/v2/moe-noaux-tok-s1337/best.pt
+dc8f37f948e360ccc52bc56ab51d1a0bcd6cd4e8281281392829ca02a33e800a *checkpoints/v2/moe-noaux-tok-s1338/best.pt
+20b7b2b734a73529374e5f1d5b586c6e692b23a79389392b0a283148dd59c68b *checkpoints/v2/moe-noaux-tok-s1339/best.pt
+c6bb3e54218b7c91e0c269ea0de75b94c156ad2bc8fb65f22d55f12c7aa306e4 *checkpoints/v2/moe-tok-s1337/best.pt
+9b525f633bc03398beeb85dcdde217ba0f60ee6f321e70926db18e6999a78dad *checkpoints/v2/moe-tok-s1338/best.pt
+589e872ae03ebc133be4db486ea15260d9b3ea8c95d382269b944a657ad2e17d *checkpoints/v2/moe-tok-s1339/best.pt

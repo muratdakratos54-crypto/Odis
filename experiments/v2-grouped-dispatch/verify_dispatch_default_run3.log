@@ -1,0 +1,74 @@
+
+=== bf16 | moe (v1 best.pt) | batch'te boş (katman, expert) çifti: 0
+                             routing aynı  min uyum    logits     grads en kötü t.    update    loss+1  bit(logit/grad/param)
+  grouped vs loop                    True   1.00000  0.00e+00  0.00e+00   0.00e+00  0.00e+00  0.00e+00  True/True/True
+  sıfır aday: loop vs loop           True   1.00000  0.00e+00  0.00e+00   0.00e+00  0.00e+00  0.00e+00  True/True/True
+  taban: loop vs loop                True   1.00000  0.00e+00  0.00e+00   0.00e+00  0.00e+00  0.00e+00  True/True/True
+  ölçek: loop bf16 vs fp32          False   0.98456  6.03e-03  2.81e-02   8.89e-02  1.97e-01  7.91e-04  False/False/False
+  tanı: fork32 vs loop               True   1.00000  0.00e+00  0.00e+00   0.00e+00  0.00e+00  0.00e+00  True/True/True
+  negatif kontrol                   False   0.67249  1.09e-01  5.47e-01   1.36e+00  8.40e-01  1.40e-01  False/False/False
+  teacher-forced: routing her katmanda aynı (yapısal) True | katman çıktısı rel maks 0.00e+00 (loop tekrarı 0.00e+00) bit=True
+  teacher-forced katman çıktısı 0.0e+00 <= 1.0e-06: OK | gradyan anahtarları aynı: OK | logits: 0.00e+00 <= 1.51e-03: OK | grads: 0.00e+00 <= 7.03e-03: OK | grads_worst_tensor: 0.00e+00 <= 2.22e-02: OK | update: 0.00e+00 <= 4.92e-02: OK | loss_after_step: 0.00e+00 <= 1.98e-04: OK | neg. kontrol logits ayırt ediyor: OK | neg. kontrol grads ayırt ediyor: OK | neg. kontrol grads_worst_tensor ayırt ediyor: OK
+  sıfır aday (loop tekrarı) aynı sınırlarla: logits: OK | grads: OK | grads_worst_tensor: OK | update: OK | loss_after_step: OK
+
+=== fp32 | moe (v1 best.pt) | batch'te boş (katman, expert) çifti: 0
+                             routing aynı  min uyum    logits     grads en kötü t.    update    loss+1  bit(logit/grad/param)
+  grouped vs loop                    True   1.00000  0.00e+00  0.00e+00   0.00e+00  0.00e+00  0.00e+00  True/True/True
+  sıfır aday: loop vs loop           True   1.00000  0.00e+00  0.00e+00   0.00e+00  0.00e+00  0.00e+00  True/True/True
+  taban: loop vs loop                True   1.00000  8.45e-08  3.07e-07   4.98e-07  7.98e-06  0.00e+00  False/False/False
+  ölçek: loop bf16 vs fp32          False   0.98456  6.03e-03  2.81e-02   8.89e-02  1.97e-01  7.91e-04  False/False/False
+  tanı: fork32 vs loop               True   1.00000  0.00e+00  0.00e+00   0.00e+00  0.00e+00  0.00e+00  True/True/True
+  negatif kontrol                   False   0.67371  1.09e-01  5.47e-01   1.36e+00  8.40e-01  1.39e-01  False/False/False
+  teacher-forced: routing her katmanda aynı (yapısal) True | katman çıktısı rel maks 0.00e+00 (loop tekrarı 0.00e+00) bit=True
+  teacher-forced katman çıktısı 0.0e+00 <= 1.0e-06: OK | gradyan anahtarları aynı: OK | logits: 0.00e+00 <= 1.00e-06: OK | grads: 0.00e+00 <= 1.00e-05: OK | grads_worst_tensor: 0.00e+00 <= 1.00e-05: OK | update: 0.00e+00 <= 1.00e-04: OK | loss_after_step: 0.00e+00 <= 1.00e-05: OK | neg. kontrol logits ayırt ediyor: OK | neg. kontrol grads ayırt ediyor: OK | neg. kontrol grads_worst_tensor ayırt ediyor: OK
+  sıfır aday (loop tekrarı) aynı sınırlarla: logits: OK | grads: OK | grads_worst_tensor: OK | update: OK | loss_after_step: OK
+
+=== bf16 | moe-noaux (v1 best.pt) | batch'te boş (katman, expert) çifti: 37
+                             routing aynı  min uyum    logits     grads en kötü t.    update    loss+1  bit(logit/grad/param)
+  grouped vs loop                   False   0.99994  2.99e-04  1.88e-03   4.40e-03  2.24e-02  3.26e-04  False/False/False
+  sıfır aday: loop vs loop          False   0.99982  4.99e-04  3.56e-03   1.08e-02  3.77e-02  2.10e-04  False/False/False
+  taban: loop vs loop               False   0.99963  9.93e-04  4.37e-03   2.50e-02  4.61e-02  5.94e-04  False/False/False
+  ölçek: loop bf16 vs fp32          False   0.98956  4.72e-03  2.10e-02   8.78e-02  1.57e-01  3.50e-03  False/False/False
+  tanı: fork32 vs loop              False   0.99963  7.71e-04  4.35e-03   1.63e-02  4.75e-02  4.17e-04  False/False/False
+  negatif kontrol                   False   0.70685  1.27e-01  6.06e-01   1.35e+00  8.55e-01  1.87e-01  False/False/False
+  teacher-forced: routing her katmanda aynı (yapısal) True | katman çıktısı rel maks 1.88e-05 (loop tekrarı 0.00e+00) bit=False
+  teacher-forced katman çıktısı 1.9e-05 <= 1.0e-06: BAŞARISIZ | gradyan anahtarları aynı: OK | logits: 2.99e-04 <= 2.98e-03: OK | grads: 1.88e-03 <= 1.31e-02: OK | grads_worst_tensor: 4.40e-03 <= 7.51e-02: OK | update: 2.24e-02 <= 1.38e-01: OK | loss_after_step: 3.26e-04 <= 1.78e-03: OK | neg. kontrol logits ayırt ediyor: OK | neg. kontrol grads ayırt ediyor: OK | neg. kontrol grads_worst_tensor ayırt ediyor: OK
+  sıfır aday (loop tekrarı) aynı sınırlarla: logits: OK | grads: OK | grads_worst_tensor: OK | update: OK | loss_after_step: OK
+
+=== fp32 | moe-noaux (v1 best.pt) | batch'te boş (katman, expert) çifti: 37
+                             routing aynı  min uyum    logits     grads en kötü t.    update    loss+1  bit(logit/grad/param)
+  grouped vs loop                    True   1.00000  3.30e-08  1.67e-07   3.12e-07  4.47e-06  1.10e-07  False/False/False
+  sıfır aday: loop vs loop           True   1.00000  6.47e-08  2.60e-07   9.85e-07  7.53e-06  1.10e-07  False/False/False
+  taban: loop vs loop                True   1.00000  3.29e-08  1.79e-07   3.06e-07  4.80e-06  1.10e-07  False/False/False
+  ölçek: loop bf16 vs fp32          False   0.98956  4.72e-03  2.10e-02   8.78e-02  1.57e-01  3.50e-03  False/False/False
+  tanı: fork32 vs loop               True   1.00000  1.67e-08  1.32e-07   2.88e-07  3.44e-06  1.10e-07  False/False/False
+  negatif kontrol                   False   0.70709  1.26e-01  6.07e-01   1.35e+00  8.54e-01  1.88e-01  False/False/False
+  teacher-forced: routing her katmanda aynı (yapısal) True | katman çıktısı rel maks 6.94e-10 (loop tekrarı 9.71e-10) bit=False
+  teacher-forced katman çıktısı 6.9e-10 <= 1.0e-06: OK | gradyan anahtarları aynı: OK | logits: 3.30e-08 <= 1.00e-06: OK | grads: 1.67e-07 <= 1.00e-05: OK | grads_worst_tensor: 3.12e-07 <= 1.00e-05: OK | update: 4.47e-06 <= 1.00e-04: OK | loss_after_step: 1.10e-07 <= 1.00e-05: OK | neg. kontrol logits ayırt ediyor: OK | neg. kontrol grads ayırt ediyor: OK | neg. kontrol grads_worst_tensor ayırt ediyor: OK
+  sıfır aday (loop tekrarı) aynı sınırlarla: logits: OK | grads: OK | grads_worst_tensor: OK | update: OK | loss_after_step: OK
+
+=== bf16 | moe (yeni başlatma) | batch'te boş (katman, expert) çifti: 0
+                             routing aynı  min uyum    logits     grads en kötü t.    update    loss+1  bit(logit/grad/param)
+  grouped vs loop                   False   0.99969  1.07e-03  1.80e-03   4.31e-02  2.25e-02  2.59e-03  False/False/False
+  sıfır aday: loop vs loop          False   0.99963  1.10e-03  1.82e-03   4.43e-02  2.25e-02  2.43e-03  False/False/False
+  taban: loop vs loop               False   0.99957  1.01e-03  1.80e-03   2.85e-02  2.15e-02  1.85e-03  False/False/False
+  ölçek: loop bf16 vs fp32          False   0.95538  1.52e-02  6.89e-03   9.80e-02  1.65e-01  9.23e-04  False/False/False
+  tanı: fork32 vs loop              False   0.99969  1.01e-03  1.79e-03   2.83e-02  2.02e-02  1.91e-03  False/False/False
+  negatif kontrol                   False   0.63208  1.06e-01  6.46e-02   9.84e-01  5.59e-01  4.46e-03  False/False/False
+  teacher-forced: routing her katmanda aynı (yapısal) True | katman çıktısı rel maks 1.31e-05 (loop tekrarı 1.29e-05) bit=False
+  teacher-forced katman çıktısı 1.3e-05 <= 3.9e-05: OK | gradyan anahtarları aynı: OK | logits: 1.07e-03 <= 3.80e-03: OK | grads: 1.80e-03 <= 5.40e-03: OK | grads_worst_tensor: 4.31e-02 <= 8.56e-02: OK | update: 2.25e-02 <= 6.44e-02: OK | loss_after_step: 2.59e-03 <= 5.56e-03: OK | neg. kontrol logits ayırt ediyor: OK | neg. kontrol grads ayırt ediyor: OK | neg. kontrol grads_worst_tensor ayırt ediyor: OK
+  sıfır aday (loop tekrarı) aynı sınırlarla: logits: OK | grads: OK | grads_worst_tensor: OK | update: OK | loss_after_step: OK
+
+=== fp32 | moe (yeni başlatma) | batch'te boş (katman, expert) çifti: 0
+                             routing aynı  min uyum    logits     grads en kötü t.    update    loss+1  bit(logit/grad/param)
+  grouped vs loop                    True   1.00000  9.63e-08  7.42e-08   2.26e-07  1.79e-06  0.00e+00  False/False/False
+  sıfır aday: loop vs loop           True   1.00000  1.35e-07  8.70e-08   2.70e-07  2.25e-06  0.00e+00  False/False/False
+  taban: loop vs loop                True   1.00000  1.11e-07  7.91e-08   2.47e-07  1.79e-06  1.68e-06  False/False/False
+  ölçek: loop bf16 vs fp32          False   0.95538  1.52e-02  6.89e-03   9.80e-02  1.65e-01  9.23e-04  False/False/False
+  tanı: fork32 vs loop               True   1.00000  9.35e-08  7.41e-08   2.19e-07  1.85e-06  0.00e+00  False/False/False
+  negatif kontrol                   False   0.63080  1.06e-01  6.47e-02   9.84e-01  5.58e-01  3.50e-03  False/False/False
+  teacher-forced: routing her katmanda aynı (yapısal) True | katman çıktısı rel maks 3.62e-10 (loop tekrarı 4.46e-10) bit=False
+  teacher-forced katman çıktısı 3.6e-10 <= 1.0e-06: OK | gradyan anahtarları aynı: OK | logits: 9.63e-08 <= 1.11e-06: OK | grads: 7.42e-08 <= 1.00e-05: OK | grads_worst_tensor: 2.26e-07 <= 1.00e-05: OK | update: 1.79e-06 <= 1.00e-04: OK | loss_after_step: 0.00e+00 <= 1.68e-05: OK | neg. kontrol logits ayırt ediyor: OK | neg. kontrol grads ayırt ediyor: OK | neg. kontrol grads_worst_tensor ayırt ediyor: OK
+  sıfır aday (loop tekrarı) aynı sınırlarla: logits: OK | grads: OK | grads_worst_tensor: OK | update: OK | loss_after_step: OK
+
+TÜM KONTROLLER: BAŞARISIZ  -> experiments/v2-grouped-dispatch/verify_dispatch_default_run3.json

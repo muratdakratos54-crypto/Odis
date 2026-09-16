@@ -1,0 +1,104 @@
+2026-09-15 23:57:21 kuyruk: experiments/v2-grouped-dispatch/queues/verify_100step_sched.json | kod 970c99d6b89b | git 5338ce3464 (+15 değişiklik) | 3.13.14 2.14.0+cu130 13.0 | NVIDIA GeForce RTX 4070 SUPER, 616.64
+2026-09-15 23:57:22 [1/48] moe-loop-s1337: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loop-s1337
+2026-09-15 23:58:12 [1/48] moe-loop-s1337: bitti kod=0 (0.8 dk)
+2026-09-15 23:58:13 [2/48] moe-grouped-s1337: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-grouped-s1337
+2026-09-15 23:59:00 [2/48] moe-grouped-s1337: bitti kod=0 (0.8 dk)
+2026-09-15 23:59:01 [3/48] moe-loopb-s1337: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopb-s1337
+2026-09-15 23:59:50 [3/48] moe-loopb-s1337: bitti kod=0 (0.8 dk)
+2026-09-15 23:59:51 [4/48] moe-loopc-s1337: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopc-s1337
+2026-09-16 00:00:40 [4/48] moe-loopc-s1337: bitti kod=0 (0.8 dk)
+2026-09-16 00:00:41 [5/48] moe-loop-s1338: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loop-s1338
+2026-09-16 00:01:30 [5/48] moe-loop-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:01:31 [6/48] moe-grouped-s1338: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-grouped-s1338
+2026-09-16 00:02:19 [6/48] moe-grouped-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:02:20 [7/48] moe-loopb-s1338: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopb-s1338
+2026-09-16 00:03:09 [7/48] moe-loopb-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:03:10 [8/48] moe-loopc-s1338: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopc-s1338
+2026-09-16 00:03:59 [8/48] moe-loopc-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:04:00 [9/48] moe-loop-s1339: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loop-s1339
+2026-09-16 00:04:49 [9/48] moe-loop-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:04:51 [10/48] moe-grouped-s1339: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-grouped-s1339
+2026-09-16 00:05:38 [10/48] moe-grouped-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:05:39 [11/48] moe-loopb-s1339: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopb-s1339
+2026-09-16 00:06:30 [11/48] moe-loopb-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:06:31 [12/48] moe-loopc-s1339: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopc-s1339
+2026-09-16 00:07:21 [12/48] moe-loopc-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:07:22 [13/48] moe-loop-s1340: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loop-s1340
+2026-09-16 00:08:13 [13/48] moe-loop-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:08:14 [14/48] moe-grouped-s1340: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-grouped-s1340
+2026-09-16 00:09:02 [14/48] moe-grouped-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:09:04 [15/48] moe-loopb-s1340: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopb-s1340
+2026-09-16 00:09:53 [15/48] moe-loopb-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:09:54 [16/48] moe-loopc-s1340: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopc-s1340
+2026-09-16 00:10:43 [16/48] moe-loopc-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:10:44 [17/48] moe-loop-s1341: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loop-s1341
+2026-09-16 00:11:33 [17/48] moe-loop-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:11:34 [18/48] moe-grouped-s1341: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-grouped-s1341
+2026-09-16 00:12:21 [18/48] moe-grouped-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:12:23 [19/48] moe-loopb-s1341: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopb-s1341
+2026-09-16 00:13:11 [19/48] moe-loopb-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:13:12 [20/48] moe-loopc-s1341: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopc-s1341
+2026-09-16 00:14:01 [20/48] moe-loopc-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:14:02 [21/48] moe-loop-s1342: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loop-s1342
+2026-09-16 00:14:52 [21/48] moe-loop-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:14:54 [22/48] moe-grouped-s1342: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-grouped-s1342
+2026-09-16 00:15:41 [22/48] moe-grouped-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:15:43 [23/48] moe-loopb-s1342: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopb-s1342
+2026-09-16 00:16:31 [23/48] moe-loopb-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:16:33 [24/48] moe-loopc-s1342: başladı: --preset moe --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-loopc-s1342
+2026-09-16 00:17:21 [24/48] moe-loopc-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:17:23 [25/48] moe-noaux-loop-s1337: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loop-s1337
+2026-09-16 00:18:13 [25/48] moe-noaux-loop-s1337: bitti kod=0 (0.8 dk)
+2026-09-16 00:18:14 [26/48] moe-noaux-grouped-s1337: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-grouped-s1337
+2026-09-16 00:19:01 [26/48] moe-noaux-grouped-s1337: bitti kod=0 (0.8 dk)
+2026-09-16 00:19:02 [27/48] moe-noaux-loopb-s1337: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopb-s1337
+2026-09-16 00:19:52 [27/48] moe-noaux-loopb-s1337: bitti kod=0 (0.8 dk)
+2026-09-16 00:19:53 [28/48] moe-noaux-loopc-s1337: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1337 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopc-s1337
+2026-09-16 00:20:43 [28/48] moe-noaux-loopc-s1337: bitti kod=0 (0.8 dk)
+2026-09-16 00:20:45 [29/48] moe-noaux-loop-s1338: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loop-s1338
+2026-09-16 00:21:34 [29/48] moe-noaux-loop-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:21:36 [30/48] moe-noaux-grouped-s1338: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-grouped-s1338
+2026-09-16 00:22:23 [30/48] moe-noaux-grouped-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:22:25 [31/48] moe-noaux-loopb-s1338: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopb-s1338
+2026-09-16 00:23:14 [31/48] moe-noaux-loopb-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:23:15 [32/48] moe-noaux-loopc-s1338: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1338 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopc-s1338
+2026-09-16 00:24:04 [32/48] moe-noaux-loopc-s1338: bitti kod=0 (0.8 dk)
+2026-09-16 00:24:06 [33/48] moe-noaux-loop-s1339: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loop-s1339
+2026-09-16 00:24:55 [33/48] moe-noaux-loop-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:24:57 [34/48] moe-noaux-grouped-s1339: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-grouped-s1339
+2026-09-16 00:25:44 [34/48] moe-noaux-grouped-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:25:45 [35/48] moe-noaux-loopb-s1339: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopb-s1339
+2026-09-16 00:26:35 [35/48] moe-noaux-loopb-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:26:37 [36/48] moe-noaux-loopc-s1339: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1339 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopc-s1339
+2026-09-16 00:27:27 [36/48] moe-noaux-loopc-s1339: bitti kod=0 (0.8 dk)
+2026-09-16 00:27:29 [37/48] moe-noaux-loop-s1340: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loop-s1340
+2026-09-16 00:28:18 [37/48] moe-noaux-loop-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:28:20 [38/48] moe-noaux-grouped-s1340: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-grouped-s1340
+2026-09-16 00:29:07 [38/48] moe-noaux-grouped-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:29:08 [39/48] moe-noaux-loopb-s1340: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopb-s1340
+2026-09-16 00:29:58 [39/48] moe-noaux-loopb-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:29:59 [40/48] moe-noaux-loopc-s1340: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1340 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopc-s1340
+2026-09-16 00:30:48 [40/48] moe-noaux-loopc-s1340: bitti kod=0 (0.8 dk)
+2026-09-16 00:30:50 [41/48] moe-noaux-loop-s1341: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loop-s1341
+2026-09-16 00:31:39 [41/48] moe-noaux-loop-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:31:40 [42/48] moe-noaux-grouped-s1341: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-grouped-s1341
+2026-09-16 00:32:28 [42/48] moe-noaux-grouped-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:32:29 [43/48] moe-noaux-loopb-s1341: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopb-s1341
+2026-09-16 00:33:19 [43/48] moe-noaux-loopb-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:33:20 [44/48] moe-noaux-loopc-s1341: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1341 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopc-s1341
+2026-09-16 00:34:10 [44/48] moe-noaux-loopc-s1341: bitti kod=0 (0.8 dk)
+2026-09-16 00:34:11 [45/48] moe-noaux-loop-s1342: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loop-s1342
+2026-09-16 00:35:00 [45/48] moe-noaux-loop-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:35:02 [46/48] moe-noaux-grouped-s1342: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl grouped --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-grouped-s1342
+2026-09-16 00:35:49 [46/48] moe-noaux-grouped-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:35:50 [47/48] moe-noaux-loopb-s1342: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopb-s1342
+2026-09-16 00:36:40 [47/48] moe-noaux-loopb-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:36:41 [48/48] moe-noaux-loopc-s1342: başladı: --preset moe-noaux --stop_step 100 --eval_interval 100 --log_interval 1 --sample_tokens 0 --save_checkpoints false --seed 1342 --moe_impl loop --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name moe-noaux-loopc-s1342
+2026-09-16 00:37:30 [48/48] moe-noaux-loopc-s1342: bitti kod=0 (0.8 dk)
+2026-09-16 00:37:30 kuyruk tamamlandı
+2026-09-16 00:37:32 kuyruk: experiments/v2-grouped-dispatch/queues/verify_100step_sched_v1tag.json | kod 093ec98ba616 | git  (+0 değişiklik) | 3.13.14 2.14.0+cu130 13.0 | NVIDIA GeForce RTX 4070 SUPER, 616.64
+2026-09-16 00:37:33 [1/2] v1tag-moe-s1337: başladı: --preset moe --eval_interval 100 --log_interval 1 --sample_tokens 0 --seed 1337 --data_dir C:\Users\murat\Desktop\foton gama v1\data\sp8k --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name v1tag-moe-s1337
+2026-09-16 00:38:25 [1/2] v1tag-moe-s1337: bitti kod=0 (0.9 dk)
+2026-09-16 00:38:26 [2/2] v1tag-moe-noaux-s1337: başladı: --preset moe-noaux --eval_interval 100 --log_interval 1 --sample_tokens 0 --seed 1337 --data_dir C:\Users\murat\Desktop\foton gama v1\data\sp8k --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\v2-verify-sched --run_name v1tag-moe-noaux-s1337
+2026-09-16 00:39:19 [2/2] v1tag-moe-noaux-s1337: bitti kod=0 (0.9 dk)
+2026-09-16 00:39:19 kuyruk tamamlandı

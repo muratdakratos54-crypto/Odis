@@ -133,6 +133,9 @@ class Block(nn.Module):
                 # uygulandığı için ayrı tutmanın anlamı yok) - DeepSeek de böyle uygular.
                 make_shared=(lambda: SwiGLU(cfg.d_model, shared_hidden)) if shared_hidden > 0 else None,
                 norm_topk_prob=cfg.norm_topk_prob,
+                impl=cfg.moe_impl,
+                gate=cfg.router_gate,
+                bias_rate=cfg.bias_update_rate,
             )
         else:
             self.ffn = SwiGLU(cfg.d_model, cfg.ffn_hidden)

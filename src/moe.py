@@ -23,13 +23,28 @@ Bu dosyadaki tasarım kararları (DeepSeek-V3 / Kimi K2'den ilham, ev ölçeğin
 3. Dropless routing (kapasite limiti yok): Switch/GShard, çoklu GPU'da sabit tensör boyutları için
    her expert'e "capacity" koyar ve taşan tokenları düşürür. Tek GPU'da dinamik boyutlarla çalışmak
    kolay olduğundan hiçbir tokenı düşürmüyoruz -> kalite kaybı yok, kod daha basit.
-4. Load-balancing auxiliary loss (Switch Transformer) + router z-loss (ST-MoE). Aşağıda ayrıntılı.
-   Not: DeepSeek-V3 ve Kimi K2 aux loss yerine "aux-loss-free" bir bias ayarlaması + sigmoid
-   gating kullanır; biz burada klasik, iyi anlaşılmış aux loss yöntemini uyguluyoruz.
+4. Dengeleme: iki yöntem var, ModelConfig ile seçilir.
+   * Klasik: load-balancing auxiliary loss (Switch Transformer) + router z-loss (ST-MoE). Aşağıda ayrıntılı.
+   * Aux-loss-free (DeepSeek-V3 / Kimi K2): router softmax yerine expert başına bağımsız sigmoid skoru üretir;
+     her expert'in bir "seçim bias'ı" olur ve top-k seçimi skor + bias üzerinden yapılır. Bias gradyanla değil,
+     her optimizer adımında yükün ideal paydan sapmasının işaretiyle güncellenir (MoE.update_bias). Bias YALNIZCA
+     seçime girer, gate ağırlığına girmez: böylece dengeleme kuvveti görev gradyanını hiç bozmaz. Aux loss'un
+     aksine loss'a ek terim koymaz (bkz. README "Deney kaydı: v3-router-ablasyonu").
+5. Expert hesabı iki yolla yapılabilir (ModelConfig.moe_impl), matematik ve parametreler aynı:
+   * "loop"   : tokenlar expert'e göre sıralanır, her expert kendi dilimini ayrı bir modül çağrısıyla
+                işler (E Python çağrısı, dilim boyları için CPU senkronu). v1 deneyleri bununla koştu.
+   * "grouped": aynı sıralı tokenlar; tüm expert'lerin ağırlıkları (E, h, d) olarak istiflenip SwiGLU'nun üç matrisi
+                için üç gruplu matris çarpımıyla (torch._grouped_mm, MegaBlocks'un "grouped GEMM" yolu) işlenir.
+                offs = expert başına dilim sonları; dilim boyları CPU'ya çekilmez.
+   Gruplu çarpımın gerçekten tek bir çekirdek olup olmadığı donanıma bağlı: RTX 4070 SUPER'da (SM89)
+   PyTorch grup başına ayrı cuBLAS gemm çağırır (ölçüldü: 16 expert x 3 matris = 48 gemm, "loop" ile aynı
+   çekirdekler). Kazanç orada Python/autocast yükünden ve gereksiz kopyalardan gelir, çekirdek
+   birleşmesinden değil. Ayrıntılar ve ölçümler: README "Deney kaydı: v2-grouped-dispatch".
 """
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Callable
 
 import torch
@@ -108,11 +123,67 @@ def load_sparkline(fractions: list[float]) -> str:
     return "".join(" " if f * E < 0.1 else bars[max(1, min(8, round(f * E * 4)))] for f in fractions)
 
 
+def grouped_mm_supported(dtype: torch.dtype, *dims: int) -> bool:
+    """torch._grouped_mm bu dtype ve matris boyutlarını kabul eder mi?
+
+    Çekirdek float32/bf16/fp16 ister ve satır/sütun adımlarının 16 baytın katı olmasını şart koşar
+    ("strides should be multiple of 16 bytes"): boyutlar float32'de 4'ün, bf16/fp16'da 8'in katı olmalı.
+    Kural torch 2.14'te gerçek davranışla karşılaştırıldı: tests/test_moe.py CPU'da boyutlar 1..20 ve
+    fp32/bf16/fp16/fp64 için sürekli denetler; CUDA'da (RTX 4070S) 1..40 bir kez elle denendi. Presetlerimiz
+    (d=512, h=352; tiny: 128, 88) bunu sağlar.
+    Not: torch.compile altında float32'de gruplu çağrı izlenemez (meta çekirdeği yalnızca bf16/fp16 kabul eder),
+    orada graph break olur; bf16 autocast ile sorun yok. compile varsayılan kapalı (Windows'ta triton yok).
+    """
+    if dtype not in (torch.float32, torch.bfloat16, torch.float16):
+        return False
+    align = 16 // torch.empty((), dtype=dtype).element_size()
+    return all(d % align == 0 for d in dims)
+
+
+def update_expert_biases(model: nn.Module) -> float:
+    """Modeldeki tüm MoE katmanlarının aux-loss-free seçim bias'ını günceller (her optimizer adımından sonra
+    bir kez çağrılır). Döndürdüğü değer en geniş bias aralığı (loglama için); dengeleme kapalıysa 0."""
+    return max((m.update_bias() for m in model.modules() if isinstance(m, MoE)), default=0.0)
+
+
+class _CastGatherRows(torch.autograd.Function):
+    """(rows, rows_view) = h.to(dtype)[idx]  (idx: her token k kez geçer). İkinci çıktı birincinin görünümüdür.
+
+    Önce cast, sonra gather: N x d satır bf16'ya çevrilip N*k satır bf16 kopyalanır; tersi (N*k satır float32
+    kopyala, sonra çevir) iki kat bellek trafiği. İleri yönde iki sıra bit bit aynıdır (cast eleman bazında).
+
+    Neden iki çıktı: satırları gate ve up kolları paylaşır. Tek bir tensör verseydik autograd iki kolun gradyanını
+    bu bf16 tensörde, yani bf16'da toplardı; "loop" yolunda autocast her F.linear için ayrı cast yaptığından
+    toplam float32'de olur. Her kola ayrı çıktı (kopyasız görünüm) verince iki gradyan ayrı gelir ve burada
+    float32'de toplanır; bir tokenın k kopyasının gradyanları da float32'de birikir (index_add_). Böylece geri
+    yön "loop" ile aynı işlemleri aynı dtype'ta yapar; ileri yön maliyeti değişmez.
+    (İlk sürüm tek çıktı veriyordu: RTX 4070S'te bf16 gradyanları "loop"tan ~1 ulp farklıydı; bkz. README "Deney kaydı: v2-grouped-dispatch".)
+    """
+
+    @staticmethod
+    def forward(ctx, h: torch.Tensor, idx: torch.Tensor, dtype: torch.dtype):
+        ctx.save_for_backward(idx)
+        ctx.h_shape, ctx.h_dtype = h.shape, h.dtype
+        rows = h.to(dtype).index_select(0, idx)
+        return rows, rows.view_as(rows)
+
+    @staticmethod
+    def backward(ctx, grad_a: torch.Tensor, grad_b: torch.Tensor):
+        (idx,) = ctx.saved_tensors
+        g = grad_a.to(ctx.h_dtype)
+        # dtype değiştiyse g yeni bir tensördür, yerinde toplanabilir; değişmediyse autograd'ın tensörüne dokunma
+        g = g.add_(grad_b) if g.data_ptr() != grad_a.data_ptr() else g + grad_b
+        out = torch.zeros(ctx.h_shape, dtype=ctx.h_dtype, device=g.device)
+        out.index_add_(0, idx, g)
+        return out, None, None
+
+
 class MoE(nn.Module):
     """Top-k routed expert'ler + opsiyonel shared expert.
 
     make_expert / make_shared: expert modülünü üreten fonksiyonlar. Expert'in iç yapısını MoE'den
-    ayırıyoruz (dependency injection): expert herhangi bir FFN olabilir; biz SwiGLU veriyoruz.
+    ayırıyoruz (dependency injection): "loop" yolunda expert herhangi bir FFN olabilir. "grouped" yol
+    ağırlıkları istiflediği için expert'in bias'sız SwiGLU (w_gate, w_up, w_down) olmasını ister.
     """
 
     def __init__(
@@ -123,11 +194,22 @@ class MoE(nn.Module):
         make_expert: Callable[[], nn.Module],
         make_shared: Callable[[], nn.Module] | None = None,
         norm_topk_prob: bool = True,
+        impl: str = "grouped",
+        gate: str = "softmax",
+        bias_rate: float = 0.0,
     ):
         super().__init__()
         assert 1 <= top_k <= n_experts
+        assert impl in ("grouped", "loop"), impl
+        assert gate in ("softmax", "sigmoid"), gate
         self.n_experts, self.top_k = n_experts, top_k
         self.norm_topk_prob = norm_topk_prob
+        self.impl = impl
+        self.gate, self.bias_rate = gate, bias_rate
+        # Aux-loss-free dengeleme durumu. expert_bias modelin bir parçasıdır (çıkarımda da seçimi etkiler), bu yüzden
+        # checkpoint'e yazılır; bias_counts iki güncelleme arasındaki yükü toplayan geçici sayaç.
+        self.register_buffer("expert_bias", torch.zeros(n_experts))
+        self.register_buffer("bias_counts", torch.zeros(n_experts), persistent=False)
         # Router = tek bir bias'sız lineer katman: token vektörünün her expert'in "anahtar"
         # vektörüyle iç çarpımı -> o expert'e uygunluk skoru.
         self.router = nn.Linear(d_model, n_experts, bias=False)
@@ -145,8 +227,15 @@ class MoE(nn.Module):
         # Ağırlığı da .float()'a çeviriyoruz ki model bütünüyle bf16'ya dönüştürülse bile çalışsın.
         with torch.autocast(device_type=h.device.type, enabled=False):
             logits = F.linear(h.float(), self.router.weight.float())  # (N, E)
-        probs = logits.softmax(dim=-1)
-        topk_p, topk_idx = probs.topk(k, dim=-1)  # (N, k)
+        # softmax: expert'ler arası olasılık dağılımı (aux loss bunu kullanır).
+        # sigmoid: expert başına bağımsız uygunluk skoru (DeepSeek-V3 / Kimi K2).
+        probs = logits.sigmoid() if self.gate == "sigmoid" else logits.softmax(dim=-1)
+        if self.bias_rate > 0:
+            # Seçim skoru = skor + bias; gate değeri ham skordan gelir (bias gradyanı hiç etkilemez)
+            topk_idx = (probs + self.expert_bias).topk(k, dim=-1).indices
+            topk_p = probs.gather(-1, topk_idx)
+        else:
+            topk_p, topk_idx = probs.topk(k, dim=-1)  # (N, k)
         # Seçilen k olasılığı toplamı 1 olacak şekilde normalize et: çıktının ölçeği, router'ın
         # olasılık kütlesini kaç expert'e yaydığından bağımsız olsun (DeepSeek/Kimi/Mixtral böyle).
         # k=1'de normalize ETMEYİZ: p/p = 1 sabit olur, türevi 0'dır ve router görev loss'undan hiç
@@ -160,16 +249,19 @@ class MoE(nn.Module):
         # Naif yol "her expert için torch.where(idx == e)" E kez GPU->CPU senkronu gerektirir.
         # Bunun yerine tüm N*k atamayı expert id'sine göre bir kez sıralıyoruz; böylece her
         # expert'in tokenları bitişik bir dilim olur ve dilim boyları katman başına sabit sayıda
-        # senkronla alınır (bincount + .tolist()), E'den bağımsız.
+        # senkronla alınır (bincount; "loop" yolunda ayrıca .tolist()), E'den bağımsız.
         flat_expert = topk_idx.reshape(-1)          # (N*k,)  satır düzeni: [t0s0, t0s1, t1s0, ...]
         order = flat_expert.argsort(stable=True)    # expert'e göre sıralayan permütasyon
         token_of = order // k                       # sıralı her atamanın hangi tokena ait olduğu
         counts = torch.bincount(flat_expert, minlength=E)
-        expert_in = h[token_of]                     # (N*k, C) - expert 0'ın tokenları, sonra 1'in...
 
         # ---- 3) Expert'leri çalıştır (boş dilimler de sorunsuz: (0, C) giriş -> (0, C) çıkış) ----
-        outs = [expert(chunk) for expert, chunk in zip(self.experts, expert_in.split(counts.tolist()))]
-        expert_out = torch.cat(outs)                # (N*k, C)
+        if self.impl == "loop" or not self._grouped_ok(h):
+            expert_in = h[token_of]                 # (N*k, C) - expert 0'ın tokenları, sonra 1'in...
+            outs = [expert(chunk) for expert, chunk in zip(self.experts, expert_in.split(counts.tolist()))]
+            expert_out = torch.cat(outs)            # (N*k, C)
+        else:
+            expert_out = self._grouped_experts(h, token_of, counts)
 
         # ---- 4) Combine: her çıktıyı gate ağırlığıyla çarpıp kendi tokenının konumuna topla ----
         w = gates.reshape(-1)[order].unsqueeze(1).to(expert_out.dtype)
@@ -178,10 +270,72 @@ class MoE(nn.Module):
         if self.shared is not None:
             y = y + self.shared(h).to(y.dtype)
 
+        if self.bias_rate > 0 and self.training:
+            self.bias_counts += counts  # adım sonunda update_bias() bunu kullanıp sıfırlar
+
+        # sigmoid gating'de skorlar bir dağılım değil: aux loss (ve loglanan aux değeri) normalize edilmiş
+        # skorlarla hesaplanır, böylece iki gating arasında ölçek karşılaştırılabilir kalır.
+        aux_probs = probs if self.gate == "softmax" else probs / probs.sum(dim=-1, keepdim=True)
         stats = {
-            "aux_loss": load_balancing_loss(probs, counts),
+            "aux_loss": load_balancing_loss(aux_probs, counts),
             "z_loss": router_z_loss(logits),
             "counts": counts.detach(),               # expert başına atama sayısı (loglama için)
             "topk_idx": topk_idx.detach(),           # routing kararları (analiz betikleri için)
         }
         return y.view(B, T, C), stats
+
+    @torch.no_grad()
+    def update_bias(self) -> float:
+        """Aux-loss-free dengeleme adımı (DeepSeek-V3 / Kimi K2): ideal payın üstünde yük alan expert'in seçim
+        bias'ı bias_rate kadar düşer, altında kalanın yükselir (işaret adımı). Optimizer'a girmez, gradyan taşımaz.
+        Döndürdüğü değer loglama için bias aralığı (maks - min)."""
+        total = self.bias_counts.sum()
+        if self.bias_rate <= 0 or total == 0:
+            return 0.0
+        load = self.bias_counts / total
+        self.expert_bias -= self.bias_rate * torch.sign(load - 1.0 / self.n_experts)
+        self.bias_counts.zero_()
+        return (self.expert_bias.max() - self.expert_bias.min()).item()
+
+    def _load_from_state_dict(self, state_dict, prefix, *args, **kwargs):
+        # v1/v2 checkpoint'lerinde expert_bias yok (aux-loss-free dengeleme kapalıyken eğitildiler): sıfır kabul et
+        key = prefix + "expert_bias"
+        if key not in state_dict:
+            state_dict[key] = torch.zeros_like(self.expert_bias)
+        super()._load_from_state_dict(state_dict, prefix, *args, **kwargs)
+
+    def _expert_dtype(self, h: torch.Tensor) -> torch.dtype:
+        # "loop" yolunda F.linear autocast altında girdiyi ve ağırlığı autocast dtype'ına çevirir
+        device = h.device.type
+        return torch.get_autocast_dtype(device) if torch.is_autocast_enabled(device) else h.dtype
+
+    def _grouped_ok(self, h: torch.Tensor) -> bool:
+        w = self.experts[0].w_down.weight  # (C, h)
+        if grouped_mm_supported(self._expert_dtype(h), *w.shape):
+            return True
+        if not getattr(self, "_warned", False):
+            warnings.warn(f"moe_impl='grouped': {self._expert_dtype(h)} ve boyutlar {tuple(w.shape)} "
+                          f"torch._grouped_mm ile desteklenmiyor; aynı matematikteki 'loop' yolu kullanılıyor.")
+            self._warned = True
+        return False
+
+    def _grouped_experts(self, h: torch.Tensor, token_of: torch.Tensor, counts: torch.Tensor) -> torch.Tensor:
+        """Tüm expert'lerin SwiGLU'su, expert'e göre sıralı N*k satır üzerinde 3 gruplu matris çarpımıyla.
+
+        _grouped_mm(x, W, offs): x'in [offs[e-1], offs[e]) satırları W[e] ile çarpılır. Satır başına işlem
+        "loop" yoluyla aynıdır (aynı ağırlık, aynı sıra); fark yalnızca çarpımların nasıl gruplandığı.
+        """
+        device = h.device.type
+        # autocast'in _grouped_mm için ne yaptığına güvenmeden, "loop" yolunun F.linear'ı gibi elle çeviriyoruz
+        dtype = self._expert_dtype(h)
+        x_gate, x_up = _CastGatherRows.apply(h, token_of, dtype)  # (N*k, C), aynı bellek
+        offs = counts.cumsum(0, dtype=torch.int32)                # expert e'nin dilimi: [offs[e-1], offs[e])
+        with torch.autocast(device_type=device, enabled=False):
+            # nn.Linear ağırlığı (out, in); _grouped_mm satır vektörünü sağdan çarptığı için (E, in, out) ister
+            w_gate, w_up, w_down = (
+                torch.stack([getattr(e, name).weight for e in self.experts]).to(dtype).transpose(1, 2)
+                for name in ("w_gate", "w_up", "w_down")
+            )
+            gate = torch._grouped_mm(x_gate, w_gate, offs=offs)  # (N*k, h)
+            up = torch._grouped_mm(x_up, w_up, offs=offs)        # (N*k, h)
+            return torch._grouped_mm(F.silu(gate) * up, w_down, offs=offs)  # (N*k, C) - SwiGLU.forward ile aynı

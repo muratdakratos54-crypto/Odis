@@ -1,0 +1,342 @@
+model: 79.15M parametre (74.96M embedding hariç)
+MoE: 7 katman x 16 expert, top-3 + 1 shared | token başına aktif: 29.95M (25.76M embedding hariç)
+veri: train 545.8M token, val 5.51M token
+adım başına 32,768 token, bütçe 98.30M token = 3000 adım (warmup 6.55M token)
+[eval] adım 0: val_loss 9.1162 (ppl 9101.45)
+adım    25 | loss 7.9206 | lr 1.25e-04 | grad_norm 5.51 | 83.5k tok/s | tepe bellek 8.54 GB
+           ce 7.9128 | aux 1.528 | z 7.75 | yük CV 1.284 | maks 4.57x | min 0.02x | ölü expert 19
+adım    50 | loss 5.6147 | lr 2.50e-04 | grad_norm 1.16 | 84.7k tok/s | tepe bellek 8.54 GB
+           ce 5.6084 | aux 1.648 | z 6.33 | yük CV 1.238 | maks 4.79x | min 0.00x | ölü expert 37
+adım    75 | loss 4.1738 | lr 3.75e-04 | grad_norm 1.16 | 84.6k tok/s | tepe bellek 8.54 GB
+           ce 4.1684 | aux 1.694 | z 5.32 | yük CV 1.089 | maks 5.21x | min 0.00x | ölü expert 33
+adım   100 | loss 3.5550 | lr 5.00e-04 | grad_norm 0.92 | 85.8k tok/s | tepe bellek 8.54 GB
+           ce 3.5503 | aux 1.739 | z 4.75 | yük CV 1.054 | maks 4.30x | min 0.00x | ölü expert 35
+adım   125 | loss 3.1464 | lr 6.25e-04 | grad_norm 0.78 | 86.7k tok/s | tepe bellek 8.54 GB
+           ce 3.1419 | aux 1.782 | z 4.46 | yük CV 1.036 | maks 4.02x | min 0.00x | ölü expert 37
+adım   150 | loss 2.8812 | lr 7.50e-04 | grad_norm 0.63 | 86.9k tok/s | tepe bellek 8.54 GB
+           ce 2.8769 | aux 1.825 | z 4.24 | yük CV 1.029 | maks 3.91x | min 0.00x | ölü expert 37
+adım   175 | loss 2.6921 | lr 8.75e-04 | grad_norm 0.80 | 86.7k tok/s | tepe bellek 8.54 GB
+           ce 2.6881 | aux 1.865 | z 4.04 | yük CV 1.035 | maks 3.78x | min 0.00x | ölü expert 41
+adım   200 | loss 2.5498 | lr 1.00e-03 | grad_norm 0.78 | 86.9k tok/s | tepe bellek 8.54 GB
+           ce 2.5460 | aux 1.897 | z 3.81 | yük CV 1.041 | maks 3.74x | min 0.00x | ölü expert 41
+adım   225 | loss 2.4404 | lr 1.00e-03 | grad_norm 0.50 | 86.9k tok/s | tepe bellek 8.54 GB
+           ce 2.4369 | aux 1.935 | z 3.50 | yük CV 1.057 | maks 3.78x | min 0.00x | ölü expert 41
+adım   250 | loss 2.3490 | lr 9.99e-04 | grad_norm 0.63 | 86.9k tok/s | tepe bellek 8.54 GB
+           ce 2.3459 | aux 1.981 | z 3.19 | yük CV 1.084 | maks 3.80x | min 0.00x | ölü expert 41
+[eval] adım 250: val_loss 2.2956 (ppl 9.93)
+[expert] katman 1: |▃▃▅▃▁▆▅▂▂▅▄▅▆▇▂▅| min 0.31x maks 1.65x
+[expert] katman 2: |▃▂█▆▁█ █▇▄▃ ▂█▄ | min 0.00x maks 2.21x
+[expert] katman 3: |███▄▁▁▇▁ █ ▁  ▁▁| min 0.00x maks 3.69x
+[expert] katman 4: |  ██▃   ▄█  █ █▁| min 0.00x maks 3.08x
+[expert] katman 5: | ▆█   █▇█▆ █    | min 0.00x maks 3.79x
+[expert] katman 6: | ▆ ▃▁▇  █▁ █ █ █| min 0.00x maks 3.57x
+[expert] katman 7: |█ █  █  █   █▁  | min 0.00x maks 3.80x
+adım   275 | loss 2.2669 | lr 9.98e-04 | grad_norm 0.44 | 87.1k tok/s | tepe bellek 8.54 GB
+           ce 2.2640 | aux 2.010 | z 2.91 | yük CV 1.093 | maks 3.79x | min 0.00x | ölü expert 41
+adım   300 | loss 2.1891 | lr 9.97e-04 | grad_norm 0.45 | 87.1k tok/s | tepe bellek 8.54 GB
+           ce 2.1865 | aux 2.036 | z 2.63 | yük CV 1.104 | maks 3.90x | min 0.00x | ölü expert 43
+adım   325 | loss 2.1422 | lr 9.96e-04 | grad_norm 0.43 | 86.5k tok/s | tepe bellek 8.54 GB
+           ce 2.1399 | aux 2.078 | z 2.36 | yük CV 1.120 | maks 3.89x | min 0.00x | ölü expert 44
+adım   350 | loss 2.0830 | lr 9.94e-04 | grad_norm 0.44 | 85.5k tok/s | tepe bellek 8.54 GB
+           ce 2.0808 | aux 2.097 | z 2.16 | yük CV 1.127 | maks 3.91x | min 0.00x | ölü expert 45
+adım   375 | loss 2.0453 | lr 9.91e-04 | grad_norm 0.42 | 85.7k tok/s | tepe bellek 8.54 GB
+           ce 2.0434 | aux 2.138 | z 1.95 | yük CV 1.150 | maks 3.94x | min 0.00x | ölü expert 47
+adım   400 | loss 2.0099 | lr 9.89e-04 | grad_norm 0.40 | 85.6k tok/s | tepe bellek 8.54 GB
+           ce 2.0081 | aux 2.153 | z 1.71 | yük CV 1.150 | maks 4.05x | min 0.00x | ölü expert 48
+adım   425 | loss 1.9715 | lr 9.86e-04 | grad_norm 0.41 | 86.2k tok/s | tepe bellek 8.54 GB
+           ce 1.9699 | aux 2.154 | z 1.58 | yük CV 1.151 | maks 3.93x | min 0.00x | ölü expert 48
+adım   450 | loss 1.9515 | lr 9.83e-04 | grad_norm 0.41 | 86.3k tok/s | tepe bellek 8.54 GB
+           ce 1.9500 | aux 2.193 | z 1.41 | yük CV 1.169 | maks 4.20x | min 0.00x | ölü expert 48
+adım   475 | loss 1.9060 | lr 9.79e-04 | grad_norm 0.37 | 86.3k tok/s | tepe bellek 8.54 GB
+           ce 1.9047 | aux 2.200 | z 1.33 | yük CV 1.167 | maks 4.20x | min 0.00x | ölü expert 48
+adım   500 | loss 1.9062 | lr 9.75e-04 | grad_norm 0.37 | 85.7k tok/s | tepe bellek 8.54 GB
+           ce 1.9050 | aux 2.204 | z 1.19 | yük CV 1.167 | maks 4.25x | min 0.00x | ölü expert 49
+[eval] adım 500: val_loss 1.8975 (ppl 6.67)
+[expert] katman 1: |▃▁▅▃ ▇▅▁▁▆▅▅▇█▁▆| min 0.03x maks 1.94x
+[expert] katman 2: |▁ ██ █ █▆▃▂ ▁█▃ | min 0.00x maks 2.63x
+[expert] katman 3: |███▃  ▇  █    ▁▂| min 0.00x maks 4.25x
+[expert] katman 4: |  ██▁   ▄█  █ █ | min 0.00x maks 3.60x
+[expert] katman 5: | ▇█   █▆█▆ █    | min 0.00x maks 3.76x
+[expert] katman 6: | ▆ ▄▁█  █▂ █ █ █| min 0.00x maks 3.19x
+[expert] katman 7: |█ █  █  █   █▁  | min 0.00x maks 3.82x
+adım   525 | loss 1.8710 | lr 9.71e-04 | grad_norm 0.35 | 85.6k tok/s | tepe bellek 8.54 GB
+           ce 1.8699 | aux 2.232 | z 1.13 | yük CV 1.180 | maks 4.33x | min 0.00x | ölü expert 49
+adım   550 | loss 1.8526 | lr 9.66e-04 | grad_norm 0.39 | 86.2k tok/s | tepe bellek 8.54 GB
+           ce 1.8516 | aux 2.241 | z 1.01 | yük CV 1.185 | maks 4.33x | min 0.00x | ölü expert 49
+adım   575 | loss 1.8400 | lr 9.61e-04 | grad_norm 0.40 | 87.3k tok/s | tepe bellek 8.54 GB
+           ce 1.8390 | aux 2.259 | z 0.98 | yük CV 1.189 | maks 4.38x | min 0.00x | ölü expert 50
+adım   600 | loss 1.8102 | lr 9.56e-04 | grad_norm 0.36 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.8093 | aux 2.279 | z 0.89 | yük CV 1.200 | maks 4.56x | min 0.00x | ölü expert 50
+adım   625 | loss 1.8086 | lr 9.50e-04 | grad_norm 0.35 | 87.2k tok/s | tepe bellek 8.54 GB
+           ce 1.8077 | aux 2.288 | z 0.88 | yük CV 1.203 | maks 4.50x | min 0.00x | ölü expert 50
+adım   650 | loss 1.7978 | lr 9.44e-04 | grad_norm 0.33 | 85.9k tok/s | tepe bellek 8.54 GB
+           ce 1.7971 | aux 2.289 | z 0.77 | yük CV 1.202 | maks 4.47x | min 0.00x | ölü expert 50
+adım   675 | loss 1.7718 | lr 9.38e-04 | grad_norm 0.34 | 85.9k tok/s | tepe bellek 8.54 GB
+           ce 1.7710 | aux 2.295 | z 0.74 | yük CV 1.202 | maks 4.47x | min 0.00x | ölü expert 51
+adım   700 | loss 1.7559 | lr 9.31e-04 | grad_norm 0.36 | 85.9k tok/s | tepe bellek 8.54 GB
+           ce 1.7552 | aux 2.305 | z 0.72 | yük CV 1.210 | maks 4.50x | min 0.00x | ölü expert 50
+adım   725 | loss 1.7463 | lr 9.24e-04 | grad_norm 0.33 | 87.2k tok/s | tepe bellek 8.54 GB
+           ce 1.7457 | aux 2.318 | z 0.68 | yük CV 1.214 | maks 4.58x | min 0.00x | ölü expert 52
+adım   750 | loss 1.7353 | lr 9.17e-04 | grad_norm 0.33 | 87.3k tok/s | tepe bellek 8.54 GB
+           ce 1.7346 | aux 2.322 | z 0.64 | yük CV 1.217 | maks 4.49x | min 0.00x | ölü expert 51
+[eval] adım 750: val_loss 1.7367 (ppl 5.68)
+[expert] katman 1: |▃ ▆▃ █▅▁▁▆▃▇▆█▁▆| min 0.01x maks 2.09x
+[expert] katman 2: |▁ ██ █ █▅▂▂  █▂ | min 0.00x maks 2.94x
+[expert] katman 3: |███▂▁ ▇  █    ▁▂| min 0.00x maks 4.49x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.03x
+[expert] katman 5: | ▇█   █▇█▆ █    | min 0.00x maks 3.64x
+[expert] katman 6: | ▆ ▄▁█  █▂ █ █ █| min 0.00x maks 3.30x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 3.97x
+adım   775 | loss 1.7279 | lr 9.10e-04 | grad_norm 0.32 | 85.8k tok/s | tepe bellek 8.54 GB
+           ce 1.7273 | aux 2.322 | z 0.61 | yük CV 1.211 | maks 4.62x | min 0.00x | ölü expert 51
+adım   800 | loss 1.7074 | lr 9.02e-04 | grad_norm 0.31 | 87.3k tok/s | tepe bellek 8.54 GB
+           ce 1.7068 | aux 2.322 | z 0.60 | yük CV 1.204 | maks 4.47x | min 0.00x | ölü expert 51
+adım   825 | loss 1.7106 | lr 8.94e-04 | grad_norm 0.31 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.7100 | aux 2.341 | z 0.56 | yük CV 1.216 | maks 4.46x | min 0.00x | ölü expert 52
+adım   850 | loss 1.6869 | lr 8.86e-04 | grad_norm 0.31 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.6864 | aux 2.349 | z 0.53 | yük CV 1.218 | maks 4.49x | min 0.00x | ölü expert 53
+adım   875 | loss 1.6875 | lr 8.77e-04 | grad_norm 0.31 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.6870 | aux 2.355 | z 0.52 | yük CV 1.219 | maks 4.57x | min 0.00x | ölü expert 51
+adım   900 | loss 1.6759 | lr 8.69e-04 | grad_norm 0.32 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.6754 | aux 2.358 | z 0.50 | yük CV 1.220 | maks 4.66x | min 0.00x | ölü expert 51
+adım   925 | loss 1.6762 | lr 8.60e-04 | grad_norm 0.32 | 87.3k tok/s | tepe bellek 8.54 GB
+           ce 1.6757 | aux 2.367 | z 0.48 | yük CV 1.227 | maks 4.52x | min 0.00x | ölü expert 52
+adım   950 | loss 1.6655 | lr 8.50e-04 | grad_norm 0.29 | 85.8k tok/s | tepe bellek 8.54 GB
+           ce 1.6651 | aux 2.385 | z 0.45 | yük CV 1.230 | maks 4.69x | min 0.00x | ölü expert 52
+adım   975 | loss 1.6529 | lr 8.41e-04 | grad_norm 0.30 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.6524 | aux 2.369 | z 0.46 | yük CV 1.227 | maks 4.51x | min 0.00x | ölü expert 53
+adım  1000 | loss 1.6336 | lr 8.31e-04 | grad_norm 0.30 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.6332 | aux 2.373 | z 0.42 | yük CV 1.225 | maks 4.57x | min 0.00x | ölü expert 52
+[eval] adım 1000: val_loss 1.6442 (ppl 5.18)
+[expert] katman 1: |▃ ▅▃ █▄▁ ▆▃▆▇█▂▇| min 0.00x maks 2.27x
+[expert] katman 2: |▁ ██ █ █▆▁▂  █▂ | min 0.00x maks 3.02x
+[expert] katman 3: |███▃▁ ▇  █    ▁▂| min 0.00x maks 4.57x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.08x
+[expert] katman 5: | ▇█   █▇█▆ █    | min 0.00x maks 3.66x
+[expert] katman 6: | ▆ ▄▁█  █▂ █ █ █| min 0.00x maks 3.29x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 3.94x
+adım  1025 | loss 1.6291 | lr 8.21e-04 | grad_norm 0.29 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.6287 | aux 2.389 | z 0.43 | yük CV 1.233 | maks 4.66x | min 0.00x | ölü expert 53
+adım  1050 | loss 1.6158 | lr 8.11e-04 | grad_norm 0.29 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.6153 | aux 2.387 | z 0.42 | yük CV 1.229 | maks 4.54x | min 0.00x | ölü expert 53
+adım  1075 | loss 1.6158 | lr 8.00e-04 | grad_norm 0.29 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.6154 | aux 2.390 | z 0.41 | yük CV 1.228 | maks 4.68x | min 0.00x | ölü expert 54
+adım  1100 | loss 1.6082 | lr 7.90e-04 | grad_norm 0.29 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.6078 | aux 2.394 | z 0.39 | yük CV 1.228 | maks 4.67x | min 0.00x | ölü expert 52
+adım  1125 | loss 1.5929 | lr 7.79e-04 | grad_norm 0.30 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.5925 | aux 2.409 | z 0.37 | yük CV 1.232 | maks 4.66x | min 0.00x | ölü expert 52
+adım  1150 | loss 1.5909 | lr 7.68e-04 | grad_norm 0.28 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.5905 | aux 2.402 | z 0.38 | yük CV 1.232 | maks 4.64x | min 0.00x | ölü expert 52
+adım  1175 | loss 1.5775 | lr 7.57e-04 | grad_norm 0.30 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.5771 | aux 2.407 | z 0.36 | yük CV 1.230 | maks 4.75x | min 0.00x | ölü expert 52
+adım  1200 | loss 1.5792 | lr 7.46e-04 | grad_norm 0.29 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.5789 | aux 2.403 | z 0.36 | yük CV 1.230 | maks 4.63x | min 0.00x | ölü expert 51
+adım  1225 | loss 1.5740 | lr 7.34e-04 | grad_norm 0.28 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.5736 | aux 2.403 | z 0.36 | yük CV 1.228 | maks 4.56x | min 0.00x | ölü expert 51
+adım  1250 | loss 1.5631 | lr 7.23e-04 | grad_norm 0.29 | 86.2k tok/s | tepe bellek 8.54 GB
+           ce 1.5627 | aux 2.411 | z 0.34 | yük CV 1.233 | maks 4.65x | min 0.00x | ölü expert 51
+[eval] adım 1250: val_loss 1.5713 (ppl 4.81)
+[expert] katman 1: |▃ ▅▂ █▄▁▁▆▃▇▇█▁▇| min 0.00x maks 2.19x
+[expert] katman 2: |▁ ██ ▇ █▆▁▂  █▂ | min 0.00x maks 3.08x
+[expert] katman 3: |███▃▁ ▇  █    ▁▂| min 0.00x maks 4.65x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.19x
+[expert] katman 5: | ▇█   █▇█▆ █    | min 0.00x maks 3.58x
+[expert] katman 6: | ▆ ▄▁█  █▂ █ █ █| min 0.00x maks 3.40x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 3.95x
+adım  1275 | loss 1.5592 | lr 7.11e-04 | grad_norm 0.28 | 85.9k tok/s | tepe bellek 8.54 GB
+           ce 1.5588 | aux 2.425 | z 0.34 | yük CV 1.239 | maks 4.70x | min 0.00x | ölü expert 52
+adım  1300 | loss 1.5610 | lr 6.99e-04 | grad_norm 0.28 | 86.2k tok/s | tepe bellek 8.54 GB
+           ce 1.5607 | aux 2.424 | z 0.33 | yük CV 1.241 | maks 4.66x | min 0.00x | ölü expert 52
+adım  1325 | loss 1.5444 | lr 6.87e-04 | grad_norm 0.28 | 86.6k tok/s | tepe bellek 8.54 GB
+           ce 1.5440 | aux 2.419 | z 0.32 | yük CV 1.237 | maks 4.64x | min 0.00x | ölü expert 52
+adım  1350 | loss 1.5430 | lr 6.75e-04 | grad_norm 0.28 | 86.7k tok/s | tepe bellek 8.54 GB
+           ce 1.5426 | aux 2.429 | z 0.32 | yük CV 1.241 | maks 4.67x | min 0.00x | ölü expert 52
+adım  1375 | loss 1.5410 | lr 6.63e-04 | grad_norm 0.28 | 86.6k tok/s | tepe bellek 8.54 GB
+           ce 1.5407 | aux 2.438 | z 0.31 | yük CV 1.243 | maks 4.65x | min 0.00x | ölü expert 52
+adım  1400 | loss 1.5322 | lr 6.51e-04 | grad_norm 0.29 | 86.2k tok/s | tepe bellek 8.54 GB
+           ce 1.5319 | aux 2.430 | z 0.31 | yük CV 1.244 | maks 4.64x | min 0.00x | ölü expert 51
+adım  1425 | loss 1.5371 | lr 6.38e-04 | grad_norm 0.28 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.5368 | aux 2.427 | z 0.31 | yük CV 1.237 | maks 4.73x | min 0.00x | ölü expert 52
+adım  1450 | loss 1.5266 | lr 6.26e-04 | grad_norm 0.28 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.5263 | aux 2.427 | z 0.31 | yük CV 1.239 | maks 4.64x | min 0.00x | ölü expert 54
+adım  1475 | loss 1.5313 | lr 6.13e-04 | grad_norm 0.27 | 87.2k tok/s | tepe bellek 8.54 GB
+           ce 1.5310 | aux 2.438 | z 0.29 | yük CV 1.240 | maks 4.73x | min 0.00x | ölü expert 54
+adım  1500 | loss 1.5105 | lr 6.01e-04 | grad_norm 0.28 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.5102 | aux 2.422 | z 0.30 | yük CV 1.233 | maks 4.61x | min 0.00x | ölü expert 54
+[eval] adım 1500: val_loss 1.5160 (ppl 4.55)
+[expert] katman 1: |▃ ▅▂ █▅▁ ▇▃▆▇█▁▆| min 0.00x maks 2.28x
+[expert] katman 2: |  ██ █ █▆▁▂  █▂ | min 0.00x maks 3.08x
+[expert] katman 3: |███▃  ▇  █    ▁▂| min 0.00x maks 4.61x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.28x
+[expert] katman 5: | ▇█   ███▆ █    | min 0.00x maks 3.66x
+[expert] katman 6: | ▆ ▅▁█  █▂ █ █ █| min 0.00x maks 3.29x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 3.97x
+adım  1525 | loss 1.5183 | lr 5.88e-04 | grad_norm 0.28 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.5180 | aux 2.441 | z 0.29 | yük CV 1.242 | maks 4.71x | min 0.00x | ölü expert 52
+adım  1550 | loss 1.5007 | lr 5.76e-04 | grad_norm 0.27 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.5004 | aux 2.425 | z 0.28 | yük CV 1.233 | maks 4.66x | min 0.00x | ölü expert 52
+adım  1575 | loss 1.4954 | lr 5.63e-04 | grad_norm 0.28 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.4951 | aux 2.437 | z 0.28 | yük CV 1.240 | maks 4.58x | min 0.00x | ölü expert 52
+adım  1600 | loss 1.4834 | lr 5.51e-04 | grad_norm 0.27 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.4831 | aux 2.441 | z 0.28 | yük CV 1.241 | maks 4.75x | min 0.00x | ölü expert 54
+adım  1625 | loss 1.4874 | lr 5.38e-04 | grad_norm 0.28 | 87.1k tok/s | tepe bellek 8.54 GB
+           ce 1.4871 | aux 2.443 | z 0.27 | yük CV 1.243 | maks 4.76x | min 0.00x | ölü expert 53
+adım  1650 | loss 1.4888 | lr 5.25e-04 | grad_norm 0.28 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.4885 | aux 2.429 | z 0.28 | yük CV 1.237 | maks 4.69x | min 0.00x | ölü expert 52
+adım  1675 | loss 1.4731 | lr 5.13e-04 | grad_norm 0.27 | 87.3k tok/s | tepe bellek 8.54 GB
+           ce 1.4728 | aux 2.437 | z 0.27 | yük CV 1.239 | maks 4.70x | min 0.00x | ölü expert 52
+adım  1700 | loss 1.4660 | lr 5.00e-04 | grad_norm 0.27 | 87.3k tok/s | tepe bellek 8.54 GB
+           ce 1.4657 | aux 2.444 | z 0.26 | yük CV 1.243 | maks 4.70x | min 0.00x | ölü expert 53
+adım  1725 | loss 1.4733 | lr 4.88e-04 | grad_norm 0.27 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.4730 | aux 2.447 | z 0.26 | yük CV 1.246 | maks 4.63x | min 0.00x | ölü expert 54
+adım  1750 | loss 1.4537 | lr 4.75e-04 | grad_norm 0.26 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.4534 | aux 2.444 | z 0.25 | yük CV 1.245 | maks 4.65x | min 0.00x | ölü expert 53
+[eval] adım 1750: val_loss 1.4696 (ppl 4.35)
+[expert] katman 1: |▃ ▅▂ █▄▁ ▆▃▇▇█▁▆| min 0.00x maks 2.36x
+[expert] katman 2: |▁ ██ █ █▆▁▂  █▂ | min 0.00x maks 3.19x
+[expert] katman 3: |███▃  ▇  █    ▁▂| min 0.00x maks 4.65x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.27x
+[expert] katman 5: | ▇█   ███▅ █    | min 0.00x maks 3.63x
+[expert] katman 6: | ▅ ▅▁█  █▂ █ █ █| min 0.00x maks 3.35x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 4.01x
+adım  1775 | loss 1.4565 | lr 4.63e-04 | grad_norm 0.27 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.4563 | aux 2.437 | z 0.25 | yük CV 1.241 | maks 4.67x | min 0.00x | ölü expert 52
+adım  1800 | loss 1.4557 | lr 4.50e-04 | grad_norm 0.27 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.4554 | aux 2.447 | z 0.25 | yük CV 1.245 | maks 4.72x | min 0.00x | ölü expert 53
+adım  1825 | loss 1.4501 | lr 4.38e-04 | grad_norm 0.26 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.4498 | aux 2.439 | z 0.25 | yük CV 1.242 | maks 4.68x | min 0.00x | ölü expert 53
+adım  1850 | loss 1.4499 | lr 4.26e-04 | grad_norm 0.27 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.4496 | aux 2.445 | z 0.25 | yük CV 1.244 | maks 4.74x | min 0.00x | ölü expert 53
+adım  1875 | loss 1.4241 | lr 4.14e-04 | grad_norm 0.27 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.4239 | aux 2.456 | z 0.24 | yük CV 1.251 | maks 4.71x | min 0.00x | ölü expert 53
+adım  1900 | loss 1.4290 | lr 4.02e-04 | grad_norm 0.27 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.4287 | aux 2.442 | z 0.25 | yük CV 1.244 | maks 4.74x | min 0.00x | ölü expert 53
+adım  1925 | loss 1.4325 | lr 3.90e-04 | grad_norm 0.26 | 87.2k tok/s | tepe bellek 8.54 GB
+           ce 1.4323 | aux 2.446 | z 0.25 | yük CV 1.243 | maks 4.75x | min 0.00x | ölü expert 53
+adım  1950 | loss 1.4246 | lr 3.78e-04 | grad_norm 0.26 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.4244 | aux 2.442 | z 0.24 | yük CV 1.241 | maks 4.81x | min 0.00x | ölü expert 53
+adım  1975 | loss 1.4222 | lr 3.67e-04 | grad_norm 0.28 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.4219 | aux 2.445 | z 0.24 | yük CV 1.244 | maks 4.76x | min 0.00x | ölü expert 53
+adım  2000 | loss 1.4223 | lr 3.55e-04 | grad_norm 0.27 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.4221 | aux 2.445 | z 0.23 | yük CV 1.245 | maks 4.74x | min 0.00x | ölü expert 53
+[eval] adım 2000: val_loss 1.4285 (ppl 4.17)
+[expert] katman 1: |▃ ▅▂ █▅▁▁▆▃▇▇█▁▆| min 0.00x maks 2.30x
+[expert] katman 2: |  ██ ▇ █▆▁▁  █▂ | min 0.00x maks 3.26x
+[expert] katman 3: |███▃  ▇  █    ▁▂| min 0.00x maks 4.74x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.34x
+[expert] katman 5: | ██   █▇█▆ █    | min 0.00x maks 3.66x
+[expert] katman 6: | ▅ ▅▁█  █▂ █ █ █| min 0.00x maks 3.41x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 4.03x
+adım  2025 | loss 1.4157 | lr 3.44e-04 | grad_norm 0.27 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.4155 | aux 2.446 | z 0.23 | yük CV 1.245 | maks 4.80x | min 0.00x | ölü expert 53
+adım  2050 | loss 1.4085 | lr 3.33e-04 | grad_norm 0.26 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.4083 | aux 2.447 | z 0.23 | yük CV 1.245 | maks 4.77x | min 0.00x | ölü expert 53
+adım  2075 | loss 1.4133 | lr 3.22e-04 | grad_norm 0.27 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.4131 | aux 2.445 | z 0.22 | yük CV 1.246 | maks 4.78x | min 0.00x | ölü expert 54
+adım  2100 | loss 1.4049 | lr 3.11e-04 | grad_norm 0.27 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.4047 | aux 2.440 | z 0.22 | yük CV 1.243 | maks 4.76x | min 0.00x | ölü expert 53
+adım  2125 | loss 1.3964 | lr 3.00e-04 | grad_norm 0.27 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.3961 | aux 2.440 | z 0.22 | yük CV 1.243 | maks 4.74x | min 0.00x | ölü expert 53
+adım  2150 | loss 1.3969 | lr 2.90e-04 | grad_norm 0.26 | 86.7k tok/s | tepe bellek 8.54 GB
+           ce 1.3967 | aux 2.443 | z 0.22 | yük CV 1.243 | maks 4.76x | min 0.00x | ölü expert 53
+adım  2175 | loss 1.4024 | lr 2.80e-04 | grad_norm 0.27 | 85.8k tok/s | tepe bellek 8.54 GB
+           ce 1.4022 | aux 2.446 | z 0.21 | yük CV 1.245 | maks 4.72x | min 0.00x | ölü expert 54
+adım  2200 | loss 1.3817 | lr 2.70e-04 | grad_norm 0.26 | 85.9k tok/s | tepe bellek 8.54 GB
+           ce 1.3815 | aux 2.435 | z 0.21 | yük CV 1.240 | maks 4.74x | min 0.00x | ölü expert 54
+adım  2225 | loss 1.3895 | lr 2.60e-04 | grad_norm 0.26 | 86.6k tok/s | tepe bellek 8.54 GB
+           ce 1.3892 | aux 2.436 | z 0.21 | yük CV 1.241 | maks 4.77x | min 0.00x | ölü expert 54
+adım  2250 | loss 1.3838 | lr 2.51e-04 | grad_norm 0.28 | 86.7k tok/s | tepe bellek 8.54 GB
+           ce 1.3836 | aux 2.446 | z 0.21 | yük CV 1.247 | maks 4.78x | min 0.00x | ölü expert 54
+[eval] adım 2250: val_loss 1.3949 (ppl 4.03)
+[expert] katman 1: |▃ ▅▂ █▄▁ ▇▃▇▇█▁▆| min 0.00x maks 2.32x
+[expert] katman 2: |  ██ ▇ █▆▁▁  █▂ | min 0.00x maks 3.17x
+[expert] katman 3: |███▃  ▇  █    ▁▂| min 0.00x maks 4.78x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.31x
+[expert] katman 5: | ▇█   █▇█▆ █    | min 0.00x maks 3.60x
+[expert] katman 6: | ▅ ▄▁█  █▂ █ █ █| min 0.00x maks 3.42x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 4.06x
+adım  2275 | loss 1.3772 | lr 2.41e-04 | grad_norm 0.26 | 85.1k tok/s | tepe bellek 8.54 GB
+           ce 1.3770 | aux 2.437 | z 0.21 | yük CV 1.244 | maks 4.80x | min 0.00x | ölü expert 53
+adım  2300 | loss 1.3852 | lr 2.32e-04 | grad_norm 0.27 | 86.2k tok/s | tepe bellek 8.54 GB
+           ce 1.3850 | aux 2.444 | z 0.21 | yük CV 1.245 | maks 4.79x | min 0.00x | ölü expert 53
+adım  2325 | loss 1.3769 | lr 2.23e-04 | grad_norm 0.26 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.3767 | aux 2.453 | z 0.21 | yük CV 1.248 | maks 4.85x | min 0.00x | ölü expert 54
+adım  2350 | loss 1.3746 | lr 2.15e-04 | grad_norm 0.26 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.3744 | aux 2.447 | z 0.20 | yük CV 1.247 | maks 4.78x | min 0.00x | ölü expert 54
+adım  2375 | loss 1.3683 | lr 2.07e-04 | grad_norm 0.26 | 86.9k tok/s | tepe bellek 8.54 GB
+           ce 1.3681 | aux 2.447 | z 0.20 | yük CV 1.249 | maks 4.81x | min 0.00x | ölü expert 53
+adım  2400 | loss 1.3694 | lr 1.98e-04 | grad_norm 0.26 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.3692 | aux 2.450 | z 0.20 | yük CV 1.250 | maks 4.79x | min 0.00x | ölü expert 54
+adım  2425 | loss 1.3577 | lr 1.91e-04 | grad_norm 0.27 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.3575 | aux 2.447 | z 0.20 | yük CV 1.249 | maks 4.78x | min 0.00x | ölü expert 54
+adım  2450 | loss 1.3687 | lr 1.83e-04 | grad_norm 0.26 | 86.9k tok/s | tepe bellek 8.54 GB
+           ce 1.3685 | aux 2.441 | z 0.20 | yük CV 1.245 | maks 4.77x | min 0.00x | ölü expert 53
+adım  2475 | loss 1.3659 | lr 1.76e-04 | grad_norm 0.27 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.3657 | aux 2.447 | z 0.20 | yük CV 1.246 | maks 4.79x | min 0.00x | ölü expert 52
+adım  2500 | loss 1.3559 | lr 1.69e-04 | grad_norm 0.26 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.3557 | aux 2.449 | z 0.20 | yük CV 1.246 | maks 4.82x | min 0.00x | ölü expert 52
+[eval] adım 2500: val_loss 1.3692 (ppl 3.93)
+[expert] katman 1: |▃ ▅▂ █▅▁▁▆▃▇▇█▁▆| min 0.00x maks 2.38x
+[expert] katman 2: |▁ ██ ▇ █▆▁▁  █▂ | min 0.00x maks 3.20x
+[expert] katman 3: |███▃  ▆  █    ▁▂| min 0.00x maks 4.82x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.35x
+[expert] katman 5: | ▇█   █▇█▆ █    | min 0.00x maks 3.61x
+[expert] katman 6: | ▅ ▄▁█  █▂ █ █ █| min 0.00x maks 3.40x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 4.03x
+adım  2525 | loss 1.3510 | lr 1.63e-04 | grad_norm 0.26 | 86.9k tok/s | tepe bellek 8.54 GB
+           ce 1.3508 | aux 2.444 | z 0.20 | yük CV 1.245 | maks 4.79x | min 0.00x | ölü expert 52
+adım  2550 | loss 1.3559 | lr 1.56e-04 | grad_norm 0.26 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3557 | aux 2.447 | z 0.20 | yük CV 1.244 | maks 4.84x | min 0.00x | ölü expert 52
+adım  2575 | loss 1.3358 | lr 1.50e-04 | grad_norm 0.26 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3356 | aux 2.441 | z 0.19 | yük CV 1.244 | maks 4.80x | min 0.00x | ölü expert 52
+adım  2600 | loss 1.3608 | lr 1.45e-04 | grad_norm 0.26 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3607 | aux 2.453 | z 0.19 | yük CV 1.248 | maks 4.82x | min 0.00x | ölü expert 54
+adım  2625 | loss 1.3465 | lr 1.39e-04 | grad_norm 0.27 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3463 | aux 2.445 | z 0.19 | yük CV 1.245 | maks 4.83x | min 0.00x | ölü expert 53
+adım  2650 | loss 1.3600 | lr 1.34e-04 | grad_norm 0.27 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3598 | aux 2.442 | z 0.19 | yük CV 1.244 | maks 4.79x | min 0.00x | ölü expert 53
+adım  2675 | loss 1.3554 | lr 1.30e-04 | grad_norm 0.27 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3552 | aux 2.445 | z 0.19 | yük CV 1.245 | maks 4.77x | min 0.00x | ölü expert 54
+adım  2700 | loss 1.3362 | lr 1.25e-04 | grad_norm 0.27 | 87.7k tok/s | tepe bellek 8.54 GB
+           ce 1.3360 | aux 2.448 | z 0.18 | yük CV 1.246 | maks 4.83x | min 0.00x | ölü expert 53
+adım  2725 | loss 1.3391 | lr 1.21e-04 | grad_norm 0.26 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.3389 | aux 2.439 | z 0.19 | yük CV 1.243 | maks 4.79x | min 0.00x | ölü expert 52
+adım  2750 | loss 1.3311 | lr 1.18e-04 | grad_norm 0.26 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.3310 | aux 2.449 | z 0.19 | yük CV 1.248 | maks 4.83x | min 0.00x | ölü expert 52
+[eval] adım 2750: val_loss 1.3510 (ppl 3.86)
+[expert] katman 1: |▃ ▅▂ █▅▁▁▇▃▇▇█▁▆| min 0.00x maks 2.40x
+[expert] katman 2: |▁ ██ ▇ █▆▁▁  █▂ | min 0.00x maks 3.18x
+[expert] katman 3: |███▃  ▆  █    ▁▂| min 0.00x maks 4.83x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.34x
+[expert] katman 5: | ▇█   ███▆ █    | min 0.00x maks 3.65x
+[expert] katman 6: | ▅ ▄▁█  █▂ █ █ █| min 0.00x maks 3.43x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 4.04x
+adım  2775 | loss 1.3445 | lr 1.14e-04 | grad_norm 0.27 | 86.1k tok/s | tepe bellek 8.54 GB
+           ce 1.3443 | aux 2.449 | z 0.18 | yük CV 1.248 | maks 4.79x | min 0.00x | ölü expert 54
+adım  2800 | loss 1.3296 | lr 1.11e-04 | grad_norm 0.26 | 86.0k tok/s | tepe bellek 8.54 GB
+           ce 1.3294 | aux 2.448 | z 0.18 | yük CV 1.248 | maks 4.77x | min 0.00x | ölü expert 53
+adım  2825 | loss 1.3379 | lr 1.09e-04 | grad_norm 0.27 | 86.6k tok/s | tepe bellek 8.54 GB
+           ce 1.3377 | aux 2.448 | z 0.18 | yük CV 1.247 | maks 4.82x | min 0.00x | ölü expert 54
+adım  2850 | loss 1.3384 | lr 1.06e-04 | grad_norm 0.27 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.3383 | aux 2.449 | z 0.18 | yük CV 1.247 | maks 4.79x | min 0.00x | ölü expert 54
+adım  2875 | loss 1.3352 | lr 1.04e-04 | grad_norm 0.27 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3350 | aux 2.453 | z 0.18 | yük CV 1.250 | maks 4.77x | min 0.00x | ölü expert 54
+adım  2900 | loss 1.3273 | lr 1.03e-04 | grad_norm 0.27 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3271 | aux 2.448 | z 0.18 | yük CV 1.247 | maks 4.77x | min 0.00x | ölü expert 54
+adım  2925 | loss 1.3298 | lr 1.02e-04 | grad_norm 0.27 | 87.4k tok/s | tepe bellek 8.54 GB
+           ce 1.3296 | aux 2.448 | z 0.18 | yük CV 1.247 | maks 4.80x | min 0.00x | ölü expert 53
+adım  2950 | loss 1.3357 | lr 1.01e-04 | grad_norm 0.27 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.3355 | aux 2.448 | z 0.18 | yük CV 1.246 | maks 4.79x | min 0.00x | ölü expert 54
+adım  2975 | loss 1.3315 | lr 1.00e-04 | grad_norm 0.26 | 87.5k tok/s | tepe bellek 8.54 GB
+           ce 1.3313 | aux 2.442 | z 0.18 | yük CV 1.245 | maks 4.76x | min 0.00x | ölü expert 54
+adım  3000 | loss 1.3319 | lr 1.00e-04 | grad_norm 0.27 | 87.6k tok/s | tepe bellek 8.54 GB
+           ce 1.3317 | aux 2.448 | z 0.18 | yük CV 1.246 | maks 4.80x | min 0.00x | ölü expert 54
+[eval] adım 3000: val_loss 1.3399 (ppl 3.82)
+[expert] katman 1: |▃ ▅▂ █▅▁ ▇▃▇▇█▁▆| min 0.00x maks 2.32x
+[expert] katman 2: |  ██ ▇ █▆▁▂  █▂ | min 0.00x maks 3.24x
+[expert] katman 3: |███▃  ▆  █    ▁▂| min 0.00x maks 4.80x
+[expert] katman 4: |  ██    ▃█  █ █ | min 0.00x maks 4.35x
+[expert] katman 5: | ▇█   ███▆ █    | min 0.00x maks 3.68x
+[expert] katman 6: | ▅ ▄▁█  █▂ █ █ █| min 0.00x maks 3.44x
+[expert] katman 7: |█ █  █  █   █▂  | min 0.00x maks 4.05x
+bitti: 19.9 dk (eğitim 18.9 dk), en iyi val_loss 1.3399

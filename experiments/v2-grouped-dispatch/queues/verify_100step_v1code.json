@@ -1,0 +1,49 @@
+{
+ "out_dir": "C:\\Users\\murat\\Desktop\\foton gama v1\\checkpoints\\v2-verify",
+ "cwd": "C:\\Users\\murat\\AppData\\Local\\Temp\\claude\\C--Users-murat-Desktop-foton-gama-v1\\f3b68b07-93bb-44c8-898e-53a17efd247d\\scratchpad\\v1code",
+ "python": "C:\\Users\\murat\\Desktop\\foton gama v1\\.venv\\Scripts\\python.exe",
+ "runs": [
+  {
+   "name": "v1code-moe-s1337",
+   "args": [
+    "--preset",
+    "moe",
+    "--max_steps",
+    "100",
+    "--warmup_steps",
+    "20",
+    "--eval_interval",
+    "100",
+    "--log_interval",
+    "1",
+    "--sample_tokens",
+    "0",
+    "--seed",
+    "1337",
+    "--data_dir",
+    "C:\\Users\\murat\\Desktop\\foton gama v1\\data\\sp8k"
+   ]
+  },
+  {
+   "name": "v1code-moe-noaux-s1337",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--max_steps",
+    "100",
+    "--warmup_steps",
+    "20",
+    "--eval_interval",
+    "100",
+    "--log_interval",
+    "1",
+    "--sample_tokens",
+    "0",
+    "--seed",
+    "1337",
+    "--data_dir",
+    "C:\\Users\\murat\\Desktop\\foton gama v1\\data\\sp8k"
+   ]
+  }
+ ]
+}

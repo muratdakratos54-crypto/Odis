@@ -1,0 +1,13 @@
+# SHA-256 (checkpoint'ler git'te DEĞİL; v3 koşularının en iyi ağırlıkları)
+004f31dde593971d5323fb2c50dbb93bd5d369ddcd014a7a0642dcf700e08089 *checkpoints/v3/aux0.001-s1337/best.pt
+04c058216540af21ea73027f82e54b934235e18cd7c4017f241bab93e38908c6 *checkpoints/v3/aux0.001-s1338/best.pt
+e2c1c3b143b6ea16e84029112ab76f122319ed53ef4b84a9747cb4b2dd946368 *checkpoints/v3/aux0.001-s1339/best.pt
+d3acda5701cffc564684ada81d09f5627ac1e4316d2a885e980c2872fed5e0ac *checkpoints/v3/aux0.1-s1337/best.pt
+30c2b8dc3454ab092d5bab4b0af486ef42ea525de4dc73d39952313d715bb5bf *checkpoints/v3/aux0.1-s1338/best.pt
+d1d8325c3a93f3298fae27fd3b852e843d26dea958639b4c7d3bef750e4ab8a2 *checkpoints/v3/aux0.1-s1339/best.pt
+40bef1bc36ecbe268ae0dda8ff2704d72b9fb8d70b1d342513f522b18124c55d *checkpoints/v3/auxfree-s1337/best.pt
+f5c9568dda26c831cb92c2ca9bd765080e20b1afd5944685afd7f0be7bc5756d *checkpoints/v3/auxfree-s1338/best.pt
+bb89edbbb0399a36c83989eaf638aa33741f9f08bb14ff0534cc05b204873439 *checkpoints/v3/auxfree-s1339/best.pt
+01168c9f01d434e184ede16214e1c16ab75cdef7d0088d6ab3adabdc1e9c76af *checkpoints/v3/aux1.0-s1337/best.pt
+d46a3ac765aecf7b50ec838fb00de85afbfb4d4995f96f52b53e4ae8c2c55246 *checkpoints/v3/aux1.0-s1338/best.pt
+d3d4684e89e5eaea5a3def0083811e11a3c3aee6758bcb9b14c80279a11e034a *checkpoints/v3/aux1.0-s1339/best.pt

@@ -1,0 +1,18 @@
+checkpoint moe | girdi (16384, 512) torch.float32 | E=16 k=3 h=352
+expert başına token: [2549, 3127, 3529, 3069, 3096, 3162, 3179, 3477, 3175, 2885, 3171, 3211, 2816, 2481, 3078, 3147]
+  router + aux/z (float32)           fwd+bwd    1.49 ms
+  argsort + bincount                 fwd+bwd    0.49 ms
+  gather + cast (token -> expert)    fwd+bwd    0.76 ms
+  aynısı float32 gather ile          fwd+bwd    1.84 ms
+  expert'ler: _grouped_mm            fwd+bwd    6.51 ms
+  expert'ler: loop                   fwd+bwd    7.01 ms
+  combine: gate x çıktı + index_add  fwd+bwd    1.73 ms
+  shared expert                      fwd+bwd    1.53 ms
+  MoE tam katman (grouped)           fwd+bwd   13.43 ms
+  MoE tam katman (loop)              fwd+bwd   13.43 ms
+  dense FFN (h=1408)                 fwd+bwd    4.98 ms
+  attention + norm                   fwd+bwd    6.48 ms
+  son norm + lm_head + CE            fwd+bwd   19.90 ms
+  parçalar toplamı (grouped): 12.50 ms
+  clip + AdamW (dense, 29.9M param): 3.16 ms
+  clip + AdamW (moe, 79.2M param): 8.71 ms

@@ -1,0 +1,548 @@
+== checkpoints/v2\moe-tok-s1338\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.01, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.096 | ölü expert 0 | maks 1.50x | min 0.75x | yük entropisi 0.9980 (top-k)
+  UZMANLAŞMA: NMI 0.6248 (2.428 bit) | tutarlılık 0.610 | null 0.119 | top-1 kullanım entropisi 0.9726
+              I null (bağımsızlık tabanı) 0.136 bit | H(expert|token) 1.462 bit | expert çeşitliliği 0.963 (null ~1.0) | embedding tutarlılığı 0.034
+  ROUTER: top-1 gate 0.553 | seçim marjı 0.171 | entropi 0.823 | ham skor farkı 0.171
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3113): permütasyon +1.1463 | rastgele +0.8998 | ikinci-en-iyi +1.1877
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0004 | kosinüs hizası -0.0060
+  katman 4 lift örnekleri:
+    expert  0: (36.6) boy(23.8) lived(22.3) again(21.0) red(20.8) girl(17.5) up(11.0) down(8.0)
+    expert  1: ."(15.0) !"(11.7) ?"(11.7) very(9.2) little(8.9) small(7.7) They(5.1) started(4.8)
+    expert  2: laughed(10.4) Tim(9.7) his(9.7) Lucy(9.5) Lily(9.3) Tim(9.3) have(9.2) Kitty(9.0)
+    expert  3: decided(11.2) One(11.2) there(10.7) So(10.4) who(10.4) what(9.8) thought(9.5) wanted(9.3)
+    expert  4: (29.8) Once(29.8) upon(29.0) time(22.6) be(12.9) �(9.6) '(9.4) came(5.6)
+    expert  5: because(12.5) took(12.1) !(11.6) put(10.9) got(9.1) .(9.0) made(8.8) gave(8.1)
+    expert  6: played(11.4) play(11.3) felt(9.7) sad(9.6) playing(9.5) make(9.2) ,(8.1) with(7.5)
+    expert  7: inside(12.8) mom(11.8) liked(11.2) see(8.4) Sam(6.8) could(6.7) fish(6.7) friends(6.6)
+    expert  8: Yes(12.4) named(11.4) A(8.3) this(8.3) a(8.1) excited(6.9) The(6.7) big(5.9)
+    expert  9: in(10.1) find(7.5) to(6.6) the(6.6) for(6.3) your(5.6) You(5.3) can(4.6)
+    expert 10: �(31.2) an(13.8) fun(11.0) water(10.1) friends(7.9) �(6.7) one(6.3) friend(5.5)
+    expert 11: learned(11.4) said(10.8) came(10.1) scared(9.6) pretty(9.6) up(9.5) says(9.0) away(8.4)
+    expert 12: But(19.8) but(19.7) But(19.7) And(14.5) tried(10.3) so(9.8) more(9.4) did(9.0)
+    expert 13: they(9.8) both(9.8) them(8.7) They(7.9) became(7.8) she(7.4) it(7.4) he(6.8)
+    expert 14: looked(17.1) "(16.4) are(14.3) is(13.4) things(12.0) sky(11.2) was(10.9) were(10.8)
+    expert 15: go(14.1) went(13.8) me(13.2) back(10.3) we(9.7) You(8.7) home(7.9) want(7.4)
+-> experiments/v3-router-ablation/analysis2\a_aux0.01-s1338.json
+== checkpoints/v2\moe-tok-s1339\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.01, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.109 | ölü expert 0 | maks 1.47x | min 0.71x | yük entropisi 0.9975 (top-k)
+  UZMANLAŞMA: NMI 0.6346 (2.453 bit) | tutarlılık 0.622 | null 0.119 | top-1 kullanım entropisi 0.9694
+              I null (bağımsızlık tabanı) 0.135 bit | H(expert|token) 1.425 bit | expert çeşitliliği 0.965 (null ~1.0) | embedding tutarlılığı 0.035
+  ROUTER: top-1 gate 0.556 | seçim marjı 0.174 | entropi 0.825 | ham skor farkı 0.174
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3164): permütasyon +1.1585 | rastgele +0.9139 | ikinci-en-iyi +1.2235
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0004 | kosinüs hizası -0.0044
+  katman 4 lift örnekleri:
+    expert  0: home(11.8) away(11.5) back(10.3) know(8.5) came(8.5) friends(7.6) outside(7.4) what(6.4)
+    expert  1: in(16.3) into(15.1) around(14.3) ,(7.5) named(7.5) inside(7.3) room(7.0) house(6.9)
+    expert  2: (25.5) (25.3) there(15.3) So(14.7) every(13.3) something(8.3) �(8.2) an(8.1)
+    expert  3: and(9.1) me(8.9) him(8.1) sun(6.6) up(6.0) them(5.6) make(5.3) as(4.6)
+    expert  4: They(8.3) "(7.8) Lily(7.8) Tom(7.2) Tim(7.1) They(7.0) A(6.9) learned(6.8)
+    expert  5: ."(10.0) loved(9.4) is(8.6) !(7.8) liked(7.7) ?"(7.3) who(7.2) !"(6.3)
+    expert  6: Once(14.9) One(12.6) got(12.2) took(10.6) decided(10.3) I(9.3) day(9.2) then(8.7)
+    expert  7: toys(8.0) together(8.0) sky(7.6) ball(6.9) water(6.5) much(6.4) tree(6.4) things(6.3)
+    expert  8: from(19.7) each(19.4) for(16.0) says(14.2) ,"(9.5) became(8.6) Ben(8.5) of(7.2)
+    expert  9: upon(17.9) Yes(14.8) time(13.4) many(10.3) boy(8.9) new(8.7) you(8.7) girl(8.1)
+    expert 10: excited(13.8) scared(13.5) happy(12.3) good(12.1) sad(11.8) best(11.2) sorry(11.2) nice(8.0)
+    expert 11: The(15.3) The(13.4) It(5.2) gave(5.0) found(4.6) there(4.6) this(4.3) the(4.3)
+    expert 12: will(9.7) play(9.2) their(7.8) your(7.8) my(7.5) to(7.1) playing(7.1) the(6.9)
+    expert 13: One(19.8) about(11.8) started(11.3) thought(9.7) put(8.5) always(6.7) made(6.7) decided(6.6)
+    expert 14: �(17.0) !(6.3) t(6.2) '(6.2) look(6.1) get(5.1) looked(4.8) not(4.5)
+    expert 15: And(13.0) because(12.4) But(11.1) asked(9.5) But(9.4) but(8.6) have(7.7) told(7.5)
+-> experiments/v3-router-ablation/analysis2\a_aux0.01-s1339.json
+== checkpoints/v3\aux0.001-s1337\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.001, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.817 | ölü expert 6 | maks 3.28x | min 0.03x | yük entropisi 0.8795 (top-k)
+  UZMANLAŞMA: NMI 0.5741 (1.735 bit) | tutarlılık 0.632 | null 0.229 | top-1 kullanım entropisi 0.7548
+              I null (bağımsızlık tabanı) 0.093 bit | H(expert|token) 1.285 bit | expert çeşitliliği 0.964 (null ~1.0) | embedding tutarlılığı 0.035
+  ROUTER: top-1 gate 0.569 | seçim marjı 0.176 | entropi 0.836 | ham skor farkı 0.176
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3236): permütasyon +1.1846 | rastgele +0.9213 | ikinci-en-iyi +1.3077
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0003 | kosinüs hizası -0.0014
+  katman 4 lift örnekleri:
+    expert  0: Tim(5.7) So(5.6) he(5.2) Lucy(5.2) Tim(5.2) (5.1) Bob(5.0) she(5.0)
+    expert  1: named(6.8) sky(5.9) laughed(5.8) red(4.8) lived(4.7) too(3.7) I(3.7) other(3.6)
+    expert  2: house(25.4) became(16.8) '(13.0) scared(11.9) happy(6.0) not(5.6) is(4.5) time(3.4)
+    expert  3: Yes(55.2) sorry(54.9) good(27.8) you(18.4) best(15.8) more(14.7) small(10.3) we(8.3)
+    expert  4: '(64.0) ,(11.4) some(4.3) up(2.1) be(2.0) said(0.6) "(0.5) He(0.5)
+    expert  5: there(186.4) ,(5.3) '(2.4) became(2.0) says(1.9) an(1.5) said(0.4) the(0.2)
+    expert  6: gave(14.9) upon(14.7) find(14.1) found(13.5) get(12.9) took(12.6) make(12.4) made(12.2)
+    expert  7: (9.6) Ben(7.3) They(6.5) "(6.3) says(6.0) Lily(4.9) They(4.1) Mia(4.0)
+    expert  8: (41.4) home(31.8) And(31.2) house(18.4) away(16.8) park(10.8) from(6.1) a(5.9)
+    expert  9: can(25.6) will(25.5) could(16.7) would(13.5) inside(9.7) �(8.4) to(7.7) t(6.7)
+    expert 10: long(572.5) house(16.0) '(4.7) said(2.2) ,(0.8) .(0.5)
+    expert 11: A(5.5) knew(5.5) thought(5.5) tried(4.6) because(4.3) �(4.0) asked(4.0) as(3.9)
+    expert 12: out(109.4) wanted(108.0) want(75.5) liked(39.1) outside(21.0) loved(13.9) like(8.7) '(4.5)
+    expert 13: every(47.6) Once(47.5) One(47.4) one(47.0) each(44.2) that(42.1) did(40.7) One(39.2)
+    expert 14: it(10.9) ball(9.8) box(8.5) them(8.1) car(7.2) things(6.6) toys(6.4) him(5.6)
+    expert 15: together(4.9) excited(4.2) fun(4.1) my(4.1) went(4.0) your(4.0) learned(3.8) play(3.6)
+-> experiments/v3-router-ablation/analysis2\b_aux0.001-s1337.json
+== checkpoints/v3\aux0.001-s1338\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.001, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.825 | ölü expert 6 | maks 3.46x | min 0.01x | yük entropisi 0.8769 (top-k)
+  UZMANLAŞMA: NMI 0.5529 (1.665 bit) | tutarlılık 0.623 | null 0.228 | top-1 kullanım entropisi 0.7510
+              I null (bağımsızlık tabanı) 0.092 bit | H(expert|token) 1.339 bit | expert çeşitliliği 0.964 (null ~1.0) | embedding tutarlılığı 0.039
+  ROUTER: top-1 gate 0.568 | seçim marjı 0.174 | entropi 0.837 | ham skor farkı 0.174
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3262): permütasyon +1.0300 | rastgele +0.7689 | ikinci-en-iyi +1.0636
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0004 | kosinüs hizası -0.0016
+  katman 4 lift örnekleri:
+    expert  0: a(31.8) so(0.3) of(0.2) had(0.2) to(0.0) the(0.0) ,(0.0)
+    expert  1: '(134.1)
+    expert  2: laughed(6.4) played(5.9) again(5.6) home(5.5) sad(5.2) Tim(5.2) excited(5.0) (5.0)
+    expert  3: Once(13.5) decided(12.1) there(11.5) then(10.5) So(10.4) time(10.2) because(8.6) upon(8.4)
+    expert  4: (10.0) your(8.5) his(7.9) my(7.9) their(7.6) as(6.3) named(5.7) her(5.4)
+    expert  5: One(276.8) toy(28.2) boy(25.4) (24.0)
+    expert  6: '(80.4) ,(4.7)
+    expert  7: !(31.9) would(23.6) tree(18.3) One(13.7) Tim(5.5) "(4.3)
+    expert  8: (14.9) You(13.3) something(12.3) One(11.9) One(11.7) things(11.6) one(11.2) we(9.5)
+    expert  9: says(3.8) tried(3.8) loved(3.6) dad(3.5) him(3.5) mom(3.4) both(3.4) said(3.3)
+    expert 10: good(21.8) nice(20.6) �(17.5) pretty(17.4) �(17.4) best(16.4) new(14.7) red(9.3)
+    expert 11: One(255.7) boy(101.8) '(17.9)
+    expert 12: But(5.0) but(4.8) But(4.7) A(4.5) ."(3.9) very(3.8) .(3.5) many(3.3)
+    expert 13: decided(387.3) again(316.6) boy(169.6)
+    expert 14: I(6.2) I(6.1) this(5.5) an(5.2) lived(5.1) see(4.9) came(4.9) liked(4.5)
+    expert 15: Yes(30.2) ,"(18.4) sorry(13.3) ?"(12.9) !"(12.5) �(10.9) know(8.4) t(6.8)
+-> experiments/v3-router-ablation/analysis2\b_aux0.001-s1338.json
+== checkpoints/v3\aux0.001-s1339\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.001, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.797 | ölü expert 4 | maks 3.41x | min 0.01x | yük entropisi 0.8809 (top-k)
+  UZMANLAŞMA: NMI 0.5878 (1.765 bit) | tutarlılık 0.661 | null 0.255 | top-1 kullanım entropisi 0.7449
+              I null (bağımsızlık tabanı) 0.090 bit | H(expert|token) 1.215 bit | expert çeşitliliği 0.967 (null ~1.0) | embedding tutarlılığı 0.038
+  ROUTER: top-1 gate 0.573 | seçim marjı 0.178 | entropi 0.839 | ham skor farkı 0.178
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3245): permütasyon +1.1099 | rastgele +0.8801 | ikinci-en-iyi +1.2140
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0003 | kosinüs hizası +0.0019
+  katman 4 lift örnekleri:
+    expert  0: (16.9) ,"(16.6) excited(15.4) happy(15.1) know(13.5) came(13.1) !"(12.1) ?"(8.4)
+    expert  1: around(9.3) in(9.0) because(8.5) when(7.4) inside(7.1) I(7.1) with(6.7) �(6.6)
+    expert  2: nice(24.9) pretty(17.6) something(11.0) up(10.0) an(8.8) away(8.7) red(8.2) this(7.2)
+    expert  3: upon(11.8) make(11.5) made(10.9) for(9.9) became(9.9) be(9.6) have(9.2) You(7.4)
+    expert  4: They(4.3) One(4.3) The(4.2) \n(4.2) "(4.1) Lily(4.0) One(3.9) A(3.9)
+    expert  5: is(108.9) of(70.9) he(55.1)
+    expert  6: a(26.8) long(12.1) an(8.3)
+    expert  7: together(6.7) toys(6.5) him(6.1) them(5.9) again(5.9) things(5.7) some(5.7) time(5.6)
+    expert  8: Ben(54.4) asked(35.1) Mia(28.2) she(20.6) Sam(20.2) said(15.7) Lily(15.7) Tom(13.8)
+    expert  9: Once(39.4) best(39.2) scared(37.7) sad(36.4) good(36.0) sorry(32.0) much(27.3) more(17.3)
+    expert 10: 
+    expert 11: a(36.0) named(0.3)
+    expert 12: park(8.0) sky(7.7) room(7.3) house(7.0) your(6.2) there(6.2) new(6.1) my(5.6)
+    expert 13: laughed(8.6) thought(8.6) loved(8.3) says(8.1) started(7.6) decided(7.3) liked(7.2) tried(7.1)
+    expert 14: (10.1) all(7.4) .(7.1) !(6.5) ."(6.4) ?"(4.6) so(4.0) got(3.9)
+    expert 15: new(46.7) !(38.3) .(7.8)
+-> experiments/v3-router-ablation/analysis2\b_aux0.001-s1339.json
+== checkpoints/v2\moe-noaux-tok-s1337\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.0, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 1.214 | ölü expert 47 | maks 4.25x | min 0.00x | yük entropisi 0.7189 (top-k)
+  UZMANLAŞMA: NMI 0.5677 (1.549 bit) | tutarlılık 0.662 | null 0.286 | top-1 kullanım entropisi 0.6784
+              I null (bağımsızlık tabanı) 0.077 bit | H(expert|token) 1.165 bit | expert çeşitliliği 0.941 (null ~1.0) | embedding tutarlılığı 0.039
+  ROUTER: top-1 gate 0.588 | seçim marjı 0.251 | entropi 0.614 | ham skor farkı 0.251
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3273): permütasyon +1.2443 | rastgele +1.1172 | ikinci-en-iyi +1.3133
+  katman 4 lift örnekleri:
+    expert  0: always(8.1) he(7.2) time(6.9) she(6.8) then(6.6) Tim(6.4) became(5.7) boy(5.6)
+    expert  1: (5.5) (5.5) named(5.2) red(4.3) sun(4.1) lived(4.1) there(4.0) sad(3.9)
+    expert  2: 
+    expert  3: Yes(78.4) sorry(52.6) you(29.8) know(12.8) this(9.0) Tim(7.8) my(7.3) want(6.9)
+    expert  4: 
+    expert  5: 
+    expert  6: gave(18.4) make(18.4) for(17.9) made(17.6) told(16.7) help(14.9) find(14.7) asked(13.8)
+    expert  7: They(7.8) Ben(6.6) Lily(5.8) Tom(5.2) ,"(5.2) They(4.9) It(4.6) Mia(4.2)
+    expert  8: 
+    expert  9: 
+    expert 10: 
+    expert 11: upon(3.5) knew(3.4) A(3.3) thought(3.3) because(3.3) The(3.1) tried(3.1) The(2.9)
+    expert 12: liked(77.6) loved(77.6) wanted(77.4) out(77.4) want(69.6) like(45.7) on(3.1) made(2.0)
+    expert 13: one(62.6) Once(62.4) that(49.8) One(49.6) did(49.6) each(42.8) this(39.6) One(16.3)
+    expert 14: can(17.0) will(16.2) could(16.1) to(12.5) t(10.2) not(9.8) would(8.7) when(7.8)
+    expert 15: my(4.6) excited(4.5) together(4.4) good(4.2) your(4.1) best(4.0) fun(4.0) things(3.9)
+-> experiments/v3-router-ablation/analysis2\c_aux0-s1337.json
+== checkpoints/v2\moe-noaux-tok-s1338\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.0, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 1.243 | ölü expert 54 | maks 4.77x | min 0.00x | yük entropisi 0.6966 (top-k)
+  UZMANLAŞMA: NMI 0.5312 (1.427 bit) | tutarlılık 0.649 | null 0.282 | top-1 kullanım entropisi 0.6596
+              I null (bağımsızlık tabanı) 0.071 bit | H(expert|token) 1.212 bit | expert çeşitliliği 0.938 (null ~1.0) | embedding tutarlılığı 0.040
+  ROUTER: top-1 gate 0.589 | seçim marjı 0.261 | entropi 0.584 | ham skor farkı 0.261
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3310): permütasyon +1.0714 | rastgele +0.9077 | ikinci-en-iyi +1.0691
+  katman 4 lift örnekleri:
+    expert  0: 
+    expert  1: 
+    expert  2: became(4.9) laughed(4.9) more(4.8) excited(4.6) smiled(4.5) got(4.5) �(4.2) happy(4.2)
+    expert  3: Once(7.4) decided(7.1) there(6.4) then(5.7) each(5.6) time(5.6) who(5.0) So(4.7)
+    expert  4: ,(23.7)
+    expert  5: 
+    expert  6: 
+    expert  7: 
+    expert  8: You(17.8) big(14.7) best(13.1) small(10.0) we(9.1) new(8.9) long(8.0) red(7.9)
+    expert  9: dad(4.3) Ben(4.1) mom(3.9) him(3.7) Mia(3.2) Sam(3.1) Lily(3.1) Lily(3.1)
+    expert 10: 
+    expert 11: 
+    expert 12: ?"(3.1) ."(3.1) But(3.1) ,"(3.1) !"(3.1) (3.0) (3.0) But(3.0)
+    expert 13: 
+    expert 14: upon(9.7) an(7.0) toy(6.0) my(5.1) around(4.6) this(4.5) did(4.1) was(3.8)
+    expert 15: 
+-> experiments/v3-router-ablation/analysis2\c_aux0-s1338.json
+== checkpoints/v2\moe-noaux-tok-s1339\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.0, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 1.191 | ölü expert 52 | maks 4.17x | min 0.00x | yük entropisi 0.7155 (top-k)
+  UZMANLAŞMA: NMI 0.5468 (1.497 bit) | tutarlılık 0.663 | null 0.293 | top-1 kullanım entropisi 0.6704
+              I null (bağımsızlık tabanı) 0.075 bit | H(expert|token) 1.185 bit | expert çeşitliliği 0.934 (null ~1.0) | embedding tutarlılığı 0.036
+  ROUTER: top-1 gate 0.585 | seçim marjı 0.249 | entropi 0.615 | ham skor farkı 0.249
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3298): permütasyon +1.1658 | rastgele +1.0727 | ikinci-en-iyi +1.1972
+  katman 4 lift örnekleri:
+    expert  0: came(152.9) what(65.2) nice(60.6) fun(24.5) things(19.7) back(14.4) something(6.8) who(6.3)
+    expert  1: �(12.0) �(11.1) inside(10.5) we(8.4) ,(6.8) in(6.5) You(6.4) made(5.5)
+    expert  2: 
+    expert  3: for(15.4) make(11.7) You(10.8) with(9.1) you(8.1) and(7.3) made(7.3) to(5.9)
+    expert  4: (3.9) "(3.7) \n(3.7) A(3.7) They(3.7) "(3.6) Lily(3.6) played(3.5)
+    expert  5: 
+    expert  6: 
+    expert  7: (7.2) toys(6.7) together(6.4) time(6.2) him(6.0) things(5.9) friend(5.9) ball(5.9)
+    expert  8: says(71.2) asked(33.4) said(30.4) Ben(27.2) Mia(17.1) Lily(11.9) Sam(9.9) she(8.9)
+    expert  9: time(243.5)
+    expert 10: 
+    expert 11: ,(23.7)
+    expert 12: park(6.8) sky(6.5) room(6.4) house(6.0) your(6.0) outside(5.6) their(5.3) my(5.3)
+    expert 13: Once(10.1) One(9.9) thought(9.7) sorry(7.2) day(6.6) said(6.3) out(5.6) put(5.0)
+    expert 14: because(3.9) ?"(3.9) excited(3.8) ."(3.6) tried(3.6) upon(3.6) see(3.4) .(3.4)
+    expert 15: 
+-> experiments/v3-router-ablation/analysis2\c_aux0-s1339.json
+== checkpoints/v3\auxfree-s1337\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.0, 'z_loss_coef': 0.001, 'router_gate': 'sigmoid', 'bias_update_rate': 0.001, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.023 | ölü expert 0 | maks 1.06x | min 0.95x | yük entropisi 0.9999 (top-k)
+  UZMANLAŞMA: NMI 0.6183 (2.436 bit) | tutarlılık 0.611 | null 0.105 | top-1 kullanım entropisi 0.9853
+              I null (bağımsızlık tabanı) 0.138 bit | H(expert|token) 1.505 bit | expert çeşitliliği 0.965 (null ~1.0) | embedding tutarlılığı 0.035
+  ROUTER: top-1 gate 0.528 | seçim marjı 0.143 | entropi 0.823 | ham skor farkı 0.143 | bias ezme oranı 0.184
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3108): permütasyon +1.1046 | rastgele +0.8612 | ikinci-en-iyi +1.1999 | bias'sız +0.0002
+  BIAS: aralık 0.027 | sd 0.007 (|bias| ortalaması 0.051 seçime GİRMEZ: topk ortak kaydırmaya duyarsız)
+  katman 4 lift örnekleri:
+    expert  0: he(13.8) they(13.5) came(12.4) she(11.3) who(10.5) was(9.8) were(9.5) girl(8.2)
+    expert  1: red(16.4) pretty(14.8) laughed(13.1) sad(9.4) ,(7.2) long(7.2) small(4.2) again(4.0)
+    expert  2: ."(9.8) They(9.2) !"(7.0) (6.0) ?"(6.0) They(4.8) !(4.8) .(4.1)
+    expert  3: You(14.3) I(11.4) best(11.1) One(10.2) I(10.0) learned(9.6) you(9.2) away(8.9)
+    expert  4: too(18.4) Yes(16.5) every(13.7) �(9.1) is(8.3) do(7.8) �(7.3) are(6.2)
+    expert  5: A(9.4) So(9.0) then(8.9) Tim(8.7) Tim(7.4) Lily(7.1) Lucy(6.9) little(6.9)
+    expert  6: find(14.1) found(13.6) saw(11.8) told(9.5) asked(9.3) made(8.7) make(8.3) about(7.7)
+    expert  7: (12.6) there(7.5) .(7.4) \n(6.5) The(6.4) know(5.9) The(5.1) very(3.2)
+    expert  8: park(12.3) time(11.6) And(10.6) friends(9.5) house(9.4) played(8.5) room(8.0) named(7.6)
+    expert  9: will(11.3) could(10.9) can(10.9) ,"(10.2) to(9.2) go(7.8) help(7.7) would(6.2)
+    expert 10: (25.5) look(25.5) looked(25.5) playing(14.1) smiled(14.1) became(13.0) play(11.8) around(11.6)
+    expert 11: Once(17.1) did(13.7) put(11.7) many(9.7) gave(9.6) The(8.5) took(8.4) with(8.1)
+    expert 12: liked(15.1) wanted(14.5) loved(14.5) out(14.0) started(14.0) but(13.2) But(13.0) scared(12.9)
+    expert 13: upon(15.7) sun(12.1) your(11.0) some(10.6) one(10.1) this(9.4) my(7.8) that(7.7)
+    expert 14: it(12.4) box(11.3) ball(10.9) toys(10.1) car(9.9) It(9.6) things(8.2) water(7.9)
+    expert 15: decided(17.7) nice(15.8) excited(14.9) happy(14.8) lived(10.8) fun(10.3) good(9.3) together(7.2)
+-> experiments/v3-router-ablation/analysis2\d_auxfree-s1337.json
+== checkpoints/v3\auxfree-s1338\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.0, 'z_loss_coef': 0.001, 'router_gate': 'sigmoid', 'bias_update_rate': 0.001, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.022 | ölü expert 0 | maks 1.07x | min 0.95x | yük entropisi 0.9999 (top-k)
+  UZMANLAŞMA: NMI 0.5943 (2.341 bit) | tutarlılık 0.590 | null 0.108 | top-1 kullanım entropisi 0.9850
+              I null (bağımsızlık tabanı) 0.138 bit | H(expert|token) 1.599 bit | expert çeşitliliği 0.967 (null ~1.0) | embedding tutarlılığı 0.032
+  ROUTER: top-1 gate 0.526 | seçim marjı 0.144 | entropi 0.820 | ham skor farkı 0.143 | bias ezme oranı 0.183
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3102): permütasyon +1.0193 | rastgele +0.7481 | ikinci-en-iyi +1.0012 | bias'sız +0.0002
+  BIAS: aralık 0.028 | sd 0.007 (|bias| ortalaması 0.056 seçime GİRMEZ: topk ortak kaydırmaya duyarsız)
+  katman 4 lift örnekleri:
+    expert  0: and(10.8) red(9.1) A(7.4) a(6.4) that(6.1) And(5.1) inside(5.0) this(4.3)
+    expert  1: upon(20.7) some(12.5) do(12.2) make(11.3) inside(8.4) too(7.9) tried(7.8) what(7.6)
+    expert  2: smiled(12.0) Lily(11.8) mom(10.9) Ben(10.8) Sam(10.5) Sue(10.5) friends(10.4) sad(10.3)
+    expert  3: (12.1) Once(12.1) there(9.8) loved(8.0) liked(6.6) boy(6.2) time(5.8) know(5.7)
+    expert  4: (15.2) '(14.0) became(12.1) their(10.7) ,(9.0) as(8.2) his(7.2) \n(6.7)
+    expert  5: One(21.2) One(20.9) ran(16.2) (14.9) got(14.6) went(13.3) looked(10.7) go(10.5)
+    expert  6: played(19.8) play(16.9) playing(14.3) help(11.8) You(9.2) Tim(9.0) with(8.9) And(8.9)
+    expert  7: her(16.6) your(12.6) my(11.0) him(10.9) could(10.8) his(10.2) always(9.7) me(9.6)
+    expert  8: Yes(16.0) decided(10.9) park(10.3) knew(9.9) excited(9.3) things(9.1) each(8.2) You(7.8)
+    expert  9: found(12.2) saw(11.3) find(11.2) will(10.5) at(8.6) friend(8.3) not(8.0) t(8.0)
+    expert 10: .(8.7) best(8.1) good(6.7) !(5.9) nice(4.6) pretty(4.4) many(4.0) fun(2.6)
+    expert 11: says(11.9) said(11.5) gave(10.8) asked(10.4) into(9.2) all(8.8) back(8.4) every(8.0)
+    expert 12: The(11.7) But(11.7) But(11.5) but(10.0) The(9.8) more(9.5) So(8.9) be(8.6)
+    expert 13: �(12.2) it(10.3) he(8.8) box(8.6) them(8.1) ball(8.0) she(7.8) they(7.2)
+    expert 14: "(11.5) lived(8.5) I(8.5) I(7.7) was(6.9) "(6.9) outside(6.1) things(6.0)
+    expert 15: ,"(10.0) sorry(8.3) !"(8.3) ?"(8.2) ."(8.2) want(8.0) �(7.2) this(6.8)
+-> experiments/v3-router-ablation/analysis2\d_auxfree-s1338.json
+== checkpoints/v3\auxfree-s1339\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.0, 'z_loss_coef': 0.001, 'router_gate': 'sigmoid', 'bias_update_rate': 0.001, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.022 | ölü expert 0 | maks 1.10x | min 0.94x | yük entropisi 0.9999 (top-k)
+  UZMANLAŞMA: NMI 0.6100 (2.398 bit) | tutarlılık 0.606 | null 0.110 | top-1 kullanım entropisi 0.9834
+              I null (bağımsızlık tabanı) 0.137 bit | H(expert|token) 1.535 bit | expert çeşitliliği 0.965 (null ~1.0) | embedding tutarlılığı 0.035
+  ROUTER: top-1 gate 0.525 | seçim marjı 0.145 | entropi 0.823 | ham skor farkı 0.145 | bias ezme oranı 0.189
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3108): permütasyon +1.0709 | rastgele +0.8404 | ikinci-en-iyi +1.1132 | bias'sız +0.0002
+  BIAS: aralık 0.028 | sd 0.008 (|bias| ortalaması 0.053 seçime GİRMEZ: topk ortak kaydırmaya duyarsız)
+  katman 4 lift örnekleri:
+    expert  0: came(19.3) boy(14.2) ?"(12.8) girl(11.4) ."(10.6) he(10.2) named(10.0) !"(9.9)
+    expert  1: what(16.7) about(15.0) see(14.7) into(10.4) out(10.4) with(9.9) inside(9.2) �(8.2)
+    expert  2: (20.7) there(12.0) small(9.3) you(8.6) �(8.2) would(8.1) big(7.9) red(7.5)
+    expert  3: made(18.6) make(18.1) told(14.7) asked(14.1) for(13.9) that(12.2) You(11.8) felt(9.7)
+    expert  4: They(8.6) "(8.2) They(8.0) Lily(7.9) She(7.7) Tim(7.6) Tom(7.4) both(7.1)
+    expert  5: liked(15.1) loved(13.6) knew(10.2) is(10.1) thought(9.0) It(8.4) very(7.6) The(6.2)
+    expert  6: (16.8) upon(16.7) I(16.6) One(16.3) So(15.6) A(14.2) One(12.5) I(12.0)
+    expert  7: together(9.5) toys(9.1) ball(9.0) again(8.6) things(8.2) water(8.0) box(7.6) toy(7.4)
+    expert  8: from(13.1) and(8.4) to(8.0) in(7.8) ,"(7.6) says(7.5) had(6.3) with(6.1)
+    expert  9: laughed(12.9) Once(12.9) sorry(12.8) scared(12.6) tried(12.4) sad(12.3) excited(12.3) learned(12.1)
+    expert 10: down(21.6) play(17.4) playing(17.4) up(17.3) around(16.7) home(16.4) played(16.3) sky(13.6)
+    expert 11: many(12.7) named(9.5) ."(8.6) decided(7.1) put(6.9) .(6.3) played(5.4) playing(4.7)
+    expert 12: your(11.3) my(10.1) the(8.6) their(8.2) his(7.4) her(7.3) tree(7.1) park(6.8)
+    expert 13: do(13.7) some(11.5) will(11.5) can(9.9) have(8.2) would(8.1) be(7.8) fun(6.3)
+    expert 14: gave(18.1) help(15.4) all(12.8) go(8.1) get(8.0) every(7.2) at(6.4) put(5.5)
+    expert 15: But(12.3) But(12.1) when(11.8) because(11.3) but(10.6) then(9.1) And(9.0) \n(8.3)
+-> experiments/v3-router-ablation/analysis2\d_auxfree-s1339.json
+== checkpoints/v3\aux0.1-s1337\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.1, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.030 | ölü expert 0 | maks 1.11x | min 0.91x | yük entropisi 0.9998 (top-k)
+  UZMANLAŞMA: NMI 0.6299 (2.479 bit) | tutarlılık 0.619 | null 0.108 | top-1 kullanım entropisi 0.9846
+              I null (bağımsızlık tabanı) 0.138 bit | H(expert|token) 1.459 bit | expert çeşitliliği 0.962 (null ~1.0) | embedding tutarlılığı 0.035
+  ROUTER: top-1 gate 0.548 | seçim marjı 0.163 | entropi 0.837 | ham skor farkı 0.163
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3117): permütasyon +1.2528 | rastgele +0.9503 | ikinci-en-iyi +1.2938
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0019 | kosinüs hizası -0.0055
+  katman 4 lift örnekleri:
+    expert  0: time(20.0) would(17.0) could(16.7) are(10.6) can(10.5) will(10.4) be(8.8) is(8.7)
+    expert  1: (14.1) named(11.5) red(10.5) scared(10.4) little(7.7) a(6.8) small(6.0) pretty(5.4)
+    expert  2: smiled(16.6) ran(16.3) went(15.6) ,"(12.1) other(10.5) laughed(10.3) their(10.1) sad(7.0)
+    expert  3: Yes(16.9) home(14.5) room(14.2) I(14.0) thought(13.7) sorry(12.8) said(12.1) I(11.3)
+    expert  4: Once(17.0) '(8.1) this(8.0) �(6.5) do(5.6) is(4.1) day(4.0) It(3.9)
+    expert  5: Lily(8.7) She(8.5) Tim(8.4) He(8.4) girl(8.1) Lucy(7.8) boy(7.5) Tom(7.4)
+    expert  6: gave(19.5) found(18.6) get(17.0) find(16.5) took(16.3) made(16.2) did(15.6) make(15.1)
+    expert  7: (7.8) \n(7.6) They(7.5) .(7.2) The(6.4) They(6.3) they(6.2) !(4.9)
+    expert  8: played(15.5) every(13.8) And(12.2) playing(11.9) play(10.6) fun(9.5) so(8.9) friends(8.7)
+    expert  9: �(17.2) upon(16.3) know(10.1) will(9.2) can(7.8) small(6.0) me(5.6) day(5.4)
+    expert 10: look(35.9) looked(33.4) be(19.2) always(18.9) (15.8) ."(15.5) each(15.1) "(13.6)
+    expert 11: knew(17.5) saw(15.9) see(14.8) there(14.3) with(11.4) asked(8.1) at(7.7) help(7.2)
+    expert 12: liked(13.0) box(12.3) loved(11.9) into(11.7) sky(11.4) out(11.4) down(10.6) started(8.9)
+    expert 13: sun(10.4) The(10.1) your(9.0) One(8.3) some(8.1) big(7.4) the(7.4) one(7.4)
+    expert 14: because(20.3) when(18.3) what(11.4) t(10.9) not(10.4) to(10.3) came(9.1) toys(7.8)
+    expert 15: lived(16.4) decided(16.4) learned(14.7) nice(12.0) excited(9.6) happy(9.3) You(9.3) you(8.9)
+-> experiments/v3-router-ablation/analysis2\e_aux0.1-s1337.json
+== checkpoints/v3\aux0.1-s1338\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.1, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.025 | ölü expert 0 | maks 1.16x | min 0.94x | yük entropisi 0.9999 (top-k)
+  UZMANLAŞMA: NMI 0.6397 (2.517 bit) | tutarlılık 0.623 | null 0.112 | top-1 kullanım entropisi 0.9846
+              I null (bağımsızlık tabanı) 0.138 bit | H(expert|token) 1.421 bit | expert çeşitliliği 0.963 (null ~1.0) | embedding tutarlılığı 0.037
+  ROUTER: top-1 gate 0.551 | seçim marjı 0.168 | entropi 0.831 | ham skor farkı 0.168
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3133): permütasyon +1.2027 | rastgele +0.9474 | ikinci-en-iyi +1.2765
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0020 | kosinüs hizası +0.0045
+  katman 4 lift örnekleri:
+    expert  0: outside(18.9) down(18.9) red(18.7) every(17.0) boy(11.4) sky(10.6) up(10.4) this(9.8)
+    expert  1: felt(11.8) One(11.6) The(9.5) One(9.2) The(9.2) (8.9) ."(8.7) an(7.9)
+    expert  2: (10.9) Tim(10.8) became(10.5) Lucy(10.0) Tim(9.9) laughed(9.9) Lily(9.8) Tom(9.2)
+    expert  3: ,"(16.3) decided(16.2) there(13.5) what(12.9) know(10.6) when(10.3) as(10.0) knew(7.7)
+    expert  4: (19.9) Once(19.8) played(15.4) playing(13.8) '(12.3) long(10.0) learned(10.0) room(9.9)
+    expert  5: took(22.6) put(21.6) get(21.6) got(21.5) some(17.6) made(15.6) make(12.7) would(12.0)
+    expert  6: lived(18.0) from(17.0) loved(14.0) about(11.9) told(11.8) of(11.4) scared(11.3) play(8.6)
+    expert  7: !(13.3) because(13.2) my(11.5) your(10.6) their(10.0) her(9.3) his(8.5) ,(7.6)
+    expert  8: You(13.2) Yes(12.3) time(11.2) thought(10.4) we(10.0) each(9.9) big(8.1) you(7.6)
+    expert  9: upon(15.7) around(13.7) saw(11.9) at(11.6) found(11.0) find(10.2) into(10.2) t(9.8)
+    expert 10: .(7.7) home(6.7) away(6.6) water(5.0) toys(3.5) back(3.3) !(2.9) ."(2.7)
+    expert 11: They(11.6) to(9.9) gave(8.9) said(6.3) told(6.2) will(6.2) asked(6.0) sad(6.0)
+    expert 12: So(17.5) But(17.1) And(16.9) but(16.9) But(16.3) very(14.2) then(11.9) too(11.4)
+    expert 13: mom(9.3) them(9.2) dad(8.9) they(8.6) both(8.4) ball(7.3) box(6.9) friend(6.4)
+    expert 14: looked(16.2) came(15.3) are(15.2) started(15.2) were(13.6) I(13.5) I(12.9) "(12.9)
+    expert 15: ran(16.4) went(15.5) go(15.2) sorry(10.2) �(8.7) �(7.3) nice(6.9) want(6.6)
+-> experiments/v3-router-ablation/analysis2\e_aux0.1-s1338.json
+== checkpoints/v3\aux0.1-s1339\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 0.1, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.029 | ölü expert 0 | maks 1.06x | min 0.92x | yük entropisi 0.9998 (top-k)
+  UZMANLAŞMA: NMI 0.6336 (2.487 bit) | tutarlılık 0.618 | null 0.107 | top-1 kullanım entropisi 0.9822
+              I null (bağımsızlık tabanı) 0.137 bit | H(expert|token) 1.442 bit | expert çeşitliliği 0.963 (null ~1.0) | embedding tutarlılığı 0.036
+  ROUTER: top-1 gate 0.548 | seçim marjı 0.165 | entropi 0.829 | ham skor farkı 0.165
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3106): permütasyon +1.1479 | rastgele +0.8986 | ikinci-en-iyi +1.1908
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0020 | kosinüs hizası +0.0019
+  katman 4 lift örnekleri:
+    expert  0: tried(20.5) ran(19.6) came(17.2) went(16.1) back(16.0) learned(14.0) started(13.1) home(11.9)
+    expert  1: in(12.1) into(11.3) You(11.0) see(8.1) on(7.2) with(7.0) saw(6.0) I(5.9)
+    expert  2: (27.5) �(21.0) every(19.8) small(17.7) red(13.7) (12.3) loved(12.0) an(11.2)
+    expert  3: make(14.3) made(13.3) and(8.1) as(4.5) named(4.4) then(4.4) for(4.3) be(3.6)
+    expert  4: Lily(8.9) Tim(8.5) Tom(8.3) They(7.5) He(6.9) They(6.8) both(6.5) She(6.4)
+    expert  5: something(10.2) ."(9.2) .(8.2) is(7.9) And(7.7) ?"(6.8) s(6.0) !"(5.7)
+    expert  6: Once(14.7) One(14.0) So(13.6) took(13.6) decided(12.7) One(11.8) find(11.0) wanted(10.7)
+    expert  7: toys(10.2) room(9.7) water(9.6) box(9.5) things(9.5) house(8.9) toy(8.9) ball(8.7)
+    expert  8: each(21.9) boy(14.4) says(12.5) who(11.9) girl(11.5) ,"(9.9) smiled(8.6) Ben(6.9)
+    expert  9: sorry(18.0) me(13.6) scared(11.9) him(11.8) too(8.7) her(8.3) other(8.0) them(7.7)
+    expert 10: nice(16.6) away(15.0) good(14.7) time(13.9) happy(13.8) sad(12.6) pretty(11.6) excited(9.2)
+    expert 11: this(16.7) The(11.3) new(9.5) we(8.3) many(7.8) You(7.8) they(5.6) up(5.5)
+    expert 12: The(10.4) always(10.3) my(10.0) your(9.7) play(9.2) will(8.0) can(7.7) to(6.6)
+    expert 13: became(18.2) very(13.0) from(12.7) got(12.5) some(10.6) knew(9.4) looked(9.0) much(8.8)
+    expert 14: (13.4) all(8.6) '(7.7) do(7.6) gave(7.1) see(5.9) !(5.3) so(5.1)
+    expert 15: But(16.6) But(16.5) A(16.3) upon(15.8) but(14.3) did(11.9) when(10.0) little(9.5)
+-> experiments/v3-router-ablation/analysis2\e_aux0.1-s1339.json
+== checkpoints/v3\aux1.0-s1337\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 1.0, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.018 | ölü expert 0 | maks 1.05x | min 0.93x | yük entropisi 0.9999 (top-k)
+  UZMANLAŞMA: NMI 0.6745 (2.646 bit) | tutarlılık 0.664 | null 0.111 | top-1 kullanım entropisi 0.9810
+              I null (bağımsızlık tabanı) 0.137 bit | H(expert|token) 1.278 bit | expert çeşitliliği 0.961 (null ~1.0) | embedding tutarlılığı 0.035
+  ROUTER: top-1 gate 0.512 | seçim marjı 0.119 | entropi 0.891 | ham skor farkı 0.119
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3275): permütasyon +1.1481 | rastgele +0.9175 | ikinci-en-iyi +1.2078
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0112 | kosinüs hizası +0.0031
+  katman 4 lift örnekleri:
+    expert  0: started(25.5) on(15.4) is(12.5) are(9.9) him(9.5) it(8.4) them(7.9) in(7.8)
+    expert  1: time(21.6) upon(19.6) little(16.2) pretty(12.8) small(9.9) '(7.7) ,(6.1) red(5.7)
+    expert  2: ran(29.8) �(27.5) we(26.6) then(23.9) You(22.2) other(17.6) gave(17.6) they(9.3)
+    expert  3: best(15.8) again(15.8) Yes(15.1) more(14.8) day(14.4) excited(11.4) together(11.2) away(10.7)
+    expert  4: would(15.5) So(14.3) can(14.0) told(14.0) too(13.4) asked(12.8) will(12.6) could(12.4)
+    expert  5: She(7.8) He(7.7) Lily(7.2) got(7.1) Tim(7.0) Tom(6.8) and(6.6) took(6.6)
+    expert  6: were(15.3) did(15.0) scared(14.6) make(14.3) made(14.1) be(12.9) (12.6) help(11.8)
+    expert  7: (7.3) .(7.2) ."(7.1) They(7.1) \n(7.0) !(6.7) They(6.7) both(6.1)
+    expert  8: (12.5) play(11.8) played(11.8) felt(9.4) laughed(9.2) playing(9.1) And(8.5) things(8.3)
+    expert  9: �(23.0) One(21.7) One(20.6) go(16.0) ,"(14.3) big(13.5) found(13.2) into(11.0)
+    expert 10: park(17.6) look(16.3) house(16.2) smiled(15.2) looked(14.8) outside(12.8) tree(12.0) room(9.6)
+    expert 11: put(21.2) do(19.0) knew(17.3) liked(16.8) see(14.4) fun(14.2) find(13.4) with(13.2)
+    expert 12: Once(15.1) tried(15.1) wanted(14.8) I(14.5) But(14.5) But(14.0) says(14.0) said(13.8)
+    expert 13: every(11.7) The(9.9) this(9.4) the(9.0) their(8.9) his(8.4) each(8.3) fish(8.2)
+    expert 14: It(19.0) ball(17.0) t(14.9) it(14.1) car(12.8) not(10.8) box(10.4) when(7.8)
+    expert 15: saw(16.7) happy(15.4) learned(15.4) know(15.4) nice(15.1) decided(14.1) sorry(13.3) lived(11.6)
+-> experiments/v3-router-ablation/analysis2\f_aux1.0-s1337.json
+== checkpoints/v3\aux1.0-s1338\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 1.0, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.017 | ölü expert 0 | maks 1.05x | min 0.94x | yük entropisi 0.9999 (top-k)
+  UZMANLAŞMA: NMI 0.6668 (2.633 bit) | tutarlılık 0.638 | null 0.105 | top-1 kullanım entropisi 0.9873
+              I null (bağımsızlık tabanı) 0.138 bit | H(expert|token) 1.316 bit | expert çeşitliliği 0.963 (null ~1.0) | embedding tutarlılığı 0.033
+  ROUTER: top-1 gate 0.519 | seçim marjı 0.127 | entropi 0.881 | ham skor farkı 0.127
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3252): permütasyon +1.1399 | rastgele +0.9120 | ikinci-en-iyi +1.2134
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0128 | kosinüs hizası +0.0006
+  katman 4 lift örnekleri:
+    expert  0: smiled(21.4) inside(18.0) red(17.2) ran(13.1) found(12.6) up(12.4) lived(11.0) home(10.4)
+    expert  1: when(16.2) made(15.3) what(14.8) who(14.7) You(14.6) make(13.3) One(12.9) wanted(12.2)
+    expert  2: Max(12.2) Spot(12.2) Bob(12.2) Tim(12.0) Ben(11.9) Tom(11.8) Lily(11.7) Kitty(11.7)
+    expert  3: his(16.2) my(16.0) your(15.6) her(15.4) and(8.6) ,"(8.0) s(7.3) as(7.3)
+    expert  4: (15.4) Once(15.0) .(7.1) ."(6.3) small(5.8) !(5.7) very(4.2) !"(4.1)
+    expert  5: But(18.0) But(17.4) because(16.3) but(14.7) then(10.3) can(9.6) could(9.2) thought(9.0)
+    expert  6: know(11.6) see(11.1) boy(10.0) scared(9.8) And(8.6) me(8.5) sad(8.3) ,(7.8)
+    expert  7: liked(12.5) loved(12.4) gave(10.4) knew(10.2) will(9.3) were(8.7) ."(7.1) .(6.6)
+    expert  8: (11.5) every(11.4) each(11.3) They(10.0) They(8.9) we(7.8) learned(7.1) they(6.7)
+    expert  9: �(12.3) in(11.9) '(11.4) not(7.5) with(7.4) on(7.1) at(6.8) to(6.6)
+    expert 10: time(15.2) long(11.6) good(10.0) �(9.4) best(9.0) back(9.0) told(8.3) again(7.6)
+    expert 11: took(16.0) get(16.0) said(14.6) got(14.6) says(14.2) day(11.8) big(10.9) their(10.3)
+    expert 12: much(16.7) be(15.8) named(15.3) very(14.1) did(11.9) all(10.4) so(9.1) a(8.1)
+    expert 13: there(12.7) friend(10.2) dad(9.6) them(9.3) it(8.9) him(8.7) other(7.7) toys(7.7)
+    expert 14: felt(15.2) looked(15.2) laughed(14.7) look(11.2) is(10.8) ball(9.2) are(8.8) came(8.6)
+    expert 15: excited(19.1) go(14.9) went(11.9) decided(10.1) Yes(9.9) happy(9.7) sky(9.3) together(8.7)
+-> experiments/v3-router-ablation/analysis2\f_aux1.0-s1338.json
+== checkpoints/v3\aux1.0-s1339\best.pt (adım 3000, 327,680 token) ==
+  config: {'n_experts': 16, 'top_k': 3, 'aux_loss_coef': 1.0, 'z_loss_coef': 0.001, 'router_gate': 'softmax', 'bias_update_rate': 0.0, 'moe_impl': 'grouped'}
+  DENGE: yük CV 0.022 | ölü expert 0 | maks 1.06x | min 0.94x | yük entropisi 0.9999 (top-k)
+  UZMANLAŞMA: NMI 0.6613 (2.588 bit) | tutarlılık 0.651 | null 0.117 | top-1 kullanım entropisi 0.9789
+              I null (bağımsızlık tabanı) 0.137 bit | H(expert|token) 1.327 bit | expert çeşitliliği 0.964 (null ~1.0) | embedding tutarlılığı 0.037
+  ROUTER: top-1 gate 0.520 | seçim marjı 0.127 | entropi 0.881 | ham skor farkı 0.127
+  KARŞI-OLGUSAL CE (öğrenilmiş 1.3220): permütasyon +1.0975 | rastgele +0.8759 | ikinci-en-iyi +1.1595
+  DENGELEME KUVVETİ: |aux grad| / |görev grad| 0.0120 | kosinüs hizası -0.0000
+  katman 4 lift örnekleri:
+    expert  0: ran(13.7) excited(13.7) liked(12.0) happy(11.7) wanted(11.2) went(11.1) good(11.0) came(10.9)
+    expert  1: into(11.2) in(11.2) upon(10.6) told(10.5) inside(10.3) �(9.6) loved(9.4) with(9.4)
+    expert  2: (19.9) gave(15.3) took(15.3) I(12.2) put(11.6) little(7.3) we(6.7) I(6.6)
+    expert  3: make(30.2) then(24.6) me(16.9) will(14.6) day(11.9) to(11.9) can(11.6) made(11.0)
+    expert  4: They(10.4) Lily(9.6) Tim(9.3) They(9.2) Tom(9.0) Tim(8.4) Kitty(7.9) were(7.7)
+    expert  5: !(8.8) looked(8.6) look(7.8) ."(7.2) .(7.2) \n(6.9) ?"(6.4) my(6.2)
+    expert  6: Once(26.1) �(20.9) A(20.5) I(18.0) So(14.6) "(10.5) because(10.4) each(6.6)
+    expert  7: park(8.8) sky(8.7) toys(8.5) water(8.5) room(8.4) things(8.2) box(8.2) other(8.1)
+    expert  8: She(11.2) He(10.5) had(10.4) and(9.5) says(8.1) find(8.0) for(7.9) who(7.8)
+    expert  9: Yes(14.5) scared(13.6) said(12.5) laughed(12.4) sorry(11.5) decided(10.7) smiled(9.9) again(9.8)
+    expert 10: red(16.9) time(16.0) that(13.2) this(10.4) new(8.1) ,(7.4) So(7.3) long(6.1)
+    expert 11: (17.4) there(14.8) "(9.8) "(9.5) named(8.9) One(7.8) You(7.3) The(6.8)
+    expert 12: playing(13.2) played(12.9) would(10.5) can(8.7) The(8.1) play(8.1) The(7.4) could(7.3)
+    expert 13: One(20.6) thought(20.4) very(16.8) knew(16.0) from(16.0) became(15.9) so(15.8) is(13.0)
+    expert 14: but(20.2) know(18.8) And(15.9) But(13.5) But(9.4) and(7.6) help(7.1) on(6.3)
+    expert 15: every(28.2) as(25.3) got(24.5) get(24.0) when(19.1) But(16.5) a(16.1) ,"(14.1)
+-> experiments/v3-router-ablation/analysis2\f_aux1.0-s1339.json
+[atla] experiments/v3-router-ablation/analysis2\a_aux0.01-s1337.json var
+[analiz] a_aux0.01-s1338
+[analiz] a_aux0.01-s1339
+[analiz] b_aux0.001-s1337
+[analiz] b_aux0.001-s1338
+[analiz] b_aux0.001-s1339
+[analiz] c_aux0-s1337
+[analiz] c_aux0-s1338
+[analiz] c_aux0-s1339
+[analiz] d_auxfree-s1337
+[analiz] d_auxfree-s1338
+[analiz] d_auxfree-s1339
+[analiz] e_aux0.1-s1337
+[analiz] e_aux0.1-s1338
+[analiz] e_aux0.1-s1339
+[analiz] f_aux1.0-s1337
+[analiz] f_aux1.0-s1338
+[analiz] f_aux1.0-s1339
+== Router dengeleme ablasyonu: koşullar x 3 seed (ortalama ± sd) ==
+ölçüt                        aux 0.01 (normal)     aux 0.001 (zayıf)               aux yok     aux'suz dengeleme       aux 0.1 (güçlü)   aux 1.0 (çok güçlü)
+val loss                       1.3231 ± 0.0023       1.3334 ± 0.0013       1.3383 ± 0.0019       1.3195 ± 0.0002       1.3207 ± 0.0011       1.3339 ± 0.0030
+ppl                              3.755 ± 0.009         3.794 ± 0.005         3.812 ± 0.007         3.742 ± 0.001         3.746 ± 0.004         3.796 ± 0.011
+tok/s (k)                               86 ± 1                85 ± 1                87 ± 0                84 ± 0                85 ± 0                85 ± 1
+yük CV                           0.103 ± 0.007         0.813 ± 0.014         1.216 ± 0.026         0.022 ± 0.000         0.028 ± 0.002         0.019 ± 0.003
+ölü expert                           0.0 ± 0.0             5.3 ± 1.2            51.0 ± 3.6             0.0 ± 0.0             0.0 ± 0.0             0.0 ± 0.0
+maks pay                           1.47 ± 0.02           3.38 ± 0.09           4.40 ± 0.33           1.08 ± 0.02           1.11 ± 0.05           1.05 ± 0.01
+mi_bits                          2.429 ± 0.023         1.722 ± 0.051         1.491 ± 0.061         2.392 ± 0.048         2.494 ± 0.020         2.622 ± 0.030
+NMI                            0.6259 ± 0.0082       0.5716 ± 0.0176       0.5486 ± 0.0183       0.6075 ± 0.0122       0.6344 ± 0.0050       0.6676 ± 0.0066
+H(expert|token) bit              1.459 ± 0.033         1.279 ± 0.062         1.187 ± 0.024         1.547 ± 0.048         1.441 ± 0.019         1.307 ± 0.026
+kullanım entropisi             0.9721 ± 0.0025       0.7502 ± 0.0050       0.6695 ± 0.0095       0.9845 ± 0.0010       0.9838 ± 0.0014       0.9824 ± 0.0044
+tutarlılık                       0.615 ± 0.006         0.639 ± 0.020         0.658 ± 0.008         0.602 ± 0.011         0.620 ± 0.003         0.651 ± 0.013
+expert çeşitliliği               0.963 ± 0.001         0.965 ± 0.002         0.938 ± 0.004         0.966 ± 0.001         0.963 ± 0.000         0.963 ± 0.002
+embedding tutarlılığı            0.035 ± 0.001         0.038 ± 0.002         0.038 ± 0.002         0.034 ± 0.002         0.036 ± 0.001         0.035 ± 0.002
+seçim marjı                      0.171 ± 0.004         0.176 ± 0.002         0.254 ± 0.007         0.144 ± 0.001         0.165 ± 0.002         0.124 ± 0.005
+top-1 gate                       0.553 ± 0.003         0.570 ± 0.003         0.587 ± 0.002         0.526 ± 0.002         0.549 ± 0.002         0.517 ± 0.004
+ΔCE permütasyon              +1.1700 ± +0.0310     +1.1082 ± +0.0773     +1.1605 ± +0.0866     +1.0649 ± +0.0430     +1.2011 ± +0.0525     +1.1285 ± +0.0272
+ΔCE rastgele                 +0.9165 ± +0.0181     +0.8568 ± +0.0788     +1.0325 ± +0.1104     +0.8166 ± +0.0602     +0.9321 ± +0.0290     +0.9018 ± +0.0226
+ΔCE ikinci-en-iyi            +1.2205 ± +0.0315     +1.1951 ± +0.1231     +1.1932 ± +0.1222     +1.1048 ± +0.0996     +1.2537 ± +0.0552     +1.1935 ± +0.0297
+ΔCE bias'sız                                 —                     —                     —     +0.0002 ± +0.0000                     —                     —
+|aux grad|/|görev grad|        0.0004 ± 0.0000       0.0003 ± 0.0000                     —                     —       0.0020 ± 0.0001       0.0120 ± 0.0008
+aux-görev kosinüs            -0.0042 ± +0.0019     -0.0003 ± +0.0020                     —                     —     +0.0003 ± +0.0052     +0.0012 ± +0.0016
+bias ezme oranı                  0.000 ± 0.000         0.000 ± 0.000         0.000 ± 0.000         0.186 ± 0.003         0.000 ± 0.000         0.000 ± 0.000
+
+== (a) ile eşleştirilmiş farklar (seed başına; %95 GA t(2)) ==
+  val loss                b: +0.0103 GA [+0.0016, +0.0190] | c: +0.0152 GA [+0.0061, +0.0243] | d: -0.0035 GA [-0.0099, +0.0028] | e: -0.0023 GA [-0.0109, +0.0062] | f: +0.0108 GA [-0.0005, +0.0222]
+  ppl                     b: +0.0389 GA [+0.0061, +0.0717] | c: +0.0575 GA [+0.0233, +0.0918] | d: -0.0132 GA [-0.0370, +0.0106] | e: -0.0088 GA [-0.0408, +0.0231] | f: +0.0408 GA [-0.0020, +0.0837]
+  tok/s (k)               b: -1.0669 GA [-4.6918, +2.5579] | c: +1.2184 GA [-0.5842, +3.0210] | d: -1.9268 GA [-3.3493, -0.5042] | e: -0.7061 GA [-2.9834, +1.5711] | f: -1.0441 GA [-4.2035, +2.1153]
+  yük CV                  b: +0.7101 GA [+0.6591, +0.7611] | c: +1.1129 GA [+1.0317, +1.1940] | d: -0.0811 GA [-0.0972, -0.0649] | e: -0.0751 GA [-0.0868, -0.0633] | f: -0.0840 GA [-0.0946, -0.0734]
+  ölü expert              b: +5.3333 GA [+2.4649, +8.2018] | c: +51.0000 GA [+42.0433, +59.9567] | d: +0.0000 GA [+0.0000, +0.0000] | e: +0.0000 GA [+0.0000, +0.0000] | f: +0.0000 GA [+0.0000, +0.0000]
+  maks pay                b: +1.9093 GA [+1.7258, +2.0927] | c: +2.9243 GA [+2.1528, +3.6958] | d: -0.3948 GA [-0.4700, -0.3196] | e: -0.3622 GA [-0.4525, -0.2720] | f: -0.4219 GA [-0.4720, -0.3718]
+  mi_bits                 b: -0.7079 GA [-0.8281, -0.5878] | c: -0.9388 GA [-1.1211, -0.7565] | d: -0.0378 GA [-0.1877, +0.1121] | e: +0.0650 GA [-0.0055, +0.1355] | f: +0.1930 GA [+0.0614, +0.3246]
+  NMI                     b: -0.0543 GA [-0.0922, -0.0164] | c: -0.0774 GA [-0.1352, -0.0195] | d: -0.0184 GA [-0.0585, +0.0217] | e: +0.0085 GA [-0.0124, +0.0293] | f: +0.0416 GA [+0.0050, +0.0783]
+  H(expert|token) bit     b: -0.1796 GA [-0.3005, -0.0587] | c: -0.2717 GA [-0.3880, -0.1555] | d: +0.0876 GA [-0.0731, +0.2483] | e: -0.0182 GA [-0.0957, +0.0594] | f: -0.1518 GA [-0.2953, -0.0082]
+  kullanım entropisi      b: -0.2219 GA [-0.2282, -0.2156] | c: -0.3026 GA [-0.3252, -0.2800] | d: +0.0124 GA [+0.0087, +0.0162] | e: +0.0117 GA [+0.0086, +0.0148] | f: +0.0103 GA [+0.0001, +0.0205]
+  tutarlılık              b: +0.0234 GA [-0.0102, +0.0571] | c: +0.0430 GA [+0.0300, +0.0560] | d: -0.0131 GA [-0.0375, +0.0113] | e: +0.0047 GA [-0.0175, +0.0270] | f: +0.0357 GA [+0.0025, +0.0690]
+  expert çeşitliliği      b: +0.0017 GA [-0.0007, +0.0042] | c: -0.0257 GA [-0.0383, -0.0131] | d: +0.0023 GA [-0.0015, +0.0061] | e: -0.0007 GA [-0.0042, +0.0027] | f: -0.0005 GA [-0.0015, +0.0005]
+  embedding tutarlılığı   b: +0.0029 GA [-0.0033, +0.0091] | c: +0.0036 GA [-0.0027, +0.0099] | d: -0.0009 GA [-0.0043, +0.0024] | e: +0.0010 GA [-0.0024, +0.0044] | f: +0.0003 GA [-0.0042, +0.0048]
+  seçim marjı             b: +0.0055 GA [-0.0033, +0.0143] | c: +0.0831 GA [+0.0644, +0.1018] | d: -0.0266 GA [-0.0325, -0.0207] | e: -0.0052 GA [-0.0122, +0.0017] | f: -0.0462 GA [-0.0509, -0.0415]
+  top-1 gate              b: +0.0163 GA [+0.0112, +0.0214] | c: +0.0340 GA [+0.0227, +0.0453] | d: -0.0271 GA [-0.0378, -0.0164] | e: -0.0041 GA [-0.0119, +0.0037] | f: -0.0365 GA [-0.0418, -0.0313]
+  ΔCE permütasyon         b: -0.0618 GA [-0.1841, +0.0606] | c: -0.0095 GA [-0.1557, +0.1368] | d: -0.1050 GA [-0.1550, -0.0551] | e: +0.0311 GA [-0.0594, +0.1216] | f: -0.0415 GA [-0.1169, +0.0340]
+  ΔCE rastgele            b: -0.0597 GA [-0.2147, +0.0953] | c: +0.1160 GA [-0.1184, +0.3504] | d: -0.0999 GA [-0.2113, +0.0115] | e: +0.0156 GA [-0.0626, +0.0938] | f: -0.0147 GA [-0.0775, +0.0481]
+  ΔCE ikinci-en-iyi       b: -0.0254 GA [-0.2533, +0.2025] | c: -0.0274 GA [-0.2528, +0.1981] | d: -0.1158 GA [-0.2851, +0.0536] | e: +0.0332 GA [-0.1194, +0.1858] | f: -0.0270 GA [-0.1434, +0.0894]
+
+-> experiments/v3-router-ablation/summary2.json
+
+== Katman 4 lift örnekleri (seed 1337) ==
+  aux 0.01 (normal):
+    expert 0: park(18.2) every(15.5) got(9.1) on(7.9) home(6.6) he(5.8)
+    expert 1: red(12.6) felt(12.0) became(11.5) too(11.2) were(10.5) again(9.7)
+    expert 2: smiled(17.1) laughed(12.1) I(11.3) I(11.0) together(10.6) ,(8.1)
+    expert 3: best(19.5) things(18.1) time(16.0) new(12.0) more(9.2) other(8.3)
+    expert 4: Yes(23.5) �(11.3) friend(9.6) room(9.3) me(8.8) you(5.7)
+    expert 5: Lily(8.1) So(8.1) then(8.0) Tim(7.9) She(7.8) girl(7.8)
+  aux 0.001 (zayıf):
+    expert 0: Tim(5.7) So(5.6) he(5.2) Lucy(5.2) Tim(5.2) (5.1)
+    expert 1: named(6.8) sky(5.9) laughed(5.8) red(4.8) lived(4.7) too(3.7)
+    expert 2: house(25.4) became(16.8) '(13.0) scared(11.9) happy(6.0) not(5.6)
+    expert 3: Yes(55.2) sorry(54.9) good(27.8) you(18.4) best(15.8) more(14.7)
+    expert 4: '(64.0) ,(11.4) some(4.3) up(2.1) be(2.0) said(0.6)
+    expert 5: there(186.4) ,(5.3) '(2.4) became(2.0) says(1.9) an(1.5)
+  aux yok:
+    expert 0: always(8.1) he(7.2) time(6.9) she(6.8) then(6.6) Tim(6.4)
+    expert 1: (5.5) (5.5) named(5.2) red(4.3) sun(4.1) lived(4.1)
+    expert 2: 
+    expert 3: Yes(78.4) sorry(52.6) you(29.8) know(12.8) this(9.0) Tim(7.8)
+    expert 4: 
+    expert 5: 
+  aux'suz dengeleme:
+    expert 0: he(13.8) they(13.5) came(12.4) she(11.3) who(10.5) was(9.8)
+    expert 1: red(16.4) pretty(14.8) laughed(13.1) sad(9.4) ,(7.2) long(7.2)
+    expert 2: ."(9.8) They(9.2) !"(7.0) (6.0) ?"(6.0) They(4.8)
+    expert 3: You(14.3) I(11.4) best(11.1) One(10.2) I(10.0) learned(9.6)
+    expert 4: too(18.4) Yes(16.5) every(13.7) �(9.1) is(8.3) do(7.8)
+    expert 5: A(9.4) So(9.0) then(8.9) Tim(8.7) Tim(7.4) Lily(7.1)
+  aux 0.1 (güçlü):
+    expert 0: time(20.0) would(17.0) could(16.7) are(10.6) can(10.5) will(10.4)
+    expert 1: (14.1) named(11.5) red(10.5) scared(10.4) little(7.7) a(6.8)
+    expert 2: smiled(16.6) ran(16.3) went(15.6) ,"(12.1) other(10.5) laughed(10.3)
+    expert 3: Yes(16.9) home(14.5) room(14.2) I(14.0) thought(13.7) sorry(12.8)
+    expert 4: Once(17.0) '(8.1) this(8.0) �(6.5) do(5.6) is(4.1)
+    expert 5: Lily(8.7) She(8.5) Tim(8.4) He(8.4) girl(8.1) Lucy(7.8)
+  aux 1.0 (çok güçlü):
+    expert 0: started(25.5) on(15.4) is(12.5) are(9.9) him(9.5) it(8.4)
+    expert 1: time(21.6) upon(19.6) little(16.2) pretty(12.8) small(9.9) '(7.7)
+    expert 2: ran(29.8) �(27.5) we(26.6) then(23.9) You(22.2) other(17.6)
+    expert 3: best(15.8) again(15.8) Yes(15.1) more(14.8) day(14.4) excited(11.4)
+    expert 4: would(15.5) So(14.3) can(14.0) told(14.0) too(13.4) asked(12.8)
+    expert 5: She(7.8) He(7.7) Lily(7.2) got(7.1) Tim(7.0) Tom(6.8)
+-> docs/v3_router.png

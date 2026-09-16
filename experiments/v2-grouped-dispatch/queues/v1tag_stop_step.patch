@@ -1,0 +1,47 @@
+--- a/src/train.py	2026-09-15 01:51:25.000000000 +0200
++++ b/src/train.py	2026-09-15 23:24:17.631284700 +0200
+@@ -105,7 +105,7 @@
+         train_gen.set_state(ckpt["train_gen_state"])
+         step, best_val = ckpt["step"], ckpt["best_val"]
+         del ckpt
+-        if step >= tcfg.max_steps:
++        if step >= _stop:
+             sys.exit(f"checkpoint adımı {step} >= max_steps {tcfg.max_steps}; daha büyük --max_steps verin.")
+         print(f"devam ediliyor: adım {step}, en iyi val {best_val:.4f}")
+ 
+@@ -124,6 +124,8 @@
+     train_model = torch.compile(model) if tcfg.compile else model
+ 
+     tokens_per_step = tcfg.batch_size * tcfg.grad_accum * mcfg.max_seq_len
++    # [doğrulama yaması] schedule max_steps'e göre kalır, STOP_STEP adımında durulur
++    _stop = min(tcfg.max_steps, int(os.environ.get('STOP_STEP', '0')) or tcfg.max_steps)
+     print(f"model: {model.num_params() / 1e6:.2f}M parametre "
+           f"({model.num_params(exclude_embedding=True) / 1e6:.2f}M embedding hariç)")
+     if mcfg.n_experts > 0:
+@@ -160,7 +162,7 @@
+ 
+     while True:
+         # ---------------- değerlendirme + checkpoint ----------------
+-        if (step % tcfg.eval_interval == 0 or step >= tcfg.max_steps) and not skip_eval_once:
++        if (step % tcfg.eval_interval == 0 or step >= _stop) and not skip_eval_once:
+             t_eval = time.time()
+             val_loss = evaluate(train_model, val_ds, tcfg, autocast_ctx)
+             print(f"[eval] adım {step}: val_loss {val_loss:.4f} (ppl {math.exp(val_loss):.2f})")
+@@ -191,7 +193,7 @@
+                              "train_gen_state": train_gen.get_state()}, last_path)
+             t_log += time.time() - t_eval  # eval/örnek/kayıt süresi tok/s ölçümüne karışmasın
+         skip_eval_once = False
+-        if step >= tcfg.max_steps:
++        if step >= _stop:
+             break
+ 
+         # ---------------- bir optimizer adımı ----------------
+@@ -220,7 +222,7 @@
+ 
+         # ---------------- log ----------------
+         # .item() GPU'yu CPU ile senkronize eder (yavaş); bu yüzden her adımda değil, aralıklarla.
+-        if step % tcfg.log_interval == 0 or step >= tcfg.max_steps:
++        if step % tcfg.log_interval == 0 or step >= _stop:
+             dt = time.time() - t_log
+             avg = {k: v.item() / steps_since_log for k, v in accum.items()}
+             tok_s = steps_since_log * tokens_per_step / dt

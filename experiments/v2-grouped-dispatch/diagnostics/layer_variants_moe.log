@@ -1,0 +1,16 @@
+L0_loop                    max|out - L0| = 0.000e+00
+L1_grp_stack               max|out - L0| = 0.000e+00
+L2_grp_stack_isel          max|out - L0| = 0.000e+00
+L3_grp_stack_castgather    max|out - L0| = 0.000e+00
+L4_grp_param               max|out - L0| = 0.000e+00
+L5_grp_param_fused         max|out - L0| = 7.812e-03
+L6_bmm_param               max|out - L0| = 7.812e-03
+L7_castgather_loop         max|out - L0| = 0.000e+00
+L0_loop                    medyan  13.98 ms  (p10  12.36, p90  15.54)
+L1_grp_stack               medyan  13.43 ms  (p10  12.85, p90  13.85)
+L2_grp_stack_isel          medyan  13.40 ms  (p10  12.84, p90  13.96)
+L3_grp_stack_castgather    medyan  12.91 ms  (p10  12.58, p90  13.50)
+L4_grp_param               medyan  12.53 ms  (p10  12.08, p90  13.49)
+L5_grp_param_fused         medyan  11.75 ms  (p10  11.48, p90  12.62)
+L6_bmm_param               medyan  13.24 ms  (p10  12.89, p90  13.93)
+L7_castgather_loop         medyan  13.19 ms  (p10  11.89, p90  14.65)

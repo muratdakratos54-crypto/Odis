@@ -1,0 +1,84 @@
+== Hız benchmark'ı (300 adım, 3 dönüşümlü tekrar, medyan tok/s) ==
+  dense-grouped        [116.48, 116.62, 116.47] ort 116.52k tok/s
+  moe-loop             [82.5, 84.47, 82.84] ort 83.27k tok/s
+  moe-grouped          [82.4, 85.04, 85.11] ort 84.18k tok/s
+  moe-noaux-loop       [80.39, 81.29, 82.85] ort 81.51k tok/s
+  moe-noaux-grouped    [85.65, 85.47, 84.15] ort 85.09k tok/s
+  moe: grouped/loop tekrar başına % fark [-0.13, 0.67, 2.74] -> +1.094 (sd 1.48, %95 GA [-2.591, +4.779]) %
+  moe-noaux: grouped/loop tekrar başına % fark [6.53, 5.13, 1.57] -> +4.41 (sd 2.56, %95 GA [-1.951, +10.77]) %
+  dense / moe-grouped = 1.384x, dense / moe-loop = 1.399x
+  dense / moe-noaux-grouped = 1.369x, dense / moe-noaux-loop = 1.429x
+
+== Doğrulama (varsayılan çekirdekler), 6 koşu x 6 durum x 6 metrik = 216 sınır kontrolü ==
+  sınırı aşan kontrol sayısı: 5
+     18.83x aşım | run3 | bf16 | moe-noaux (v1 best.pt) | teacher_forced: 1.883e-05 > 1.000e-06
+      4.24x aşım | run4 | bf16 | moe (yeni başlatma) | loss_after_step: 2.371e-03 > 5.595e-04
+      1.99x aşım | run2 | bf16 | moe-noaux (v1 best.pt) | teacher_forced: 1.994e-06 > 1.000e-06
+      1.13x aşım | run1 | bf16 | moe-noaux (v1 best.pt) | grads_worst_tensor: 2.483e-02 > 2.195e-02
+      1.05x aşım | run6 | bf16 | moe-noaux (v1 best.pt) | teacher_forced: 3.845e-05 > 3.656e-05
+  sıfır aday (loop tekrarı) aynı sınırlarda: 150 kontrol, 1 aşım
+      4.08x aşım | run4 | bf16 | moe (yeni başlatma) | loss_after_step
+  (sıfır aday run1'de yok, run2-run6'da var)
+  fp32: bit bit aynı durum sayısı logits 6/18, gradyan 4/18, adım sonrası parametre 4/18 | serbest koşuda routing birebir aynı 18/18
+    negatif kontrol / grouped oranı: 7.98e+05 - 1.21e+07 (40 tanımlı oran; grouped'ın bit bit aynı olduğu durumlarda tanımsız)
+  bf16: bit bit aynı durum sayısı logits 6/18, gradyan 6/18, adım sonrası parametre 6/18 | serbest koşuda routing birebir aynı 7/18
+    negatif kontrol / grouped oranı: 22.3 - 618 (36 tanımlı oran; grouped'ın bit bit aynı olduğu durumlarda tanımsız)
+  deterministik mod: 6/6 durumda grouped ile loop bit bit aynı (logits+gradyan+parametre), routing 6/6
+
+== Aşama süreleri (3 koşu; medyan [min-maks]) ==
+  router + aux/z (float32)             1.48 ms [1.02-1.49]
+  argsort + bincount                   0.48 ms [0.24-0.49]
+  gather + cast (token -> expert)      0.76 ms [0.73-0.77]
+  aynısı float32 gather ile            1.84 ms [1.82-1.85]
+  expert'ler: _grouped_mm              6.40 ms [6.20-6.51]
+  expert'ler: loop                     5.93 ms [5.70-7.01]
+  combine: gate x çıktı + index_add    1.72 ms [1.69-1.73]
+  shared expert                        1.52 ms [1.50-1.53]
+  MoE tam katman (grouped)            13.43 ms [12.60-13.57]
+  MoE tam katman (loop)               13.52 ms [13.43-14.44]
+  dense FFN (h=1408)                   4.98 ms [4.97-4.99]
+  attention + norm                     6.48 ms [6.47-6.48]
+  son norm + lm_head + CE             19.89 ms [19.87-19.90]
+  parçaların toplamı (grouped)        12.17 ms [11.59-12.50]
+  clip + AdamW dense / moe             3.16 / 8.66 ms
+
+== Zaman muhasebesi (ölçülen adım farkı 105.3 ms: dense 277.4, moe 382.8) ==
+  parçaların toplamı: (12.17 - 4.98) x 14 = 100.7 ms + optimizer 5.50 ms -> 106.2 ms (ölçümün 1.01 katı)
+  tam katman ölçümü: (13.43 - 4.98) x 14 = 118.3 ms + optimizer 5.50 ms -> 123.8 ms (ölçümün 1.18 katı)
+
+== FLOP (token başına, eğitim = 3x ileri) ==
+  dense: ileri 63,971,328 | eğitim 191,913,984
+  moe: ileri 64,086,016 | eğitim 192,258,048
+  moe/dense analitik oran: 1.00179 (fark router: 114,688 / token ileri)
+  profiler dense          208,666,624 (analitiğin 1.087 katı)
+  profiler moe-loop       209,010,688 (analitiğin 1.087 katı)
+  profiler moe-grouped    140,886,016 (analitiğin 0.733 katı)
+  profiler grouped, loop'tan 32.6% düşük; eksik sayılan 68,124,672 = routed expert'lerin eğitim FLOP'u 68,124,672 (aynı)
+
+== Koşu grupları ==
+  dense-flop      son val 1.3576 ± 0.0013 (ppl 3.887) | süre 13.90 dk | tok/s 118.1k | takılma maks 1.0002 | tepe bellek 6.30 GB
+  dense-time      son val 1.3068 ± 0.0012 (ppl 3.695) | süre 19.15 dk | tok/s 118.1k | takılma maks 1.0004 | tepe bellek 6.30 GB
+  dense-tok       son val 1.3575 ± 0.0009 (ppl 3.886) | süre 13.89 dk | tok/s 118.1k | takılma maks 1.0031 | tepe bellek 6.30 GB
+  moe-noaux-time  son val 1.3356 ± 0.0011 (ppl 3.802) | süre 19.24 dk | tok/s 86.6k | takılma maks 1.0035 | tepe bellek 8.54 GB
+  moe-noaux-tok   son val 1.3383 ± 0.0019 (ppl 3.812) | süre 18.95 dk | tok/s 86.8k | takılma maks 1.0046 | tepe bellek 8.54 GB
+  moe-tok         son val 1.3231 ± 0.0023 (ppl 3.755) | süre 19.24 dk | tok/s 85.6k | takılma maks 1.0071 | tepe bellek 8.54 GB
+  dense token ölçeklenmesi: 0.157 nat / ln(token) (3000 -> 4139 adım iki tam koşudan)
+  eşit sürede moe - dense farkı +0.0162 nat; aynı eğimle kapanması için moe'nin 1.109x daha fazla token (yani ~1.11x hız) gerekir; hız farkının tamamı 1.38x
+
+== 100 adımlık eşdeğerlik ==
+  moe: karar eşdeğer (marj içinde) | LR aynı True
+    val_at_end             grouped  +0.0068 GA [-0.0028, +0.0164] (işaret: 5/6 pozitif)
+    val_at_end             loopb    +0.0086 GA [-0.0009, +0.0182] (işaret: 5/6 pozitif)
+    val_at_end             loopc    +0.0057 GA [-0.0069, +0.0183] (işaret: 4/6 pozitif)
+    tail_mean_train_loss   grouped  -0.0001 GA [-0.0033, +0.0031] (işaret: 3/6 pozitif)
+    tail_mean_train_loss   loopb    +0.0022 GA [-0.0032, +0.0076] (işaret: 4/6 pozitif)
+    tail_mean_train_loss   loopc    -0.0022 GA [-0.0110, +0.0065] (işaret: 2/6 pozitif)
+    ayrışma öncesi oran R_grouped [1.74, 1.62, 0.91, 0.85, 0.81, 1.12] vs R_sıfır [1.9, 1.69, 1.1, 0.7, 1.11, 1.06]
+  moe-noaux: karar eşdeğer (marj içinde) | LR aynı True
+    val_at_end             grouped  +0.0073 GA [+0.0018, +0.0127] (işaret: 6/6 pozitif)
+    val_at_end             loopb    +0.0020 GA [-0.0090, +0.0130] (işaret: 3/6 pozitif)
+    val_at_end             loopc    +0.0003 GA [-0.0082, +0.0088] (işaret: 3/6 pozitif)
+    tail_mean_train_loss   grouped  +0.0021 GA [-0.0016, +0.0057] (işaret: 5/6 pozitif)
+    tail_mean_train_loss   loopb    +0.0004 GA [-0.0040, +0.0049] (işaret: 3/6 pozitif)
+    tail_mean_train_loss   loopc    -0.0002 GA [-0.0035, +0.0032] (işaret: 3/6 pozitif)
+    ayrışma öncesi oran R_grouped [1.26, 1.74, 0.83, 0.92, 0.55, 0.73] vs R_sıfır [1.29, 1.94, 0.98, 1.07, 0.58, 0.63]

@@ -1,0 +1,118 @@
+{
+ "out_dir": "checkpoints/v3",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "aux0.001-s1337",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "0.001",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "aux0.1-s1337",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "0.1",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "auxfree-s1337",
+   "args": [
+    "--preset",
+    "moe-auxfree",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "aux0.001-s1338",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "0.001",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "aux0.1-s1338",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "0.1",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "auxfree-s1338",
+   "args": [
+    "--preset",
+    "moe-auxfree",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "aux0.001-s1339",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "0.001",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "aux0.1-s1339",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "0.1",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "auxfree-s1339",
+   "args": [
+    "--preset",
+    "moe-auxfree",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  }
+ ]
+}

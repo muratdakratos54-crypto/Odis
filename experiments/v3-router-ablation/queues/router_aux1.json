@@ -1,0 +1,46 @@
+{
+ "out_dir": "checkpoints/v3",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "aux1.0-s1337",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "1.0",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "aux1.0-s1338",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "1.0",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "aux1.0-s1339",
+   "args": [
+    "--preset",
+    "moe",
+    "--aux_loss_coef",
+    "1.0",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  }
+ ]
+}

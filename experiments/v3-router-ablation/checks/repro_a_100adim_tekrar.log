@@ -1,0 +1,22 @@
+model: 79.15M parametre (74.96M embedding hariç)
+MoE: 7 katman x 16 expert, top-3 + 1 shared | token başına aktif: 29.95M (25.76M embedding hariç)
+veri: train 545.8M token, val 5.51M token
+adım başına 32,768 token, bütçe 98.30M token = 3000 adım (warmup 6.55M token), 100. adımda durulacak
+[eval] adım 0: val_loss 9.1188 (ppl 9125.03)
+adım    25 | loss 7.8987 | lr 1.25e-04 | grad_norm 5.19 | 79.9k tok/s | tepe bellek 8.54 GB
+           ce 7.8773 | aux 1.337 | z 8.07 | yük CV 0.875 | maks 4.13x | min 0.02x | ölü expert 10
+adım    50 | loss 5.5554 | lr 2.50e-04 | grad_norm 0.84 | 81.4k tok/s | tepe bellek 8.54 GB
+           ce 5.5358 | aux 1.139 | z 8.20 | yük CV 0.627 | maks 3.55x | min 0.02x | ölü expert 2
+adım    75 | loss 4.1685 | lr 3.75e-04 | grad_norm 0.88 | 81.1k tok/s | tepe bellek 8.54 GB
+           ce 4.1507 | aux 1.037 | z 7.40 | yük CV 0.309 | maks 2.07x | min 0.25x | ölü expert 0
+adım   100 | loss 3.5400 | lr 5.00e-04 | grad_norm 0.63 | 81.1k tok/s | tepe bellek 8.54 GB
+           ce 3.5230 | aux 1.027 | z 6.71 | yük CV 0.258 | maks 1.88x | min 0.40x | ölü expert 0
+[eval] adım 100: val_loss 3.2882 (ppl 26.79)
+[expert] katman 1: |▃▃▄▅▄▄▄▄▅▅▄▄▄▄▃▄| min 0.76x maks 1.23x
+[expert] katman 2: |▃▅▄▅▂▃▄▃▄▄▄▄▆▄▄▄| min 0.56x maks 1.44x
+[expert] katman 3: |▅▅▆▄▅▃▃▅▄▄▂▂▅▄▃▄| min 0.59x maks 1.38x
+[expert] katman 4: |▃▄▄▆▅▄▄▄▅▅▃▃▄▅▃▄| min 0.66x maks 1.43x
+[expert] katman 5: |█▃▂▃▄▄▄▄▄▆▅▄▃▃▃▅| min 0.45x maks 1.88x
+[expert] katman 6: |▅▄▅▄▄▄▂▆▃▄▃▂▅▇▄▃| min 0.40x maks 1.73x
+[expert] katman 7: |▅▂▄▅▆▅▂▅▄▃▅▃▂▅▅▃| min 0.46x maks 1.45x
+bitti: 0.8 dk (eğitim 0.7 dk), en iyi val_loss 3.2882

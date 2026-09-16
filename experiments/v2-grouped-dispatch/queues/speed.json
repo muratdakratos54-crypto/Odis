@@ -1,0 +1,322 @@
+{
+ "out_dir": "checkpoints/v2-speed",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "speed-dense-grouped-r1",
+   "args": [
+    "--preset",
+    "dense",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-loop-r1",
+   "args": [
+    "--preset",
+    "moe",
+    "--moe_impl",
+    "loop",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-grouped-r1",
+   "args": [
+    "--preset",
+    "moe",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-noaux-loop-r1",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--moe_impl",
+    "loop",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-noaux-grouped-r1",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-dense-grouped-r2",
+   "args": [
+    "--preset",
+    "dense",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-loop-r2",
+   "args": [
+    "--preset",
+    "moe",
+    "--moe_impl",
+    "loop",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-grouped-r2",
+   "args": [
+    "--preset",
+    "moe",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-noaux-loop-r2",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--moe_impl",
+    "loop",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-noaux-grouped-r2",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-dense-grouped-r3",
+   "args": [
+    "--preset",
+    "dense",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-loop-r3",
+   "args": [
+    "--preset",
+    "moe",
+    "--moe_impl",
+    "loop",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-grouped-r3",
+   "args": [
+    "--preset",
+    "moe",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-noaux-loop-r3",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--moe_impl",
+    "loop",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "speed-moe-noaux-grouped-r3",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--moe_impl",
+    "grouped",
+    "--max_steps",
+    "300",
+    "--eval_interval",
+    "1000000",
+    "--log_interval",
+    "25",
+    "--save_checkpoints",
+    "false",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,144 @@
+{
+  "analytic": {
+    "dense": {
+      "forward_terms": {
+        "attn_qkv_proj": 16777216,
+        "attn_context": 4202496,
+        "ffn_dense": 34603008,
+        "moe_router": 0,
+        "moe_routed_experts": 0,
+        "moe_shared_experts": 0,
+        "lm_head": 8388608
+      },
+      "forward": 63971328,
+      "train_per_token": 191913984,
+      "secondary_forward_terms": {
+        "rmsnorm": 34816,
+        "rope_qk": 24576,
+        "attn_scale_softmax": 65664.0,
+        "residual_add": 8192,
+        "ffn_dense_act": 45056,
+        "moe_expert_act": 0,
+        "moe_router_softmax_topk": 0,
+        "moe_combine": 0,
+        "moe_aux_z_loss": 0,
+        "cross_entropy": 24576
+      },
+      "secondary_forward": 202880.0,
+      "active_params": 29893120,
+      "total_params": 29893120,
+      "tokens_per_step": 32768
+    },
+    "moe": {
+      "forward_terms": {
+        "attn_qkv_proj": 16777216,
+        "attn_context": 4202496,
+        "ffn_dense": 4325376,
+        "moe_router": 114688,
+        "moe_routed_experts": 22708224,
+        "moe_shared_experts": 7569408,
+        "lm_head": 8388608
+      },
+      "forward": 64086016,
+      "train_per_token": 192258048,
+      "secondary_forward_terms": {
+        "rmsnorm": 34816,
+        "rope_qk": 24576,
+        "attn_scale_softmax": 65664.0,
+        "residual_add": 8192,
+        "ffn_dense_act": 5632,
+        "moe_expert_act": 39424,
+        "moe_router_softmax_topk": 490,
+        "moe_combine": 25088,
+        "moe_aux_z_loss": 336,
+        "cross_entropy": 24576
+      },
+      "secondary_forward": 228794.0,
+      "active_params": 29950464,
+      "total_params": 79151616,
+      "tokens_per_step": 32768
+    },
+    "moe-noaux": {
+      "forward_terms": {
+        "attn_qkv_proj": 16777216,
+        "attn_context": 4202496,
+        "ffn_dense": 4325376,
+        "moe_router": 114688,
+        "moe_routed_experts": 22708224,
+        "moe_shared_experts": 7569408,
+        "lm_head": 8388608
+      },
+      "forward": 64086016,
+      "train_per_token": 192258048,
+      "secondary_forward_terms": {
+        "rmsnorm": 34816,
+        "rope_qk": 24576,
+        "attn_scale_softmax": 65664.0,
+        "residual_add": 8192,
+        "ffn_dense_act": 5632,
+        "moe_expert_act": 39424,
+        "moe_router_softmax_topk": 490,
+        "moe_combine": 25088,
+        "moe_aux_z_loss": 336,
+        "cross_entropy": 24576
+      },
+      "secondary_forward": 228794.0,
+      "active_params": 29950464,
+      "total_params": 79151616,
+      "tokens_per_step": 32768
+    }
+  },
+  "profiler": {
+    "dense": {
+      "forward": {
+        "total_per_token": 68157440.0,
+        "per_op": {
+          "aten.mm": 59768832.0,
+          "aten._scaled_dot_product_efficient_attention": 8388608.0
+        }
+      },
+      "forward+backward": {
+        "total_per_token": 208666624.0,
+        "per_op": {
+          "aten.mm": 179306496.0,
+          "aten._scaled_dot_product_efficient_attention": 8388608.0,
+          "aten._scaled_dot_product_efficient_attention_backward": 20971520.0
+        }
+      }
+    },
+    "moe-loop": {
+      "forward": {
+        "total_per_token": 68272128.0,
+        "per_op": {
+          "aten.mm": 59883520.0,
+          "aten._scaled_dot_product_efficient_attention": 8388608.0
+        }
+      },
+      "forward+backward": {
+        "total_per_token": 209010688.0,
+        "per_op": {
+          "aten.mm": 179650560.0,
+          "aten._scaled_dot_product_efficient_attention": 8388608.0,
+          "aten._scaled_dot_product_efficient_attention_backward": 20971520.0
+        }
+      }
+    },
+    "moe-grouped": {
+      "forward": {
+        "total_per_token": 45563904.0,
+        "per_op": {
+          "aten.mm": 37175296.0,
+          "aten._scaled_dot_product_efficient_attention": 8388608.0
+        }
+      },
+      "forward+backward": {
+        "total_per_token": 140886016.0,
+        "per_op": {
+          "aten.mm": 111525888.0,
+          "aten._scaled_dot_product_efficient_attention": 8388608.0,
+          "aten._scaled_dot_product_efficient_attention_backward": 20971520.0
+        }
+      }
+    }
+  }
+}

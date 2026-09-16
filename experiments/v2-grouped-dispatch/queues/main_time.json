@@ -1,0 +1,85 @@
+{
+ "out_dir": "checkpoints/v2",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "dense-time-s1337",
+   "args": [
+    "--preset",
+    "dense",
+    "--max_tokens",
+    "135626752",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-noaux-time-s1337",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--max_tokens",
+    "99713024",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "dense-time-s1338",
+   "args": [
+    "--preset",
+    "dense",
+    "--max_tokens",
+    "135626752",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-noaux-time-s1338",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--max_tokens",
+    "99713024",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "dense-time-s1339",
+   "args": [
+    "--preset",
+    "dense",
+    "--max_tokens",
+    "135626752",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-noaux-time-s1339",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--max_tokens",
+    "99713024",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  }
+ ]
+}

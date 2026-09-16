@@ -1,0 +1,145 @@
+{
+ "out_dir": "checkpoints/v2",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "dense-tok-s1337",
+   "args": [
+    "--preset",
+    "dense",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-tok-s1337",
+   "args": [
+    "--preset",
+    "moe",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-noaux-tok-s1337",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "dense-flop-s1337",
+   "args": [
+    "--preset",
+    "dense",
+    "--max_tokens",
+    "98467840",
+    "--seed",
+    "1337",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "dense-tok-s1338",
+   "args": [
+    "--preset",
+    "dense",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-tok-s1338",
+   "args": [
+    "--preset",
+    "moe",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-noaux-tok-s1338",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "dense-flop-s1338",
+   "args": [
+    "--preset",
+    "dense",
+    "--max_tokens",
+    "98467840",
+    "--seed",
+    "1338",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "dense-tok-s1339",
+   "args": [
+    "--preset",
+    "dense",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-tok-s1339",
+   "args": [
+    "--preset",
+    "moe",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "moe-noaux-tok-s1339",
+   "args": [
+    "--preset",
+    "moe-noaux",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  },
+  {
+   "name": "dense-flop-s1339",
+   "args": [
+    "--preset",
+    "dense",
+    "--max_tokens",
+    "98467840",
+    "--seed",
+    "1339",
+    "--sample_tokens",
+    "0"
+   ]
+  }
+ ]
+}
