@@ -3,6 +3,10 @@
 Bu dosya FOTON kodu yazılmadan önce sabitlenmiştir ve `foton-v01-prereg` tag'iyle dondurulmuştur.
 **Bu tag'den sonra hedef direği oynatılmaz.**
 
+> **EK 1 (amendment, r2) var — dosyanın sonuna bakın.** r1 tag'i atıldıktan sonra, ondan önce başlatılmış
+> bağımsız denetim 37 boşluk buldu (5 kritik) ve hepsi **hiçbir FOTON verisi üretilmeden** kapatıldı.
+> L* değişmedi (üç bağımsız hesapta teyit edildi). Çelişki hâlinde EK 1 geçerlidir.
+
 Neden bu dosya var: v3 (router ablasyonu) denetimi, ön-kayıt iddiamın artefaktla doğrulanamadığını gösterdi —
 ölçüt belgesi koşular başlamadan değil ilk koşu sürerken yazılmıştı ve bunu ancak `provenance.json`'ların git
 durumundan geriye dönük tespit edebildim. Dersi burada uyguluyorum: **ölçütler, hedef ve karar kuralı koda ve
@@ -412,7 +416,257 @@ seed sayısı, w̄ (quality/sec) ve varsa çelişki kuralı etiketi verilir.
 
 ---
 
+## EK 1 (amendment, r2) — 2026-09-16, `foton-v01-prereg-r2`
+
+**Bu ek, HİÇBİR FOTON VERİSİ ÜRETİLMEDEN ÖNCE yazıldı.** FOTON kodu hâlâ yazılmamıştır; hiçbir FOTON
+koşusu başlatılmamıştır. Dolayısıyla ön-kaydın bağlayıcılığı bozulmamıştır: burada kapatılan boşlukların
+hiçbiri FOTON sonuçlarına bakılarak seçilmemiştir.
+
+`foton-v01-prereg` (r1) tag'i **silinmedi**; ikisi de duruyor ve r1, bu eke ihtiyaç duyulduğunu gösteren
+kaydın kendisidir. **Çelişki hâlinde bu ek geçerlidir.** Yukarıdaki donmuş bölümler düzenlenmemiştir.
+
+**Neden:** r1 tag'i atıldıktan sonra, tag'den önce başlatılmış olan bağımsız denetim tamamlandı (76 ajan;
+3 ajan L*'i sıfırdan yeniden hesapladı, 4 ajan "kötü niyetli deneyci" rolünde dosyanın lafzına uyarak
+sahte başarı ilan etme yollarını aradı, her bulgu ayrıca çürütülmeye çalışıldı). **37 boşluk doğrulandı
+(5 kritik, 17 önemli, 15 küçük); 60 sayı/iddia doğru bulundu.**
+
+### A. L* DEĞİŞMİYOR — üç bağımsız hesapta teyit edildi
+
+Üç ajan, tanımı farklı okumalarla sıfırdan hesapladı: **3/3 sonuç L\* = 1.3592**, per-seed girdileri
+(1.359164 / 1.359509 / 1.359021), sd'si (0.00025), interpolasyon ağırlığı (0.6), `F_base` (1.511979e16) ve
+çapraz kontrol yüzdeleri (%80.0 / %80.2 / %81.1 / %86.9 / %98.7) dahil birebir uyuştu. Üç `metrics.jsonl`
+hash'i de bağımsız olarak yeniden hesaplanıp doğrulandı. **Hedef direği yerinde kalıyor.**
+
+**A1. Aday havuzu ve dışlamalar (r1'de belgelenmemişti, şimdi belgeleniyor).**
+
+| aday | referans bütçede val loss | L* olsaydı | karar |
+|---|---|---|---|
+| `moe-auxfree` (v3 d), 3 seed | **1.3195** | **1.3592** | **seçildi** |
+| `aux 0.1` (v3 e), 3 seed | 1.3207 | 1.3600 | dışlandı: daha yüksek val loss |
+| `moe` aux 0.01 (v3 a), 3 seed | 1.3231 | 1.3627 | dışlandı: daha yüksek val loss |
+| v1 `moe`, **1 seed** | 1.3172 | 1.3561 | **dışlandı:** (i) n=1, "ortalama" tanımsız; (ii) tekrar üretilemez — aynı config ve aynı seed bugünkü kodla 1.3235 veriyor, çünkü v1'de `sample_tokens=120` eval'lerde üretim yapıp global RNG'yi tüketiyor ve sonraki veri sırasını kaydırıyor; (iii) eğrisi `tokens` alanı taşımıyor |
+| v2 `dense-time`, 3 seed | 1.3068 | 1.3425 | **dışlandı:** bütçesi farklı (135.626.752 token). Tanım "REFERANS bütçenin %80'i" diyor; bu kol duvar-saati kontrolüdür |
+
+Seçilen kol, uygun havuz içinde **en düşük L*'i** yani **en zor hedefi** veriyor — yani seçim FOTON'un
+lehine değil aleyhine yanlıdır. Bu kasıtlıdır.
+
+**A2. "En iyi" bir nokta tahminidir.** (d) ile (e) ve (a) arasındaki fark v3'ün kendi eşleştirilmiş
+GA'sında anlamlı değil ((a)−(d) = +0.00349 GA [−0.00045, +0.00743]; (e)−(d) = +0.00075 GA [−0.00244,
++0.00394]). Ayrıca (d), v3'ün taksonomisinde bir **ablasyon kolu**dur ve v3 kaydı "(d)'nin sonuçları
+dengeleme yöntemine atfedilemez" der. Burada (d) bir nedensel iddia için değil, **uygun havuzdaki en güçlü
+yapılandırma** olduğu için kullanılıyor; hedefin kaynağı olması nedensel bir yorum taşımaz.
+
+**A3. Sayı düzeltmeleri (donmuş metinde yanlış yazılmış).**
+
+| yer | r1'de yazan | doğrusu | etki |
+|---|---|---|---|
+| satır 28 | en düşük val loss **1.3196** | **1.3195** (üç seed ortalaması 1.319543) | L*'i etkilemiyor |
+| satır 64 | MoE baseline dense'ten **%23.2 daha az** FLOP harcıyor | **%18.8 daha az** (O4 formülüyle). %23.2, "dense baseline'dan %23.2 daha FAZLA harcıyor"un karşılığıdır | aşağıya bak, B7 |
+
+### B. KAPATILAN BOŞLUKLAR
+
+Aşağıdaki maddeler r1'in donmuş kurallarını **daraltır** (asla genişletmez) ve hepsi FOTON verisi
+görülmeden yazıldı.
+
+**B1 (KRİTİK). Eval penceresi sayısı sabitlendi: `batch_size × eval_iters = 1280`.**
+`evaluate()` val pencerelerini `eval_iters` kez `batch_size` pencere çekerek üretiyor (`src/train.py:70-74`),
+yani pencere KÜMESİ mikro-batch'e bağlı. r1'in O6/O10'u "VRAM için mikro-batch küçültülebilir" diyordu ve bu
+tek başına ölçülen val loss'u değiştiriyor. Dondurulmuş checkpoint'te (`checkpoints/v3/auxfree-s1337/last.pt`,
+adım 3000) ölçtüm:
+
+| batch_size | eval_iters | pencere | val loss | fark | ≈ puan |
+|---|---|---|---|---|---|
+| 32 | 40 | 1280 | 1.319447 | — | — |
+| 16 | 40 | 640 | 1.310783 | **−0.008664** | **−3.55** |
+| 8 | 40 | 320 | 1.314114 | −0.005333 | −2.19 |
+| 64 | 40 | 2560 | 1.315590 | −0.003857 | −1.58 |
+| **16** | **80** | **1280** | **1.319441** | −0.000006 | −0.00 |
+
+Yani mikro-batch'i 16'ya düşürmek modeli hiç değiştirmeden **3.55 puan** bedava tasarruf üretiyordu —
+eşiğin %71'i. Son satır çözümü veriyor: **bağlayıcı olan pencere SAYISIDIR, mikro-batch değil.**
+
+**Kural:** karar koşularının ikisi de `batch_size × eval_iters = 1280` ve eval generator seed 12345
+kullanır. VRAM mikro-batch'i 16'ya zorlarsa `eval_iters` 80 olur (grad_accum da 4 olur, tokens/adım 32.768
+sabit kalır). Bu çarpım **değişmez**; başka bir değer kullanılırsa baseline aynı değerle yeniden koşulur ve
+sapma bu bölüme yazılır.
+
+**B2 (KRİTİK). Koşu defteri zorunlu; iptal edilen koşu gizlenemez.**
+r1 yalnızca "biten ama L*'e ulaşmayan" koşuyu kapsıyordu; çöken, NaN'a giden, OOM alan ya da "hata buldum"
+denip atılan koşu için kural yoktu — yani kötü bir seed sessizce yeniden koşulabilirdi.
+
+**Kural:** `experiments/foton-v01/run_ledger.jsonl` tutulur ve **başlatılan her koşu** oraya yazılır:
+koşu adı, seed, kol (FOTON/baseline), başlangıç zamanı, `git_head`, `src_sha256`, config'in SHA-256'sı,
+sonuç (`bitti` / `çöktü` / `iptal` + gerekçe). Karar, seed başına **ilk BİTEN** koşuyu kullanır.
+Bir karar seed'i yalnızca **donanım/altyapı kaynaklı sert arıza** (OOM, sürücü hatası, NaN) hâlinde
+yeniden koşulabilir; "implementasyon hatası bulundu" gerekçesiyle yeniden koşmak, **bütün 5 karar seed'inin**
+yeniden koşulmasını gerektirir ve sapma olarak yazılır. Rapor, defterdeki koşu sayısını verir.
+
+**B3 (KRİTİK). İkinci beş seed şimdi isimlendirildi: {66, 77, 88, 99, 110}.**
+r1, sd > 5 puanda "seed 10'a çıkar" diyordu ama ikinci beşi hiç adlandırmamıştı; sonuca bakarak seed
+seçmek mümkündü. Tripwire ateşlenirse **tam olarak bu beş seed** eklenir, başkası değil. n=10'da karar
+tablosu aynen yeniden uygulanır (eşikler değişmez, t(9) = 2.262157). İkinci artırma hakkı **yoktur**.
+
+**B4 (KRİTİK). Tarama ayrı seed kümesinde: {101, 102, 103}. FOTON v0.1 TEK mimaridir.**
+r1, denenebilecek FOTON varyant sayısını hiç sınırlamıyordu; O10 "mimari ayrıntılar değişebilir" diyordu.
+5 varyanttan en iyisini 3 seed'de seçmek `s̄`'yi ~0.6–1 puan şişirir (dondurulmuş kollarda ölçülen
+sd(s_i) 0.5–1.9 puan üzerinden).
+
+**Kural:** (i) tarama/debug koşuları **yalnızca** {101, 102, 103} seed'lerinde yapılır; karar seed'leri
+{11,22,33,44,55} ve {66,77,88,99,110} tarama için **kullanılamaz**. (ii) Karar koşularından önce FOTON'un
+mimarisi `src/config.py`'de bir preset olarak sabitlenir ve **config'in SHA-256'sı bu bölüme yazılır**;
+karar koşuları o config ile yapılır. (iii) Karar aşamasına **tek varyant** girer. Birden fazla varyant
+karar seed'lerinde koşulursa, birincil sonuç **ilk ilan edilenin**dir; diğerleri "keşifsel" etiketiyle
+raporlanır ve hiçbir iddiayı desteklemez. (iv) Rapor, taranan varyant sayısını ve tablosunu verir.
+
+**B5 (KRİTİK→önemli). Eğitim hiperparametreleri iki kolda AYNI.**
+r1'in O1 tablosu "baseline'ın config'inden birebir" diye çerçevelenmişti, yani FOTON'u bağlamıyordu.
+Ölçüldü: yalnızca program uzunluğunu 1.38× değiştirmek aynı modelde 4.27 puan oynatıyor.
+
+**Kural:** lr, min_lr, warmup, β, weight_decay, grad_clip, dtype/autocast, dizi uzunluğu, tokens/adım,
+`max_steps`/`max_tokens`, `eval_interval` ve `batch_size × eval_iters` **iki kolda aynıdır** ve O1
+tablosundaki değerlerdir. FOTON için farklı bir değer gerekiyorsa **baseline da aynı değerle yeniden
+koşulur**; tek kolda değiştirmek sapmadır ve kararı geçersiz kılar.
+
+**B6. Eval ızgarası iki kolda aynı: `eval_interval = 250`.**
+r1'in O3'ü "daha sık olabilir", O10'u "eval sıklığının artırılması değişebilir" diyordu; ızgaraların eşit
+olması istenmiyordu. Val eğrisi dışbükey azalan olduğu için lineer interpolasyon `N*`'ı sistematik olarak
+fazla tahmin ediyor ve yanlılık ızgara adımıyla büyüyor: Richardson tahminiyle ölçülen yanlılık
+h=250'de ortalama +%0.164, maksimum +%0.280. Asimetrik ızgara FOTON'a bedava ~+0.12 puan verirdi.
+**Kural:** karar koşularında iki kol da 250 adım ızgarası kullanır. Daha sık eval isteniyorsa **iki kolda
+birlikte** değişir.
+
+**B7. Tasarruf konvansiyonu tek: `s = 100 × (1 − F_foton/F_base)`.**
+r1'in kendi L* bölümü (satır 64) ters paydayı kullanmıştı (%23.2 yerine %18.8), yani dosya iki
+konvansiyonu birlikte içeriyordu. Bu, eşik sınırında karar değiştirir: `F_foton/F_base = 0.909` iken
+O4 formülü 9.10 puan ("belirsiz") verirken ters payda 10.01 puan ("güçlü başarı") verir.
+**Kural:** raporda geçen her tasarruf sayısı O4 formülüyle hesaplanır; ters payda kullanılamaz.
+`src/stats.py` bu formülü uygulayan tek yerdir.
+
+**B8. Sansür kuralının YÖNÜ düzeltildi ve tripwire'dan ayrıldı.**
+r1, `N* = 2 × bütçe` ikamesini "FOTON'un aleyhine yanlı" diye tanımlıyordu; **bu yanlıştı.** Koşu 2×
+bütçede L*'e ulaşmadıysa gerçek `N*` 2× bütçeden büyüktür (ya da tanımsız), dolayısıyla 2× ikame etmek
+`F_foton`'u gerçeğinden KÜÇÜK, `s_i`'yi gerçeğinden BÜYÜK gösterir — yani **FOTON'un LEHİNE** yanlıdır.
+Ayrıca sansürlü bir seed `s_i` ≈ −150 puan verdiği için örneklem sd'sini şişirip tripwire'ı ateşler ve
+"hedefe ulaşamıyor" sonucu "varyans yüksek, daha çok seed lazım" gibi görünürdü.
+
+**Kural:** (i) sansürlü seed'in `s_i`'si 2× ikamesiyle hesaplanır ve bunun FOTON'un lehine yanlı olduğu
+raporda yazılır; (ii) **tripwire yalnızca sansürsüz seed'lerin sd'siyle** değerlendirilir; (iii) sansürlü
+seed sayısı ≥ 1 ise sonuç "başarılı"/"güçlü başarı" olamaz (r1'de de böyleydi) ve sansürlü seed sayısı
+≥ 2 ise sonuç doğrudan **"başarısız"**tır.
+
+Aritmetik not: sansürlü bir seed'in `s_i`'si tanım gereği 100 × (1 − 2/0.8) = **−150 puan**dır, yani n=5'te
+tek bir sansür ortalamayı ≈ −25 puana çeker ve satır zaten "başarısız" olur. (iii)'ün "başarıyı engelleme"
+kısmı bu yüzden kemer + askıdır; işlevsel olan kısım (ii)'dir, çünkü o olmadan sonuç "hedefe ulaşamıyor"
+yerine "varyans yüksek, daha çok seed lazım" gibi okunuyordu. `src/stats.decide` üçünü de uyguluyor ve
+`tests/test_stats.py` bu okumayı regresyona bağlıyor.
+
+**B9. 2× bütçe koşusunun LR programı.**
+`lr_at` cosine'i koşunun kendi bütçesi üzerinden decay ettiği için `max_tokens`'ı 2×'e çıkarmak aynı
+token sayısında LR'ı yükseltir, yani 1× ve 2× koşular aynı eğri değildir.
+**Kural:** uzatma, referans bütçe üzerinden tanımlı programla yapılır: program 1× bütçede biter, sonrası
+`min_lr` sabitinde devam eder. 2× koşu **yalnızca sansür belirlemek** için kullanılır; `N*` her zaman
+1× bütçeli koşunun eğrisinden okunur (o eğri L*'i kesmişse).
+
+**B10. Karar tablosunun her satırı için sonraki adım.**
+r1, 6 satırın 4'ü için sonraki adımı tanımsız bırakmıştı; "nötr"/"başarısız" çıkınca kural boşluğu
+yazarın lehine doldurulabilirdi. Ayrıca **vazgeçme koşulu aritmetik olarak erişilemezdi**: iki ölçek
+sonucuna sahip olmak için S1'e yükselmek, yükseltme hakkı ise yalnızca "belirsiz" (yani s̄ > +2) satırından
+doğuyordu — dolayısıyla S0'da "başarısız" çıksa bile "iki ardışık ölçek" şartı asla sağlanamıyordu.
+
+| satır | sonraki adım |
+|---|---|
+| güçlü başarı | FOTON v0.2'ye devam; S1 isteğe bağlı (yükseltme hakkı harcanmaz) |
+| başarılı | FOTON v0.2'ye devam; S1 isteğe bağlı |
+| belirsiz | **tek yükseltme hakkı kullanılır:** S1 + 5 seed |
+| yüksek varyans / belirsiz | 10 seed'e çıkılır (B3); sonra tablo yeniden uygulanır. Yükseltme hakkı harcanmaz |
+| nötr | **yükseltme hakkı kullanılabilir** (S1 + 5 seed) — trendi görmek için. Kullanılmazsa S0 sonucu nihaidir ve vazgeçme koşulu S0 + (varsa) S1 ile değerlendirilir |
+| başarısız | S0 sonucu bir "ölçek sonucu" sayılır; yükseltme hakkı kullanılabilir. Kullanılmazsa hipotez **terk edilir** (aşağıya bak) |
+
+**Vazgeçme koşulunun erişilebilir hâli:** "iki ardışık ölçek" şartı, yükseltme hakkının kullanıldığı
+durumlarda S0+S1 ile sağlanır. Yükseltme hakkı kullanılmazsa ve S0'da satır **"başarısız"** ise hipotez
+tek ölçekle terk edilir (oracle şartı yine uygulanır). "Nötr"de yükseltme kullanılmazsa sonuç
+"sonuçsuz" olarak kaydedilir, hipotez ne doğrulanmış ne terk edilmiş sayılır — ve bu **bir devam gerekçesi
+değildir.**
+
+**B11. Oracle'ın NULL'ı zorunlu.**
+Oracle, ölçülen niceliğin kendisi üzerinde seçim yaptığı için modüller istatistiksel olarak aynı olsa bile
+eğriyi aşağı çeker; %2 eşiği saf seçim gürültüsünün altında kalabilir.
+**Kural:** oracle kazancının yanında **null'ı** raporlanır: aynı oracle prosedürü, modül çıktıları
+birbirine **permüte edilerek** (yani seçimin bilgi taşımadığı durumda) hesaplanır. Vazgeçme koşulundaki
+"oracle kazancı < %2" şartı, **null'ın üstündeki fazlaya** uygulanır: `s̄^oracle − s̄^oracle_null < %2`.
+
+**B12. Oracle'ın granülaritesi ve kaybı önceden sabit.**
+r1'de "o dizi için kaybı en küçük yapan modül" hesaplanabilir değildi (dizi başına kayıp üretilmiyor,
+granülarite ve kayıp türü belirsiz).
+**Kural:** oracle **dizi düzeyinde** ve **saf CE** ile tanımlıdır: her val dizisi için, FOTON'un bütün
+modülleri tek tek çalıştırılır (diğer katmanlar öğrenilmiş routing'i kullanır), o dizinin token-ortalamalı
+CE'si en küçük olan modül seçilir. Katman-başına açgözlü ya da tüm-model-tek-modül varyantları
+**kullanılamaz**. Uygulama karar koşularından önce commit'lenir.
+
+**B13. FLOP tanımının kapsamı: sayılmayan işlemler beyan edilir.**
+Birincil FLOP tanımı eleman bazlı işlemleri (RMSNorm, RoPE, SiLU, softmax, residual, CE) ve dispatch'i
+(argsort, bincount, gather/scatter) **0 sayıyor** (`docs/flops.md`). FOTON kapasitesini oraya koyarsa
+birincil ölçüt onu görmez.
+**Kural:** karar koşularından önce, FOTON'un **sayılmayan** her işlemi `docs/flops.md`'de listelenir ve
+(i) analitik formüle eklenir, ya da (ii) profiler çapraz kontrolüyle üst sınırı ölçülüp raporlanır.
+Profiler ile analitik sayım arasındaki fark **her iki kol için** raporlanır; FOTON'un farkı baseline'ın
+farkından 5 puandan fazla büyükse sonuç "başarılı" ilan **edilemez** ve fark açıklanır.
+
+**B14. `N*` kesişimi sürdürülmüş olmalı.**
+r1, ilk aşağı kesişimi alıyordu ama kesişimden sonra eğrinin L* altında kalmasını istemiyordu; gürültülü
+bir eğride tek bir aşağı sıçrama `N*`'ı erkene çekerdi.
+**Kural:** `N*`, L*'in ilk aşağı kesişimidir **ve** kesişimden sonraki eval noktasının da ≤ L* olması
+gerekir. Değilse sonraki kesişime bakılır. (B1 ve B6 gürültüyü zaten sabitliyor.)
+
+**B15. Eğri kesişmesi kontrolü.**
+Birincil ölçüt tek noktaya bakıyor; eğriler kesişirse ön-kayıt bunu görmez.
+**Kural:** rapor iki kolun **tam val eğrisini** verir ve eğrilerin L* dışında kesişip kesişmediğini
+söyler. Kesişme varsa bu, sonucun yanına **zorunlu bir uyarı** olarak yazılır (satır adını değiştirmez).
+
+**B16. `quality/sec` için GA ve asimetri uyarısı.**
+r1, `w̄` için güven aralığı istemiyordu ve baseline'ın (auxfree) v3'ün **en yavaş** kolu olduğunu
+anmıyordu (83.68k tok/s; aux 0.01'in %2.3, aux'suz kolun %3.8 altında). Yani `w̄ > 0` şartı FOTON'un
+kendi hız katkısı olmadan sağlanabilir.
+**Kural:** `w̄` da `src/stats.paired` ile eşleştirilmiş %95 GA'sıyla raporlanır. Baseline'ın yapısal
+yavaşlığı raporda anılır. Çelişki kuralı etiketi (`mimari başarı / sistem başarısızlığı`) **`w̄ ≤ 0`
+olan her durumda** eklenir — r1'de yalnızca s̄ ≥ 10 durumunda ekleniyordu.
+
+**B17. Baseline kimliği hash'lerle çivilendi.**
+r1 "config'i ve eğrisi hash'lenmiş" diyordu ama dosyada yalnızca üç `metrics.jsonl` hash'i vardı;
+`src/config.py`'deki preset tag'den sonra düzenlenebilirdi.
+
+```
+dae23220efd33a4522984ed6fd79cccdae3e3777b0a67cc3c68eb6c11ac11e42  runs/auxfree-s1337/config.json
+abcf671a670a7700b87aa1e094b119ee62af636c7fc5084ca1dac7058955c48d  runs/auxfree-s1338/config.json
+51fe6077510ea95de8e5636519b3b713856c955bd21e2cba97e0910c2dcad603  runs/auxfree-s1339/config.json
+```
+(yollar `experiments/v3-router-ablation/` altında)
+
+Baseline'ı üreten kodun `src_sha256`'sı: `8552cc82ec52877ea4745dc1646dad60b7826fe58f5bbf2267a32e9ab134680c`
+(= `v3-router-ablation` tag'inin ağacındaki `src/`; doğrulaması o tag'in açıklamasında).
+**Kural:** baseline'ın yeni seed koşuları, config'i bu hash'lerdeki `model` bloğuyla **aynı** olacak
+şekilde yapılır. `PRESETS["moe-auxfree"]` değişirse yeni koşular geçersizdir.
+
+**B18. Zorunlu raporlama listesi genişletildi.**
+r1'in yedi kalemi yukarıdaki sömürülerin hiçbirini görünür kılmıyordu. Rapor **ek olarak** şunları verir:
+taranan FOTON varyantı sayısı ve tablosu; koşu defterindeki toplam koşu sayısı ve iptal/çöken sayısı;
+her iki kolun `config.json` SHA-256'sı ve `git_head`/`src_sha256`'sı; `batch_size × eval_iters` çarpımı;
+`eval_interval`; her iki kolun tam val eğrisi; sansürlü seed sayısı; `w̄` ve GA'sı; profiler-analitik FLOP
+farkı (iki kol); oracle kazancı ve null'ı; ve yapılan test sayısı (O4b: "13 (1+2+10), keşifsel: k").
+
+### C. Bu ekten sonra da açık kalan, kabul edilen sınırlar
+
+1. **Eşik sınırındaki güç.** Gerçek etki tam +%5 iken karar ~%50 "belirsiz" verir (O9). Bu, eşiğin
+   tanımının sonucudur; kapatılmadı.
+2. **Baseline bir ablasyon kolu.** (A2) Havuzdaki en güçlü yapılandırma olduğu için seçildi; nedensel bir
+   iddia taşımıyor.
+3. **n=5 ve tek veri seti.** FOTON'un sd'si dondurulmuş kolların sd'sinden büyük çıkabilir; O9'un kötümser
+   satırları bunun içindir.
+4. **Ölçek basamakları arasında havuzlama yok**, trend iki noktadan okunuyor (S0, S1).
+
+---
+
 ## Sapmalar
 
 (Boş. Ön-kayıttan her sapma, gerekçesi ve fark edildiği tarihle buraya eklenir; yukarıdaki bölümler
-düzenlenmez.)
+düzenlenmez. EK 1 bir sapma değildir: FOTON verisi üretilmeden önce yazılmış bir amendment'tır.)

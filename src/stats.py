@@ -129,26 +129,46 @@ def multiplicity(tests: list[tuple[str, float]], alpha: float = 0.05) -> dict:
 ROWS = ("güçlü başarı", "başarılı", "belirsiz", "nötr", "başarısız", "yüksek varyans / belirsiz")
 
 
-def decide(savings: list[float], quality_per_sec: float | None = None, censored: int = 0) -> dict:
-    """PREREGISTRATION.md karar tablosunu (O5) birebir uygular.
+def decide(savings: list[float], quality_per_sec: float | None = None,
+           censored_mask: list[bool] | None = None) -> dict:
+    """PREREGISTRATION.md karar tablosunu (O5 + EK 1 B8/B10/B16) birebir uygular.
 
-    savings        : seed başına tasarruf, YÜZDE PUAN (s_i = 100*(1 - F_foton/F_base))
+    savings        : seed başına tasarruf, YÜZDE PUAN (s_i = 100*(1 - F_foton/F_base));
+                     sansürlü seed'ler için 2x bütçe ikamesiyle hesaplanmış değer
     quality_per_sec: w̄ ortalaması (yüzde puan); None ise "güçlü başarı" satırı değerlendirilemez
-    censored       : L*'e ulaşmayan (sansürlü) seed sayısı; > 0 ise "başarılı"/"güçlü başarı" YASAK
+    censored_mask  : seed başına sansür bayrağı (L*'e ulaşmadı). EK 1 B8:
+                     - tripwire YALNIZCA sansürsüz seed'lerin sd'siyle değerlendirilir
+                     - >= 1 sansürlü seed: "başarılı"/"güçlü başarı" YASAK
+                     - >= 2 sansürlü seed: sonuç doğrudan "başarısız"
 
-    Döner: {"row": satır adı, "mean", "sd", "ci95", "n", "notes": [...]}
+    Döner: {"row": satır adı, "mean", "sd", "sd_uncensored", "ci95", "n", "n_censored", "notes": [...]}
     """
     if len(savings) < 2:
         raise ValueError("karar için en az 2 seed gerekir")
     n = len(savings)
+    mask = list(censored_mask) if censored_mask is not None else [False] * n
+    if len(mask) != n:
+        raise ValueError("censored_mask, savings ile aynı uzunlukta olmalı")
+    n_cens = sum(mask)
     mean, sd = st.mean(savings), st.stdev(savings)
     h = t_crit(n - 1) * sd / math.sqrt(n)
     lo, hi = mean - h, mean + h
+    # EK 1 B8: sansürlü seed s_i ~ -150 puan verip sd'yi şişirir ve "hedefe ulaşamıyor" sonucunu
+    # "varyans yüksek" gibi gösterirdi. Tripwire bu yüzden sansürsüz seed'lerin sd'siyle bakılıyor.
+    unc = [s for s, c in zip(savings, mask) if not c]
+    sd_unc = st.stdev(unc) if len(unc) > 1 else float("nan")
     notes: list[str] = []
-    res = {"mean": mean, "sd": sd, "n": n, "ci95": [lo, hi], "notes": notes}
+    res = {"mean": mean, "sd": sd, "sd_uncensored": sd_unc, "n": n, "n_censored": n_cens,
+           "ci95": [lo, hi], "notes": notes}
 
-    if sd > SD_TRIPWIRE:                                   # satır 0: tripwire her şeyin önünde
-        notes.append(f"örneklem sd {sd:.2f} > {SD_TRIPWIRE} puan: seed 10'a çıkar")
+    if n_cens >= 2:                                        # EK 1 B8: iki veya daha fazla sansür -> başarısız
+        notes.append(f"{n_cens} seed L*'e ulaşmadı: EK 1 B8 gereği sonuç doğrudan 'başarısız'")
+        return {**res, "row": "başarısız"}
+
+    trip_sd = sd_unc if len(unc) > 1 else sd
+    if trip_sd == trip_sd and trip_sd > SD_TRIPWIRE:        # satır 0: tripwire her şeyin önünde
+        notes.append(f"sansürsüz seed'lerin sd'si {trip_sd:.2f} > {SD_TRIPWIRE} puan: "
+                     "seed 10'a çıkar (EK 1 B3: {66,77,88,99,110})")
         return {**res, "row": "yüksek varyans / belirsiz"}
 
     crosses_zero = lo <= 0 <= hi
@@ -156,9 +176,6 @@ def decide(savings: list[float], quality_per_sec: float | None = None, censored:
         row = "güçlü başarı"
     elif mean >= SUCCESS and lo > 0:
         row = "başarılı"
-        if mean >= STRONG and (quality_per_sec is None or quality_per_sec <= 0):
-            notes.append("FLOP kazancı >= %10 ama quality/sec pozitif değil -> "
-                         "çelişki kuralı: mimari başarı / sistem başarısızlığı")
     elif mean > NEUTRAL and (crosses_zero or mean < SUCCESS):
         row = "belirsiz"
     elif -NEUTRAL <= mean <= NEUTRAL:
@@ -168,9 +185,15 @@ def decide(savings: list[float], quality_per_sec: float | None = None, censored:
         if crosses_zero:
             notes.append("ortalama < -%2 ama GA sıfırı kesiyor (O5: negatif ortalama 'belirsiz' üretmez)")
 
-    if censored > 0 and row in ("güçlü başarı", "başarılı"):
-        notes.append(f"{censored} seed L*'e ulaşmadı (sansürlü): O3 gereği 'başarılı' ilan edilemez")
+    # EK 1 B16: çelişki etiketi, s̄ > 0 ve w̄ <= 0 olan HER durumda eklenir (r1'de yalnızca s̄ >= 10'da).
+    if mean > 0 and quality_per_sec is not None and quality_per_sec <= 0:
+        notes.append("FLOP kazancı var, duvar saati kaybı var -> "
+                     "çelişki kuralı: mimari başarı / sistem başarısızlığı")
+
+    if n_cens == 1 and row in ("güçlü başarı", "başarılı"):
+        notes.append("1 seed L*'e ulaşmadı (sansürlü): EK 1 B8 gereği 'başarılı' ilan edilemez")
         row = "belirsiz"
-    elif censored > 0:
-        notes.append(f"{censored} seed L*'e ulaşmadı (sansürlü); s̄ sansür ikamesiyle hesaplandı")
+    elif n_cens == 1:
+        notes.append("1 seed L*'e ulaşmadı; s̄ 2x bütçe ikamesiyle hesaplandı ve bu ikame "
+                     "FOTON'un LEHİNE yanlıdır (EK 1 B8)")
     return {**res, "row": row}

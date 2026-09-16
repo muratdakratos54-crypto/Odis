@@ -128,6 +128,17 @@ def test_decide_strong_needs_positive_quality_per_sec():
     assert decide(_tight(12.0), quality_per_sec=None)["row"] == "başarılı"
 
 
+def test_decide_conflict_label_whenever_wallclock_loses():
+    """EK 1 B16: çelişki etiketi s̄ >= 10 şartına bağlı DEĞİL; s̄ > 0 ve w̄ <= 0 olan her durumda eklenir."""
+    for mean, row in ((6.0, "başarılı"), (3.0, "belirsiz"), (1.0, "nötr")):
+        r = decide(_tight(mean), quality_per_sec=-2.0)
+        assert r["row"] == row
+        assert any("mimari başarı / sistem başarısızlığı" in n for n in r["notes"]), (mean, r)
+    # s̄ <= 0 iken FLOP kazancı yok, çelişki de yok
+    assert not any("çelişki" in n for n in decide(_tight(-4.0), quality_per_sec=-2.0)["notes"])
+    assert not any("mimari başarı" in n for n in decide(_tight(6.0), quality_per_sec=+2.0)["notes"])
+
+
 def test_decide_wide_ci_downgrades_to_belirsiz():
     """s̄ >= 5 ama GA sıfırı kesiyorsa 'başarılı' DEĞİL (tablo: 'veya GA sıfırı kesiyor -> belirsiz')."""
     xs = [5.0 + d for d in (-6.0, -3.0, 0.0, 3.0, 6.0)]      # ortalama 5, sd 4.74: tripwire altı ama geniş
@@ -144,11 +155,43 @@ def test_decide_boundaries_are_inclusive_as_written():
     assert decide(_tight(2.001), quality_per_sec=1.0)["row"] == "belirsiz"
 
 
-def test_decide_censored_seeds_block_success():
-    r = decide(_tight(12.0), quality_per_sec=1.0, censored=1)
-    assert r["row"] == "belirsiz" and any("sansürlü" in n for n in r["notes"])
-    r2 = decide(_tight(-5.0), quality_per_sec=1.0, censored=2)
-    assert r2["row"] == "başarısız"                          # sansür yalnızca başarıyı engeller
+def test_decide_one_censored_seed_blocks_success():
+    xs = _tight(12.0)
+    r = decide(xs, quality_per_sec=1.0, censored_mask=[False, False, False, False, True])
+    assert r["row"] == "belirsiz" and r["n_censored"] == 1
+    assert any("sansürlü" in n and "LEHİNE" not in n for n in r["notes"])
+
+
+def test_decide_two_censored_seeds_fail_outright():
+    """EK 1 B8: >= 2 sansürlü seed -> doğrudan 'başarısız', tripwire'a bile bakılmaz."""
+    xs = [8.0, 9.0, 8.5, -150.0, -150.0]
+    r = decide(xs, quality_per_sec=1.0, censored_mask=[False, False, False, True, True])
+    assert r["row"] == "başarısız" and r["n_censored"] == 2
+    assert r["sd"] > 5.0                                     # ham sd tripwire'ı aşıyor ama satır 0 DEĞİL
+
+
+def test_decide_tripwire_uses_uncensored_sd_only():
+    """EK 1 B8: sansürlü seed sd'yi şişirip sonucu 'yüksek varyans / belirsiz' gibi göstermemeli.
+
+    Sansürlü seed'in s_i'si tanım gereği 100*(1 - 2/0.8) = -150 puandır (2x bütçe ikamesi), yani n=5'te
+    tek bir sansür ortalamayı -25'e çeker ve sonuç zaten 'başarısız' olur. Kritik olan şudur: sonuç
+    'varyans yüksek, daha çok seed lazım' DEĞİL, 'FOTON hedefe ulaşamıyor' demeli."""
+    xs = [6.0, 6.1, 5.9, 6.05, -150.0]
+    r = decide(xs, quality_per_sec=1.0, censored_mask=[False] * 4 + [True])
+    assert r["sd"] > 5.0 and r["sd_uncensored"] < 0.2        # ham sd büyük, sansürsüz sd küçük
+    assert r["row"] != "yüksek varyans / belirsiz"           # B8'in engellediği yanlış okuma
+    assert r["row"] == "başarısız" and r["n_censored"] == 1
+    # Sansür olmadan aynı büyüklükte yayılım GERÇEKTEN tripwire üretir (mekanizma çalışıyor).
+    assert decide([-10, 0, 10, 2, 3], quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz"
+    # Ve tek sansür, ortalama ezilmese bile başarıyı engeller (kemer + askı).
+    r2 = decide([12.0, 12.1, 11.9, 12.05, 12.0], quality_per_sec=1.0,
+                censored_mask=[False] * 4 + [True])
+    assert r2["row"] == "belirsiz"
+
+
+def test_decide_rejects_bad_mask_length():
+    with pytest.raises(ValueError):
+        decide(_tight(6.0), censored_mask=[False, True])
 
 
 def test_decide_row_names_are_from_the_frozen_list():
