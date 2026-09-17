@@ -139,12 +139,26 @@ def test_decide_conflict_label_whenever_wallclock_loses():
     assert not any("mimari başarı" in n for n in decide(_tight(6.0), quality_per_sec=+2.0)["notes"])
 
 
-def test_decide_wide_ci_downgrades_to_belirsiz():
-    """s̄ >= 5 ama GA sıfırı kesiyorsa 'başarılı' DEĞİL (tablo: 'veya GA sıfırı kesiyor -> belirsiz')."""
-    xs = [5.0 + d for d in (-6.0, -3.0, 0.0, 3.0, 6.0)]      # ortalama 5, sd 4.74: tripwire altı ama geniş
+def test_decide_wide_ci_is_a_precision_problem_not_a_scale_problem():
+    """s̄ >= 5 ama GA eşiği çözemiyorsa sonuç 'yüksek varyans / belirsiz' — 'belirsiz' DEĞİL.
+
+    Bu bir DAVRANIŞ DEĞİŞİKLİĞİ ve kasıtlı. Eski hâl bu örneği "belirsiz" sayıyordu ve "belirsiz"in
+    çaresi bir ÜST ÖLÇEK basamağıdır. Ama buradaki sorun ölçek değil KESİNLİK: s̄ = 5.0, sd = 4.74,
+    GA [-0.89, +10.89]. Bu aralık "etki eşiği geçiyor" ile "etki sıfır" arasında ayrım yapamıyor,
+    dolayısıyla doğru çare daha büyük model değil daha çok SEED'dir. Ölçek basamağı çıkmak burada
+    GPU'yu, üstelik tek yükseltme hakkını, yanlış soruya harcamak olurdu.
+
+    Ölçüm (scripts/rule_reachability.py): kesinlik ölçütü σ = 3'te n=5'te %20.7 tetiklenirken
+    n=10'da %0.4'e düşüyor — yani çare kuralı gevşetiyor. Mutlak sd > 5 eşiği bu sınavı geçemiyordu
+    (σ = 6'da %59.7 -> %71.5, yani çare kuralı SIKIŞTIRIYORDU).
+    """
+    xs = [5.0 + d for d in (-6.0, -3.0, 0.0, 3.0, 6.0)]      # ortalama 5, sd 4.74
     r = decide(xs, quality_per_sec=1.0)
-    assert r["mean"] == pytest.approx(5.0) and r["sd"] < 5.0
-    assert r["ci95"][0] <= 0 and r["row"] == "belirsiz"
+    assert r["mean"] == pytest.approx(5.0) and r["sd"] == pytest.approx(4.743, abs=1e-3)
+    assert r["ci95"][0] <= 0 < 5.0 <= r["ci95"][1]
+    assert r["row"] == "yüksek varyans / belirsiz" and r["determinate"] is False
+    # Daralt: aynı ortalama, dar aralık -> artık belirli ve 'başarılı'
+    assert decide(_tight(5.0), quality_per_sec=1.0)["row"] == "başarılı"
 
 
 def test_decide_boundaries_are_inclusive_as_written():

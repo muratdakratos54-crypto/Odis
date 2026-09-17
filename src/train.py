@@ -24,6 +24,7 @@ import torch
 from src.checkpoint import save_atomic
 from src.config import TrainConfig, build_configs
 from src.data import TokenDataset, dataset_paths
+from src.data_multi import MultiDomainDataset, multi_domain_paths
 from src.model import GPT
 from src.moe import load_balance_metrics, load_sparkline, update_expert_biases
 from src.tokenizer import load_tokenizer
@@ -63,21 +64,66 @@ def lr_at(tokens_seen: int, tokens_per_step: int, warmup_tokens: int, max_tokens
 
 
 @torch.no_grad()
-def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> float:
+def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> dict[str, float]:
+    """Val loss. `{"full": ..., "primary": ...}` döner.
+
+    `full` = bütün pozisyonlar. `primary` = `cfg.loss_prefix_skip` kadar ilk pozisyon ATLANMIŞ hâli;
+    karar bu ikincisine göre verilir (bkz. `TrainConfig.loss_prefix_skip`: dizi düzeyi router'ın
+    nedenselliği). `loss_prefix_skip == 0` iken ikisi aynı sayıdır.
+
+    İkisi de loglanıyor çünkü `full`, maskesiz ön-kayıttan gelen dondurulmuş eğrilerle
+    KARŞILAŞTIRILABİLİR: yeniden koşumun sadık olduğunu kanıtlayan provenance kontrolü odur.
+    """
     model.eval()
     # Her değerlendirmede *aynı* pencereleri kullan (sabit seed): böylece val loss'taki değişim
     # örnekleme gürültüsünden değil, modelin gerçekten iyileşmesinden gelir.
-    g = torch.Generator().manual_seed(12345)
-    total = 0.0
-    for _ in range(cfg.eval_iters):
-        x, y = ds.get_batch(cfg.batch_size, g)
+    #
+    # Çok alanlı korpusta pencere kümesi `batch_size`'dan BAĞIMSIZ olmak zorunda: `get_batch`
+    # generator'ı batch_size'a bağlı tükettiği için mikro-batch'i değiştirmek pencerelerin
+    # kimliğini de değiştiriyordu, ve alanlar arası 0.9 nat fark olduğu için bu ölçülen val
+    # loss'u kaydırıp `L*`'i bölüşüme bağlı hale getiriyordu (ön-kayıt V1-ii). Dondurulmuş
+    # akış referans bölüşümün sırasını birebir tekrar oynatır, yani `L*` değişmez.
+    k = cfg.loss_prefix_skip
+
+    def both(x: torch.Tensor, y: torch.Tensor) -> tuple[float, float]:
+        """Aynı batch'te tam ve maskeli CE — TEK forward'dan.
+
+        İkinci bir forward yapmak eval maliyetini ikiye katlardı; bunun yerine logit'lerden
+        pozisyon başına CE'yi bir kez hesaplayıp iki ortalamayı alıyoruz. `model(x, y)`'nin
+        döndürdüğü skaler `ce` ile `per_pos.mean()` aynı niceliktir (aşağıda test ediliyor).
+        """
         with autocast_ctx:
-            _, _, info = model(x, y)
+            logits, _, info = model(x, y)
+        full = info["ce"].item()
+        if k <= 0:
+            return full, full
+        per_pos = torch.nn.functional.cross_entropy(
+            logits.float().view(-1, logits.size(-1)), y.reshape(-1),
+            ignore_index=-1, reduction="none").view(y.shape)
+        return full, per_pos[:, k:].mean().item()
+
+    if isinstance(ds, MultiDomainDataset):
+        total_windows = cfg.batch_size * cfg.eval_iters
+        pairs = ds.frozen_val_windows(total_windows, 12345)
+        batches = [pairs[i : i + cfg.batch_size] for i in range(0, total_windows, cfg.batch_size)]
+        tf = tp = 0.0
+        for chunk in batches:
+            f, p = both(*ds.windows(chunk))
+            tf += f
+            tp += p
+        model.train()
+        return {"full": tf / len(batches), "primary": tp / len(batches)}
+
+    g = torch.Generator().manual_seed(12345)
+    tf = tp = 0.0
+    for _ in range(cfg.eval_iters):
         # Toplam loss değil, saf cross-entropy: MoE'nin aux/z ceza terimleri model kalitesini
         # ölçmez; dense ile MoE'yi adil karşılaştırmak için yalnızca CE'ye bakıyoruz.
-        total += info["ce"].item()
+        f, p = both(*ds.get_batch(cfg.batch_size, g))
+        tf += f
+        tp += p
     model.train()
-    return total / cfg.eval_iters
+    return {"full": tf / cfg.eval_iters, "primary": tp / cfg.eval_iters}
 
 
 def main() -> None:
@@ -95,9 +141,21 @@ def main() -> None:
 
     tok = load_tokenizer(tcfg.data_dir)
     mcfg = replace(mcfg, vocab_size=tok.vocab_size)
-    train_path, val_path = dataset_paths(tcfg.data_dir)
-    train_ds = TokenDataset(train_path, mcfg.max_seq_len, device)
-    val_ds = TokenDataset(val_path, mcfg.max_seq_len, device)
+    # Çok alanlı korpus (FOTON kampanyası): alan başına ayrı .bin -> pencere alan sınırını GEÇEMEZ.
+    # meta.json'da "domains" varsa otomatik o yola gidilir; tek alanlı eski korpuslar aynen çalışır.
+    if os.path.exists(os.path.join(tcfg.data_dir, "meta.json")):
+        with open(os.path.join(tcfg.data_dir, "meta.json"), encoding="utf-8") as _f:
+            _multi = "domains" in json.load(_f)
+    else:
+        _multi = False
+    if _multi:
+        train_ds = MultiDomainDataset(multi_domain_paths(tcfg.data_dir, "train"), mcfg.max_seq_len, device)
+        val_ds = MultiDomainDataset(multi_domain_paths(tcfg.data_dir, "val"), mcfg.max_seq_len, device)
+        print(f"çok alanlı korpus: {train_ds.names} | train {len(train_ds):,} token")
+    else:
+        train_path, val_path = dataset_paths(tcfg.data_dir)
+        train_ds = TokenDataset(train_path, mcfg.max_seq_len, device)
+        val_ds = TokenDataset(val_path, mcfg.max_seq_len, device)
 
     run_dir = os.path.join(tcfg.out_dir, tcfg.run_name)
     os.makedirs(run_dir, exist_ok=True)
@@ -215,9 +273,13 @@ def main() -> None:
             t_eval = time.perf_counter()
             # eval, log aralığının ortasına düşerse son logdan beri geçen eğitim süresi de sayılır
             train_time_now = train_time + (t_eval - t_log if steps_since_log else 0.0)
-            val_loss = evaluate(train_model, val_ds, tcfg, autocast_ctx)
-            print(f"[eval] adım {step}: val_loss {val_loss:.4f} (ppl {math.exp(val_loss):.2f})")
+            ev = evaluate(train_model, val_ds, tcfg, autocast_ctx)
+            # KARAR metriği `primary` (prefix maskeli); `full` provenance kontrolü için loglanır.
+            val_loss, val_full = ev["primary"], ev["full"]
+            tag = "" if tcfg.loss_prefix_skip <= 0 else f" [maskesiz {val_full:.4f}]"
+            print(f"[eval] adım {step}: val_loss {val_loss:.4f} (ppl {math.exp(val_loss):.2f}){tag}")
             log({"type": "val", "step": step, "tokens": step * tokens_per_step, "val_loss": val_loss,
+                 "val_loss_full": val_full, "loss_prefix_skip": tcfg.loss_prefix_skip,
                  "train_time": train_time_now, "time": time.perf_counter() - t_start})
             if last_load is not None:
                 # Expert kullanım tablosu: her satır bir MoE katmanı, her karakter bir expert.
@@ -253,8 +315,18 @@ def main() -> None:
         lr = lr_at(step * tokens_per_step, tokens_per_step, warmup_tokens, max_tokens, tcfg)
         for group in optimizer.param_groups:
             group["lr"] = lr
-        for _ in range(tcfg.grad_accum):
-            x, y = train_ds.get_batch(tcfg.batch_size, train_gen)
+        # Çok alanlı korpusta eğitim akışı da bölüşümden bağımsız: adım başına dizi sayısı
+        # (batch_size × grad_accum) tokens_per_step pinli olduğu için sabittir, dolayısıyla akış
+        # dizi başına tanımlanabilir ve "aynı seed = aynı veri sırası" iddiası GERÇEKTEN doğru olur.
+        if isinstance(train_ds, MultiDomainDataset):
+            seqs = train_ds.sequence_stream(tcfg.batch_size * tcfg.grad_accum, train_gen)
+            micro = [seqs[i : i + tcfg.batch_size]
+                     for i in range(0, len(seqs), tcfg.batch_size)]
+        else:
+            micro = [None] * tcfg.grad_accum
+        for chunk in micro:
+            x, y = train_ds.windows(chunk) if chunk is not None \
+                else train_ds.get_batch(tcfg.batch_size, train_gen)
             with autocast_ctx:
                 _, loss, info = train_model(x, y)
             # Gradyan biriktirme: loss'u grad_accum'a böl ki toplanan gradyan, büyük tek bir

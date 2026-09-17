@@ -12,6 +12,9 @@ queue.json:
 * Her koşunun konsol çıktısı <out_dir>/<ad>/train.log, kuyruğun özeti <out_dir>/queue.log.
 * Kod izi: her koşunun klasörüne provenance.json yazılır (cwd/src altındaki .py dosyalarının SHA-256'sı, git HEAD ve
   commit'lenmemiş değişiklikler, python/torch/GPU sürümleri). Kuyruk sırasında kod değişirse queue.log uyarır.
+* Koşu defteri: her DENEME için `scripts/run_ledger.py`'nin sabit defterine bir satır eklenir — hem biten/çöken koşu
+  için, hem de kenara alınan yarım koşu için (o klasör silinince denemenin tek izi defter olur). Defter yazılamazsa
+  kuyruk DURMAZ, yalnızca queue.log'a uyarı düşer: saatler süren bir bloğu bir kayıt satırı yüzünden kaybetmek daha pahalı.
 * Windows'ta kuyruk çalıştığı sürece sistemin uykuya geçmesi engellenir (ekran kapanabilir); süreç bitince kalkar.
 """
 from __future__ import annotations
@@ -103,6 +106,20 @@ def main() -> None:
         qlog.write(line + "\n")
         qlog.flush()
 
+    def ledger(run_dir: str, run: dict, reason: str, exit_code: int | None = None,
+               only_if_new: bool = False) -> None:
+        """Koşu defterine bir satır ekler. Blok kimliği YALNIZCA kuyruk dosyasında var (`_block`),
+        diskte yazılı değil; duvar saati karşılaştırması blok-içi olmak zorunda olduğu için (V10-ii)
+        kaydı buradan yazmak tek yol. Hata kuyruğu durdurmaz."""
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import run_ledger
+
+            run_ledger.record_run_dir(run_dir, block=run.get("_block"), exit_code=exit_code,
+                                      reason=reason, source="kuyruk", only_if_new_attempt=only_if_new)
+        except Exception as e:                            # defter yazılamadı: koşu kaydı kaybolur, kuyruk sürer
+            note(f"[uyarı] koşu defterine yazılamadı ({os.path.basename(run_dir)}): {e!r}")
+
     env = {**os.environ, "PYTHONIOENCODING": "utf-8", **q.get("env", {})}
     prov0 = provenance(cwd, python)
     note(f"kuyruk: {sys.argv[1]} | kod {prov0['src_sha256'][:12]} | git {prov0['git_head'][:10]} "
@@ -118,6 +135,11 @@ def main() -> None:
                 n += 1
             os.replace(run_dir, f"{run_dir}.yarim-{n}")
             note(f"[{i}/{len(q['runs'])}] {run['name']}: yarım kalmış koşu {run_dir}.yarim-{n} olarak kenara alındı")
+            # Yalnızca DEFTERDE KAYDI OLMAYAN deneme için: kaydı olan (kuyruk bitişini gördüğü) deneme
+            # aynı klasör yüzünden ikinci kez sayılmasın. Kaydı olmayan deneme = kuyruk ya da makine
+            # önceki denemede ölmüş demektir ve o denemenin tek izi bu satır olur.
+            ledger(f"{run_dir}.yarim-{n}", run, "kuyruk kenara aldı; bu denemenin defterde kaydı yoktu "
+                   "(kuyruk ya da makine önceki denemede ölmüş)", only_if_new=True)
         os.makedirs(run_dir)
         prov = {**provenance(cwd, python), "args": run["args"], "env": q.get("env", {})}
         if prov["src_sha256"] != prov0["src_sha256"]:
@@ -132,6 +154,7 @@ def main() -> None:
         if rc == 0:
             open(os.path.join(run_dir, "DONE"), "w").close()
         note(f"[{i}/{len(q['runs'])}] {run['name']}: bitti kod={rc} ({(time.perf_counter() - t) / 60:.1f} dk)")
+        ledger(run_dir, run, f"kuyruk çalıştırdı, çıkış kodu {rc}", exit_code=rc)
         if rc != 0:
             note("hata: kuyruk durduruldu")
             sys.exit(rc)

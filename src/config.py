@@ -79,6 +79,18 @@ class TrainConfig:
     # --- değerlendirme / log ---
     eval_interval: int = 250
     eval_iters: int = 40
+    # Raporlanan val loss'ta ATLANACAK ilk pozisyon sayısı (0 = hepsi sayılır).
+    #
+    # Neden var: FOTON'un router'ı DİZİ düzeyinde tek bir modül seçiyor. Router girdiyi dizinin
+    # tamamından okursa token 5'in tahmini token 6..511'den bilgi taşır — nedensellik ihlali, ve
+    # ölçüsü küçük değil: log(3)/512 = 0.002146 nat/token tavanı, ölçülen eğimde +0.63 puan bedava
+    # "tasarruf". Bu yüzden router yalnızca ilk `k` token'lık NEDENSEL prefix'i görür ve raporlanan
+    # val loss `k..T-1` pozisyonları üzerinden hesaplanır: prefix'ten seçilen yol, yalnızca
+    # prefix'ten SONRAKİ token'ları etkilediği yerde ölçülür. Dört kolda da aynı maske uygulanır,
+    # yoksa FOTON'un val loss'u ile baseline'ların val loss'u aynı nicelik olmaz.
+    # `ignore_index=-1` ile uygulanıyor (bkz. src/model.py), yani maskelenen pozisyonlar loss'a
+    # hiç girmez; girdi olarak yine görülürler (bağlam kaybı yok).
+    loss_prefix_skip: int = 0
     log_interval: int = 25
     sample_tokens: int = 120    # her eval'de kısa bir örnek üret (0 = kapalı)
     # --- sistem ---
@@ -128,6 +140,25 @@ PRESETS: dict[str, tuple[ModelConfig, TrainConfig]] = {
         ModelConfig(n_experts=16, top_k=3, expert_hidden=352, n_shared_experts=1, first_dense_layers=1,
                     aux_loss_coef=0.0, router_gate="sigmoid", bias_update_rate=0.001),
         TrainConfig(run_name="moe-auxfree"),
+    ),
+    # --- FOTON v0.2 kampanyasi baseline'lari (PREREGISTRATION_V02.md'de pinli) ---
+    # vocab_size train.py'de tokenizer'dan okunuyor (32768). Adim basina token 32.768 SABIT
+    # (16 x 4 x 512); mikro-batch/grad_accum bolusumu serbest ama batch_size x eval_iters = 1280.
+    # max_steps 4375 secildi cunku %80 noktasi TAM adim 3500'e (14. eval) denk gelir -> L* icin
+    # interpolasyon kurali gerekmez (v01'de bu kural 0.026 nat oynatiyordu).
+    "foton-d": (
+        ModelConfig(),
+        TrainConfig(run_name="foton-d", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-m": (
+        ModelConfig(n_experts=16, top_k=3, expert_hidden=352, n_shared_experts=1,
+                    first_dense_layers=1, aux_loss_coef=0.0, router_gate="sigmoid",
+                    bias_update_rate=0.001),
+        TrainConfig(run_name="foton-m", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
     ),
     "tiny-moe": (
         ModelConfig(max_seq_len=128, d_model=128, n_layer=2, n_head=4, ffn_hidden=352,
