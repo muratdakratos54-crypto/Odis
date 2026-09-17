@@ -98,6 +98,11 @@ def test_A_B_C_are_equalized_within_tolerance():
     Bir parametre değişirse bu test YÜKSEK SESLE düşmeli — eşitleme iddiası ön-kayıtta donmuş
     ve sessizce bozulması, X kolundaki modül farkını hesap farkıyla karıştırmak demektir.
     """
+    # Eşiğin KENDİSİ de pinlenmeli. Aşağıdaki karşılaştırmalar EQ_TOL'ü kullandığı için, eşik
+    # gevşetilirse (0.35 -> 0.40 ya da 100.0) hepsi geçmeye devam eder: mutasyon denemesinde
+    # EQ_TOL=100.0 ile 118 testin 118'i geçti, yani ön-kayıtta donmuş tolerans sessizce
+    # anlamsızlaştırılabiliyordu. Tripwire eşiği literal olarak sabitlenmezse tripwire değildir.
+    assert EQ_TOL == 0.35, f"ön-kayıtta donmuş tolerans değişmiş: {EQ_TOL}"
     e = equalization(T_KAMPANYA)
     assert e["spread"] <= EQ_TOL, e
     assert round(e["spread"], 2) == 0.33, e["spread"]
@@ -105,6 +110,10 @@ def test_A_B_C_are_equalized_within_tolerance():
     assert e["within_tol"]
     for k in FOTON_MODULES:
         assert abs(e["per_module"][k] - e["mean"]) <= EQ_TOL
+    # Sapma tam değerle de kilitli: 167/512 = 0.326171875. EQ_TOL'e payı yalnızca 0.024
+    # bağlantı, yani tolerans BİLEREK dar — herhangi bir parametre oynaması eşiği geçirir.
+    assert e["spread"] == pytest.approx(167 / 512)
+    assert e["spread_pct"] == pytest.approx(0.2541, abs=1e-4)   # ön-kayıt %0.25 yazmalı, %0.26 değil
 
 
 def test_dilated_rate_two_cannot_exceed_128_50():
@@ -235,10 +244,12 @@ def test_strided_and_dilated_are_the_same_offset_family():
 
 
 def test_reach_metrics_report_the_non_equalized_axes():
-    """Eşit bağlantıda bile alım alanı farklı: A 149 geriye / 150 pozisyon, B 510 / 256.
+    """Eşit bağlantıda bile alım alanı farklı: A 149/150, B 510/256, C head başına 255/256 ve 508/128.
 
     Ön-kaydın "eşitlenemeyen eksen 1 ve 2"si bu sayılarla raporlanıyor; eşitlenen tek eksen
-    bağlantı SAYISI.
+    bağlantı SAYISI. C'nin iki değeri de ayrıca kilitli, çünkü ikisi de FOTON'un LEHİNE
+    sapabilir (doygunluk gizlenirse 128 yerine 256 ayrık pozisyon, head'ler toplanırsa 255
+    yerine 508 erişim okunur) ve bu modülün işi sapmanın yönünü gizlememek.
     """
     a = PATTERNS["A"].summary(T_KAMPANYA)
     b = PATTERNS["B"].summary(T_KAMPANYA)
@@ -246,6 +257,17 @@ def test_reach_metrics_report_the_non_equalized_axes():
     assert (b["max_span"], b["distinct_reachable"]) == (510, [256])
     assert a["avg"] == pytest.approx(b["avg"], abs=EQ_TOL)          # bağlantı eşit
     assert b["max_span"] > 3 * a["max_span"]                        # alım alanı eşit DEĞİL
+
+    # C de pinlenmeli, ve head BAŞINA. İki sayı da FOTON'un lehine sapabilecek türden:
+    #  - strided head'in etiketi W=256 ama T=512'de 128 ayrık pozisyonda doygunluğa oturuyor;
+    #    doygunluk raporlanmazsa C 256 pozisyon görüyormuş gibi okunur (mutasyon denemesinde
+    #    128 -> 256 kaydırıldığında 118 testin hiçbiri düşmüyordu).
+    #  - "en uzak" head'ler üzerinden max; C'nin yerel yarısı yalnızca 255 geriye uzanıyor,
+    #    508 sayısı tek başına C'nin alım alanını olduğundan geniş gösterir.
+    c = PATTERNS["C"].summary(T_KAMPANYA)
+    assert c["distinct_reachable"] == [256, 128], c["distinct_reachable"]
+    assert c["head_max_spans"] == [255, 508], c["head_max_spans"]
+    assert c["max_span"] == max(c["head_max_spans"]) == 508
 
 
 def test_invalid_parameters_are_rejected():

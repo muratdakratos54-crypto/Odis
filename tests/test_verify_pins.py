@@ -6,12 +6,16 @@ dosyanın değiştiğini yakalamazsa çivi süs olur — "korpus donduruldu" ve 
 cümlelerinin arkasında hiçbir mekanizma kalmaz. `--verify`'ın sessizce geçmesi, hiç doğrulama
 yapmamaktan daha kötüdür: doğrulanmış görünür.
 
-Testler dört şeyi kilitler:
+Testler beş şeyi kilitler:
   1. manifest BEKLENEN dosya kümesinin tamamını kapsıyor (9 korpus + 10 koşu × 3 kanıt = 39),
   2. tek bir bayt değişince doğrulama başarısız oluyor ve hangi dosya olduğunu SÖYLÜYOR,
   3. dosya silinince "eksik" diye başarısız oluyor (sessizce atlamıyor),
   4. iki koruma çalışıyor: yeniden çivileme `--force` olmadan reddediliyor, çivilenmemiş bir
      baseline koşusu ve ön-kayıt bloğundan sapma başarısızlık sayılıyor.
+  5. KAPSAM: `--verify` yalnızca "hash'ler tuttu mu" değil "kaç çivi var" sorusunu da soruyor.
+     Denetimde ölçülen boşluk buydu: 38 satırlık bir manifest 38 PASS ile exit 0 alıyordu, yani
+     kanıt zinciri sessizce küçültülebiliyordu. İki yoldan da (üretim anında dosya yoktu /
+     manifestten satır elle silindi) artık başarısız oluyor.
 
 Sahte ağaç `tmp_path`'te kurulur: gerçek korpus 612 MB, testin ona dokunması gerekmiyor — sınanan
 şey hash'in değeri değil, sapmanın YAKALANMASI.
@@ -208,6 +212,61 @@ def test_verify_cross_checks_the_preregistration_block(tree, capsys):
     out = capsys.readouterr().out
     assert "ön-kayıt çivisi manifestle uyuşmuyor: data/foton/meta.json" in out
     assert "1 ön-kayıt sapması" in out
+
+
+def test_verify_fails_when_the_manifest_was_generated_incomplete(tree, capsys):
+    """Üretim anında dosya yoksa manifest 38 çiviyle çıkar; `--verify` bunu GEÇMEMELİ.
+
+    Ölçülen boşluk: `--generate` eksik dosyayı `missing` diye kaydedip 0 dönüyor (doğru davranış,
+    disk o an hazır olmayabilir) ama `--verify` kalan 38'i hash'leyip "bütün çiviler tuttu" diyordu.
+    O hâlde ön-kaydın "kanıt bu 39 dosyadır" cümlesinin arkasında 38 dosya kalırdı ve kimse görmezdi.
+    """
+    os.remove(tree / "data" / "foton" / "math_val.bin")
+    assert _gen(tree) == 0                         # üretim eksiği kaydeder, reddetmez
+    assert _manifest(tree)["counts"]["pinned"] == 38
+    assert _ver(tree) == 1, "38 çivilik manifest doğrulamadan geçmemeli"
+    out = capsys.readouterr().out
+    assert "KAPSAM DIŞI" in out
+    assert "! data/foton/math_val.bin" in out
+    assert "1 KAPSAM DIŞI" in out
+    assert out.count("PASS ") == 38                # kalan 38 gerçekten tutuyor: hata hash'te değil kapsamda
+
+
+def test_verify_fails_when_an_entry_is_edited_out_of_the_manifest(tree, capsys):
+    """Manifestten satır silip dosyayı da silmek doğrulamayı atlatmamalı.
+
+    Kapsam denetimi manifestin kendi `counts`/`missing` alanlarına GÜVENMEMELİ: manifesti düzenleyen
+    biri onları da düzenler. Beklenen küme `expected_pins()` ile kodda ilan edildiği için, L*'in
+    türetildiği seed 11 eğrisini kanıt zincirinden çıkarmak yakalanıyor.
+    """
+    assert _gen(tree) == 0
+    victim = "checkpoints/foton-v02/baseline-m-s11/metrics.jsonl"
+    man = _manifest(tree)
+    man["files"] = [e for e in man["files"] if e["path"] != victim]
+    man["counts"] = {"pinned": 38, "missing": 0, "expected": 38}     # sayaçlar da "tutarlı" yapıldı
+    with open(tree / MAN, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(man, f, ensure_ascii=False)
+    os.remove(vp.abspath(str(tree), victim))
+    assert _ver(tree) == 1
+    out = capsys.readouterr().out
+    assert f"! {victim}" in out
+
+
+def test_prereg_pin_regex_does_not_span_lines(tree, capsys):
+    """Tek başına duran 64 hex'lik satır uydurma çivi üretmemeli.
+
+    `\\s+` satır sonunu da yerdi: yalnız bir hash satırı (provenance `src_sha256` de 64 hex) bir
+    sonraki satırın ilk kelimesiyle eşleşir, o uydurma yol manifestte bulunmaz ve `--verify`
+    sebepsiz FAIL verir. Ön-kayıt hâlâ düzenlendiği için bu tuzak her an patlayabilir.
+    """
+    assert not vp.PREREG_PIN_RE.findall("f" * 64 + "\nbaska_bir_kelime\n")
+    assert _gen(tree) == 0
+    real = next(e["sha256"] for e in _manifest(tree)["files"] if e["path"] == "data/foton/meta.json")
+    prereg = tree / "PREREG.md"
+    prereg.write_text(f"src_sha256:\n{'f' * 64}\ndata/foton/meta.json bir metin\n\n"
+                      f"```\n{real}  data/foton/meta.json\n```\n", encoding="utf-8", newline="\n")
+    assert _ver(tree, prereg="PREREG.md") == 0, "yalnız hash satırı uydurma çivi üretti"
+    assert "1 çivi, 1 tanesi manifestle aynı" in capsys.readouterr().out
 
 
 def test_verify_fails_when_the_manifest_itself_is_gone(tree, capsys):

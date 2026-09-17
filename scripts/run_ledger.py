@@ -109,6 +109,23 @@ def append(rec: dict, path: str = LEDGER) -> dict:
     return rec
 
 
+def _parse_line(line: str) -> dict | None:
+    """Tek defter satırı -> kayıt, ya da çözülemiyorsa None.
+
+    `read` ile `damaged` bu TEK tanımı paylaşmak zorunda: iki ayrı çözümleme ölçütü yazılırsa bir satır
+    ikisinin de dışında kalabilir ve "kayıt 11 satır | bozuk satır 0" derken 12 satır olur — raporun
+    tamlık iddiası tam olarak bu bölümlemeye dayanıyor.
+
+    Sözlük OLMAYAN geçerli JSON (yarım yazılmış satırın sonu, ör. `123` ya da `null`) da bozuktur:
+    `json.loads` ona hata vermez, ama `rec.get(...)` diye okunduğunda rapor AttributeError ile çöker.
+    """
+    try:
+        rec = json.loads(line)
+    except ValueError:
+        return None
+    return rec if isinstance(rec, dict) else None
+
+
 def read(path: str = LEDGER) -> list[dict]:
     """Defteri okur; ÇÖZÜLEMEYEN satırları atlar (bkz. `damaged`). Dosya yoksa boş liste."""
     if not os.path.exists(path):
@@ -117,10 +134,9 @@ def read(path: str = LEDGER) -> list[dict]:
     with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             if line.strip():
-                try:
-                    out.append(json.loads(line))
-                except ValueError:
-                    continue
+                rec = _parse_line(line)
+                if rec is not None:
+                    out.append(rec)
     return out
 
 
@@ -135,32 +151,51 @@ def damaged(path: str = LEDGER) -> list[tuple[int, str]]:
     bad = []
     with open(path, encoding="utf-8", errors="replace") as f:
         for i, line in enumerate(f, 1):
-            if line.strip():
-                try:
-                    json.loads(line)
-                except ValueError:
-                    bad.append((i, line.strip()[:80]))
+            if line.strip() and _parse_line(line) is None:
+                bad.append((i, line.strip()[:80]))
     return bad
 
 
-def key(rec: dict) -> tuple:
-    """Aynı denemeyi iki kez saymamak için kimlik.
+def attempt(rec: dict) -> tuple:
+    """Bir DENEMENİN kimliği: (koşu adı, başlangıç anı). Klasör adı kimliğe GİRMEZ.
 
-    `status` kimliğin PARÇASI: bir klasör ilk taramada "çöktü", sürdürülüp bitince "sürdürüldü" olur
-    ve V10(iii) her ikisinin de deftere yazılmasını istiyor. Durum aynı kaldığı sürece (ör. koşan bir
-    klasörün tekrar taranması) yeni satır eklenmez.
+    Gerekçe ölçümle: `run_queue.py` yarım kalmış bir koşuyu `<ad>.yarim-<n>` diye kenara alıyor ve
+    yeniden adlandırma mtime'ı KORUYOR. Klasör adı kimliğe girerse aynı deneme iki ayrı satır olur —
+    kuyruk kancası yeniden adlandırmadan ÖNCE yazar (`dir="m-s11"`), yeniden kurulum SONRA görür
+    (`dir="m-s11.yarim-1"`). Ölçülen sonuç: tek denemede `TOPLAM deneme 2 | ÇÖKEN 2`. Bunlar V11'in
+    zorunlu kıldığı sayılar, yani defterin var olma sebebi olan sayılar şişiyordu.
     """
-    return (rec.get("run"), rec.get("dir"), rec.get("started"), rec.get("status"))
+    return (rec.get("run"), rec.get("started"))
+
+
+def key(rec: dict) -> tuple:
+    """Deneme kimliği + durum. Aynı denemenin DURUM DEĞİŞİKLİĞİ yeni satır hak eder (V10(iii)):
+    bir klasör ilk taramada "çöktü", sürdürülüp bitince "sürdürüldü" olur ve ikisi de deftere girer.
+    Durum aynı kaldığı sürece (ör. koşan bir klasörün tekrar taranması) yeni satır eklenmez."""
+    return attempt(rec) + (rec.get("status"),)
 
 
 def append_missing(records: list[dict], path: str = LEDGER) -> list[dict]:
-    """Defterde olmayan kayıtları ekler; yeniden kurulumu tekrar tekrar koşmak defteri şişirmesin."""
-    have = {key(r) for r in read(path)}
+    """Defterde olmayan kayıtları ekler; yeniden kurulumu tekrar tekrar koşmak defteri şişirmesin.
+
+    KUYRUK SATIRI OTORİTERDİR. Bir deneme için `source="kuyruk"` satırı varsa, yeniden kurulum o
+    denemeye dokunmaz. Neden: kuyruk sürecin ÇIKIŞ KODUNU biliyor, yeniden kurulum bilmiyor. Aynı
+    çöken koşuda kuyruk `çöktü`/`cikis-kodu-1`, yeniden kurulum ise `iptal`/`kanit-yok` çıkarıyor —
+    yani `status`'u kimliğe koymak (V10(iii) için doğru olan) bu durumda çelişen bir İKİNCİ satır
+    üretiyordu. Daha az bilgiye sahip taraf, daha çok bilgiye sahip tarafın kaydını bozmaz.
+
+    Bu, gerçek durum değişikliğini engellemez: sürdürülüp biten bir koşu için kuyruk zaten kendi
+    yeni satırını yazar (yeni deneme, yeni `started`).
+    """
+    existing = read(path)
+    have = {key(r) for r in existing}
+    from_queue = {attempt(r) for r in existing if r.get("source") == "kuyruk"}
     out = []
     for rec in records:
-        if key(rec) not in have:
-            out.append(append(rec, path))
-            have.add(key(rec))
+        if attempt(rec) in from_queue or key(rec) in have:
+            continue
+        out.append(append(rec, path))
+        have.add(key(rec))
     return out
 
 
@@ -322,8 +357,16 @@ def scan_run_dir(run_dir: str, block: str | None = None, exit_code: int | None =
     ended_row = any(r.get("type") == "end" for r in rows)
     m_mtime = _mtime(os.path.join(run_dir, "metrics.jsonl"))
 
+    # "Koşuyor" ölçütü klasördeki EN YENİ dosyaya bakar, yalnızca metrics.jsonl'a değil: kuyruk
+    # provenance.json'ı yazdıktan sonra `src/train.py` veri yükleyip derleyene kadar metrics.jsonl
+    # HENÜZ YOKTUR (ölçülen açılış: provenance 21:43:58 -> ilk metrics satırı ~21:44:05, r-d-s11).
+    # O pencerede yalnızca metrics'e bakılsa canlı koşu "kanıt yok -> iptal" diye deftere girer ve
+    # defter, ekleme-yalnızca olduğu için kendi uydurduğu iptali bir daha silemez.
+    live_mtime = max((t for t in (m_mtime, _mtime(os.path.join(run_dir, "provenance.json")),
+                                  _mtime(os.path.join(run_dir, "config.json"))) if t is not None),
+                     default=None)
     if not (done or ended_row) and not set_aside and crash_kind(tail) is None \
-            and m_mtime is not None and time.time() - m_mtime < running_grace_sec:
+            and live_mtime is not None and time.time() - live_mtime < running_grace_sec:
         return None
 
     sessions, sig = sessions_of(rows)
@@ -474,10 +517,8 @@ def record_run_dir(run_dir: str, block: str | None = None, exit_code: int | None
     da mtime'ı korur. Kayıt varsa None döner.
     """
     rec = scan_run_dir(run_dir, block=block, exit_code=exit_code, running_grace_sec=0.0)
-    if only_if_new_attempt:
-        ident = (rec["run"], rec["started"])
-        if any((r.get("run"), r.get("started")) == ident for r in read(path)):
-            return None
+    if only_if_new_attempt and any(attempt(r) == attempt(rec) for r in read(path)):
+        return None                      # `attempt()` ile tek kimlik: iki tanım ayrışmasın
     rec["source"] = source
     if reason:
         rec["reason"] = f"{reason}; {rec['reason']}" if rec["reason"] else reason
@@ -509,6 +550,10 @@ def record_manual(run: str, status: str, reason: str, arm: str | None = None, se
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows konsolu cp1252 olabilir
+    # stderr de şart: aşağıdaki `p.error(...)` gerekçeleri Türkçe ve argparse onları stderr'e yazıyor.
+    # Varsayılan cp1252/backslashreplace ile "iptal kaydı gerekçesiz yazılamaz" ekrana
+    # "iptal kaydı gerek?esiz yazılamaz" diye düşüyor — yani kuralı ihlal eden kişi kuralı okuyamıyor.
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(description="koşu defteri: ekleme, diskten yeniden kurulum, rapor")
     p.add_argument("--ledger", default=LEDGER, help="defter yolu (varsayılan SABİT yol; testler için)")
     p.add_argument("--reconstruct", metavar="DIZIN",

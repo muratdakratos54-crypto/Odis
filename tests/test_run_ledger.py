@@ -146,6 +146,25 @@ def test_half_written_line_from_a_killed_process_does_not_corrupt_the_next_recor
     assert rl.counts(rl.read(p))["toplam"] == 2
 
 
+def test_a_valid_json_line_that_is_not_a_record_is_counted_as_damaged(tmp_path, capsys):
+    """Yarım satırın kalan kuyruğu GEÇERLİ ama sözlük olmayan bir JSON olabilir (`123`, `null`,
+    `"..."`). `json.loads` ona hata vermez: sözlük sanılıp `rec.get(...)` diye okunursa rapor
+    AttributeError ile ÇÖKER, üstelik "bozuk satır 0" yazdıktan sonra — yani defter hem susar hem
+    tam olduğunu iddia eder. `read` ve `damaged` aynı çözümlemeyi paylaşmalı ki satır ikisinin de
+    dışında kalmasın."""
+    p = str(tmp_path / "run_ledger.jsonl")
+    rl.append(rl.blank(run="d-s11", status="bitti"), p)
+    with open(p, "a", encoding="utf-8", newline="\n") as f:
+        f.write("123\n")                                  # bir önceki satırın çözülebilen kalıntısı
+        f.write("null\n")
+    assert [r["run"] for r in rl.read(p)] == ["d-s11"]     # kayıt sayılmadı
+    assert [i for i, _ in rl.damaged(p)] == [2, 3]         # ama SAYILDI: rapor eksikliği söyleyebilir
+    c = rl.print_report(p)                                 # çökmemeli
+    assert c["toplam"] == 1
+    out = capsys.readouterr().out
+    assert "bozuk satır 2" in out and "YARIM YAZILMIŞ SATIR VAR" in out
+
+
 # --- diskten yeniden kurulum -------------------------------------------------------------------------
 
 def test_reconstruct_reads_status_arm_seed_and_provenance_from_disk(tree):
@@ -199,6 +218,28 @@ def test_resume_detected_even_when_time_never_goes_backwards(tmp_path):
     assert rl.sessions_of(session(0, 1000, 0.0, 0.0)) == (1, "")
 
 
+def test_resume_detected_when_only_the_clock_jump_survives(tmp_path):
+    """İlk imzanın TEK BAŞINA testi. `tree` fixture'ındaki sürdürülen koşu iki imzayı birlikte
+    tetikliyor (satırları: time 12,24,12,24 / train_time 10,20,260,270 — hem geri atlama hem
+    `time < train_time`), yani birinci imza tamamen silinse suite bunu göremiyordu. Oysa gerçek
+    resume'da ilk oturumun satırları KORUNUR (`src/train.py` yalnızca checkpoint adımından SONRAsını
+    atar), yani pratikte önce tetiklenen imza budur — kapsanmaması gereken imza değil.
+
+    İkinci imzanın kör kaldığı durum: ilk oturumun eval/kayıt yükü checkpoint'in `train_time`'ından
+    büyükse yeni oturumda `time` hızla `train_time`'ı geçer ve tek kanıt geri atlama kalır.
+    """
+    rows = [  # 1. oturum: ağır eval yükü -> time (100,200) >> train_time (10,20)
+        {"type": "train", "step": 250, "train_time": 10.0, "time": 100.0},
+        {"type": "train", "step": 500, "train_time": 20.0, "time": 200.0},
+        # 2. oturum: time sıfırdan sayılıyor ama train_time'ı hemen geçiyor
+        {"type": "train", "step": 750, "train_time": 30.0, "time": 35.0},
+        {"type": "train", "step": 1000, "train_time": 40.0, "time": 70.0}]
+    assert all(r["time"] >= r["train_time"] for r in rows)   # ikinci imza HİÇ tetiklenmiyor
+    assert rl.sessions_of(rows) == (2, "time-geri-atladi")   # tek kanıt geri atlama
+    d = make_run(tmp_path, "m-s66", rows, done=True, end=True, seed=66)
+    assert rl.scan_run_dir(d)["status"] == "sürdürüldü"
+
+
 def test_oom_and_nan_are_separated_from_a_plain_crash(tmp_path):
     """oom, nan ve çöktü ayrı durumlar: sebebi (VRAM bütçesi / sayısal kararsızlık / hata) ve
     düzeltmesi farklı. NaN, "bitmiş" koşuda da kazanır — zehirli eğri karar hesabına girmemeli."""
@@ -227,6 +268,27 @@ def test_a_still_running_run_is_not_invented_as_cancelled(tmp_path):
     # aynı klasör, süre geçmiş sayılırsa: iptal, ama kanıt yokluğu gerekçeye yazılmış olmalı
     rec = rl.scan_run_dir(live, running_grace_sec=0.0)
     assert rec["status"] == "iptal" and rec["evidence"] == "kanit-yok" and "ayrımının kanıtı" in rec["reason"]
+
+
+def test_a_run_that_has_not_written_metrics_yet_is_not_invented_as_cancelled(tmp_path):
+    """Açılış penceresi: kuyruk provenance.json'ı yazar, `src/train.py` veriyi yükleyip derlerken
+    metrics.jsonl HENÜZ YOKTUR (ölçülen: provenance 21:43:58 -> ilk metrics satırı ~21:44:05).
+    Koruma yalnızca metrics.jsonl'a bakarsa o pencerede taranan CANLI koşu "kanıt yok -> iptal"
+    diye deftere girer; defter ekleme-yalnızca olduğu için uydurduğu iptali bir daha silemez."""
+    base = tmp_path / "ckpt"
+    d = base / "r-d-s22"
+    d.mkdir(parents=True)
+    (d / "provenance.json").write_text(json.dumps({
+        "src_sha256": "a" * 64, "git_head": "b" * 40, "git_status": [],
+        "args": ["--preset", "foton-d", "--seed", "22"]}), encoding="utf-8")
+    assert not (d / "metrics.jsonl").exists()              # kuyruk koşuyu az önce başlattı
+    assert rl.scan_run_dir(str(d)) is None
+    assert rl.reconstruct(str(base)) == ([], ["r-d-s22"])
+    # aynı klasör eski: artık iz bırakmadan ölmüş bir deneme, sayılmalı
+    old = time.time() - 4 * 3600
+    os.utime(d / "provenance.json", (old, old))
+    rec = rl.scan_run_dir(str(d))
+    assert rec["status"] == "iptal" and rec["evidence"] == "kanit-yok" and rec["steps"] is None
 
 
 def test_exit_code_tells_a_ctrl_c_cancel_from_a_crash(tmp_path):
@@ -327,3 +389,52 @@ def test_real_ledger_holds_the_ten_baseline_runs():
     assert sorted(r["run"] for r in base) == \
         sorted(f"baseline-{a}-s{s}" for a in "dm" for s in (11, 22, 33, 44, 55))
     assert rl.damaged(rl.LEDGER) == []
+
+
+def test_reconstruct_does_not_double_count_an_attempt_the_queue_already_logged(tmp_path):
+    """DENEME KİMLİĞİ klasör adından bağımsız olmalı — yoksa yeniden adlandırma sayıyı ikiye katlar.
+
+    Doğrulayıcının kurduğu senaryo, ve defterin var olma sebebi olan sayıyı bozuyordu:
+
+      1. kuyruk `m-s11`'i koşturur, çöker, kanca satırı yazar          (dir="m-s11", source="kuyruk")
+      2. sonraki kuyruk klasörü `m-s11.yarim-1` diye kenara alır       (mtime KORUNUR)
+      3. `--reconstruct` klasörü yeni adıyla görür                     (dir="m-s11.yarim-1")
+
+    `dir` kimliğin parçası olduğu sürece 3. adım ikinci bir satır yazıyordu: tek denemede
+    "TOPLAM deneme 2 | ÇÖKEN 2". Üstelik iki satır ÇELİŞİYOR — kuyruk çıkış kodunu bildiği için
+    `çöktü`/`cikis-kodu-1` yazıyor, yeniden kurulum bilmediği için `iptal`/`kanit-yok` çıkarıyor.
+    Bu yüzden iki kural birlikte gerekiyor: kimlik (koşu, başlangıç), ve kuyruk satırı otoriter.
+    """
+    p = str(tmp_path / "led.jsonl")
+    base = tmp_path / "ckpt"
+    # (a) ÇELİŞEN sürüm: kuyruk çıkış koduyla `çöktü` yazar, yeniden kurulum kanıt görmez
+    d = make_run(base, "m-s11", session(0, 250, 0.0, 0.0), seed=11)
+    rl.record_run_dir(d, block="s11", exit_code=1, reason="kuyruk", path=p)
+    assert rl.read(p)[0]["status"] == "çöktü" and rl.read(p)[0]["source"] == "kuyruk"
+    os.rename(d, str(base / "m-s11.yarim-1"))
+    recs = [rl.scan_run_dir(str(base / "m-s11.yarim-1"), block="s11")]
+    assert recs[0]["status"] == "iptal"                    # yeniden kurulum farklı sonuca varıyor
+    assert rl.append_missing(recs, path=p) == []            # ama kuyruğun kaydını BOZMAZ
+    c = rl.counts(rl.read(p))
+    assert c["toplam"] == 1 and c["çöken"] == 1, f"deneme iki kez sayıldı: {c}"
+
+    # (b) AYNI DURUM sürümü: traceback var, iki yol da `çöktü` diyor — yine tek satır
+    d2 = make_run(base, "x-s11", session(0, 250, 0.0, 0.0), log=TRACEBACK, seed=11, preset="foton-x")
+    rl.record_run_dir(d2, block="s11", exit_code=1, reason="kuyruk", path=p)
+    os.rename(d2, str(base / "x-s11.yarim-1"))
+    rl.append_missing([rl.scan_run_dir(str(base / "x-s11.yarim-1"), block="s11")], path=p)
+    assert rl.counts(rl.read(p))["toplam"] == 2, "ikinci deneme de iki kez sayıldı"
+
+    # (c) kuyruğun HİÇ yazmadığı deneme: yeniden kurulum onu yazmak ZORUNDA (tek iz o)
+    d3 = make_run(base, "h-s11.yarim-1", session(0, 250, 0.0, 0.0), seed=11, preset="foton-h")
+    assert len(rl.append_missing([rl.scan_run_dir(d3, block="s11")], path=p)) == 1
+    assert rl.counts(rl.read(p))["toplam"] == 3
+
+
+def test_attempt_identity_ignores_the_directory_name():
+    """Kimlik fonksiyonu tek ve klasörden bağımsız; iki ayrı tanım tekrar ayrışmasın."""
+    a = {"run": "m-s11", "dir": "m-s11", "started": "2026-09-17T18:00:00", "status": "çöktü"}
+    b = {**a, "dir": "m-s11.yarim-1"}
+    assert rl.attempt(a) == rl.attempt(b)
+    assert rl.key(a) == rl.key(b)                          # durum aynıysa anahtar da aynı
+    assert rl.key({**b, "status": "iptal"}) != rl.key(a)   # durum değişikliği yeni satır hak eder

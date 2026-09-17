@@ -344,10 +344,14 @@ def _table(T: int, n_heads: int) -> str:
         s = PATTERNS[key].summary(T, n_heads)
         lines.append(f"  {key:6s} {' + '.join(s['head_labels']):34s} {s['avg']:8.2f} "
                      f"{s['max_span']:8d} {'/'.join(str(d) for d in s['distinct_reachable']):>7s}")
-        if len(s["head_avgs"]) > 1:             # C: head başına ortalama ayrıca raporlanır
-            per = ", ".join(f"{lab} = {v:.2f}" for lab, v in
-                            zip(s["head_labels"], s["head_avgs"]))
-            lines.append(f"  {'':6s} head başına: {per}")
+        if len(s["head_avgs"]) > 1:
+            # C: head başına AYRI satır. Üst satırdaki "en uzak"/"ayrık" kolonları head'ler
+            # üzerinden toplanmış (max / liste) ve heterojen deseni tek sayıya indirmek C'nin
+            # erişimini olduğundan geniş gösterir. Ayrıca strided head'in bütçesi W=256 yazılı
+            # ama T=512'de 128'de doygunluğa oturuyor: etiketteki 256 değil, ayrık 128 geçerli.
+            for lab, v, sp, d in zip(s["head_labels"], s["head_avgs"],
+                                     s["head_max_spans"], s["distinct_reachable"]):
+                lines.append(f"  {'':6s}   head: {lab:28s} {v:8.2f} {sp:8d} {d:7d}")
     base = PATTERNS["full"].summary(T, n_heads)
     lines.append(f"  {'D/M':6s} {base['head_labels'][0]:34s} {base['avg']:8.2f} "
                  f"{base['max_span']:8d} {base['distinct_reachable'][0]:7d}")
