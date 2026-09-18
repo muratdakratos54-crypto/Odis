@@ -34,7 +34,7 @@ import numpy as np
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT)
 from src.stats import (  # noqa: E402
-    MDE_PRIMARY2, PRIMARY_FAMILY, SUCCESS, abandon, contribution, decide, reachability,
+    MDE_PRIMARY2, PRIMARY_FAMILY, SUCCESS, Obs, abandon, ci95, contribution, decide, reachability,
     t_crit, t_crit_alpha, ub95,
 )
 
@@ -157,61 +157,99 @@ def main() -> None:
     say("  YORUM: tam eşikte güç ~%50 ve seed sayısıyla DÜZELMEZ — bağlayıcı olan nokta tahmini")
     say("  şartıdır (v01 O9'un yapısal sonucu, v02'de de geçerli). Eşik gevşetilmiyor.")
 
-    # ---- SANSÜRLÜ senaryolar: sınavın Gauss-dışı kör noktası ---------------------------------
-    say("\n## SANSÜRLÜ senaryolar — vazgeçmenin İKİ yolu, beklentiler ASSERTION olarak")
-    say("  Vazgeçme kuralı `s̄`'nin SANSÜRE DUYARLI üst sınırına bakar (`src.stats.ub95`):")
-    say("  ÜS = (n_u × sansürsüz GA üst + Σ ikame) / n. Sansürlü ikame bir gözlem değil tek yanlı")
-    say("  bir sınırdır; onu düz t-aralığına sokmak aralığı [−113, +53]'e şişirip kuralı sansürlü")
-    say("  HER senaryoda ulaşılamaz yapıyordu (2. denetim). Yalnızca sansürsüz ALT örneğe bakmak ise")
-    say("  3/5 sansürde (2 seed, t(1) = 12.7) EN NET başarısızlığı terk edilemez kılıyordu (3. denetim).")
+    # ---- BAŞARISIZ-SEED senaryoları: sınavın Gauss-dışı kör noktası ---------------------------
+    say("\n## BAŞARISIZ-SEED senaryoları (sansürlü / yavaş) — vazgeçmenin İKİ yolu, beklentiler ASSERTION olarak")
+    say("  Vazgeçme kuralı VE kesinlik ölçütü `s̄`'nin BAŞARISIZ-SEED'E DUYARLI üst sınırına bakar (`src.stats.ub95`):")
+    say("  ub95 = min( (100·n_h + Σ sabit)/n , (n_h × hızlı seed'lerin GA üst sınırı + Σ sabit)/n ).")
+    say("  'sabit' = 1x bütçede hedefe ulaşamayan seed'ler: sansürlü (ikame ≈ −150) ve yavaş (2x eğrisinden ölçülen).")
+    say("  Bunları düz t-aralığına sokmak aralığı [−113, +53]'e şişirip kuralı ulaşılamaz yapıyordu (2. denetim);")
+    say("  yalnızca sansürsüz ALT örneğe bakmak 3/5 sansürde (2 seed, t(1) = 12.7) en net başarısızlığı terk")
+    say("  edilemez kılıyordu (3. denetim); yavaş seed'i sıradan gözlem saymak her yavaş-seed'li kampanyayı")
+    say("  terminal 'yetersiz kesinlik'e sürüyordu (4. denetim). Aritmetik tavan HER durumda uygulanır.")
     say("  'tek' = tek ölçek yolu (v01 B10: satır 'başarısız' + hak kullanılmamış);")
     say("  'iki' = iki ardışık ölçek yolu. Oracle kazancı her senaryoda 0.5 (< 2).")
-    say(f"  {'senaryo':34s} {'satır':>10s} {'s̄':>8s} {'düz GA üst':>11s} {'ub95':>8s} {'tek':>6s} {'iki':>6s}")
+    say(f"  {'senaryo':34s} {'satır':>26s} {'s̄':>8s} {'düz GA üst':>11s} {'ub95':>8s} {'tek':>6s} {'iki':>6s}")
     CENS = -149.82                                    # 2x bütçe ikamesinin puan karşılığı
+    SEEDS = (11, 22, 33, 44, 55, 66, 77, 88, 99, 110)
+
+    def tab(vals, cens=(), slow=()):
+        """Senaryoyu seed KİMLİĞİYLE anahtarlı tabloya çevirir (`src.stats` liste kabul etmez)."""
+        return {sd_: Obs(v, "sansürlü" if i in cens else "yavaş" if i in slow else "hızlı")
+                for i, (sd_, v) in enumerate(zip(SEEDS, vals))}
+
     scen = [
-        # (etiket, s_i, sansür maskesi, tek ölçekte terk?, iki ölçekte terk?)
-        ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [False] * 4 + [True], True, True),
+        # (etiket, s_i, sansürlü konumlar, yavaş konumlar, tek ölçekte terk?, iki ölçekte terk?)
+        ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [4], [], True, True),
         # s̄ hedefe ulaşamayan seed'i İÇERİR: 4 × +%7 + 1 sansür -> s̄ ≈ −24, satır "başarısız".
-        # v01 B10: hak kullanılmazsa terk. (Sahibin diğer yolu S1'e çıkmaktır; üçüncü bir
-        # "ne terk ne devam" hâli yoktur.)
-        ("4 × +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [False] * 4 + [True], True, True),
-        ("4 × +%30 + 1 sansür", [30.0, 30.1, 29.9, 30.05, CENS], [False] * 4 + [True], True, True),
-        ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [False] * 3 + [True] * 2, True, True),
+        # v01 B10: hak kullanılmazsa terk (oracle şartı sağlanıyorsa); sahibin diğer yolu S1'dir.
+        ("4 × +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [4], [], True, True),
+        ("4 × +%30 + 1 sansür", [30.0, 30.1, 29.9, 30.05, CENS], [4], [], True, True),
+        ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [3, 4], [], True, True),
         # 3. denetimin bulduğu delik: 2 sansürsüz seed'in aralığı t(1) = 12.7 ile patlıyor.
-        ("2 geniş + 3 sansür", [0.5, -0.5, CENS, CENS, CENS], [False] * 2 + [True] * 3, True, True),
+        ("2 geniş + 3 sansür", [0.5, -0.5, CENS, CENS, CENS], [2, 3, 4], [], True, True),
+        # 4. denetim (A): tavan HER durumda — iki hızlı seed'in t(1) aralığı +303'e çıkıyor.
+        ("2 çok geniş hızlı + 3 sansür", [-62.5, -125.0, CENS, CENS, CENS], [2, 3, 4], [], True, True),
+        ("2 yavaş + 3 sansür", [-62.5, -125.0, CENS, CENS, CENS], [2, 3, 4], [0, 1], True, True),
+        # 4. denetim (C): yavaş seed bir yöntem başarısızlığıdır, varyans değil.
+        ("4 başabaş + 1 yavaş (1.5×)", [0.2, -0.1, 0.3, 0.0, -56.0], [], [4], True, True),
+        ("4 başabaş + 1 yavaş (1.99×)", [0.2, -0.1, 0.3, 0.0, -148.75], [], [4], True, True),
+        ("4 × +%7 + 1 yavaş (1.5×)", [7.0, 7.1, 6.9, 7.05, -56.0], [], [4], True, True),
+        ("9 × −%8 + 1 yavaş (1.9×), n=10", [-8.0 + 0.02 * i for i in range(9)] + [-140.0], [], [9], True, True),
         # "nötr" satırı tek ölçek yoluna GİRMEZ (o yol yalnızca "başarısız"tan açılır).
-        ("sansür yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [False] * 5, False, True),
-        ("sansür yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [False] * 5, True, True),
+        ("başarısız seed yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [], [], False, True),
+        ("başarısız seed yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [], [], True, True),
         # etki eşiğin üstünde kurulmuş: hiçbir yolda terk edilemez
-        ("sansür yok, +%7", [7.0, 7.1, 6.9, 7.05, 6.95], [False] * 5, False, False),
+        ("başarısız seed yok, +%7", [7.0, 7.1, 6.9, 7.05, 6.95], [], [], False, False),
+        # 1x SINIRI (belgelenmiş tek durum süreksizliği): sınırın hemen içinde ulaşan seed aralığa
+        # girer (kesinlik ölçütü tetiklenir), hemen dışında ulaşan sabit sayılır.
+        ("4 × +%10 + 1 hızlı −24 (0.99×)", [10.0, 10.5, 9.5, 10.2, -24.0], [], [], False, False),
+        ("4 × +%10 + 1 yavaş −26 (1.01×)", [10.0, 10.5, 9.5, 10.2, -26.0], [], [4], False, True),
     ]
     NEG = {"M": -1.0, "D": -1.0}
-    prev_ub = None
-    for label, s_i, mask, exp1, exp2 in scen:
-        r = decide(s_i, quality_per_sec=NEG, censored_mask=mask)
-        r1 = abandon([r], 0.5, escalation_used=False)
-        r2 = abandon([r, r], [0.5, 0.5], escalation_used=True)
-        say(f"  {label:34s} {r['row']:>10s} {r['mean']:8.2f} {r['ci95'][1]:11.2f} {r['ub95']:8.2f} "
+    rows = {}
+    for label, s_i, cens, slow, exp1, exp2 in scen:
+        r = decide(tab(s_i, cens, slow), quality_per_sec=NEG)
+        rows[label] = r
+        r1 = abandon({"S0": r}, {"S0": 0.5}, escalation_used=False)
+        r2 = abandon({"S0": r, "S1": r}, {"S0": 0.5, "S1": 0.5}, escalation_used=True)
+        say(f"  {label:34s} {r['row']:>26s} {r['mean']:8.2f} {r['ci95'][1]:11.2f} {r['ub95']:8.2f} "
             f"{('EVET' if r1['abandon'] else 'hayır'):>6s} {('EVET' if r2['abandon'] else 'hayır'):>6s}")
         assert r1["abandon"] is exp1, f"{label} tek ölçek: {r1['abandon']} != {exp1} — {r1['reason'][:110]}"
         assert r2["abandon"] is exp2, f"{label} iki ölçek: {r2['abandon']} != {exp2} — {r2['reason'][:110]}"
+    # başarısız seed'li HİÇBİR senaryo kesinlik satırına düşmemeli (4. denetimin bulduğu çıkmaz)
+    for label, r in rows.items():
+        if "yavaş" in label or "sansür" in label:
+            assert r["determinate"] and r["row"] == ("belirsiz" if "1.01×" in label else "başarısız"), \
+                f"{label}: satır {r['row']!r} — başarısız seed aralığı şişirip kesinlik ölçütünü tetikliyor"
+    # 2x sınırında SÜREKLİLİK: 1.99x'te ulaşan ile hiç ulaşamayan aynı sonucu verir
+    a_, b_ = rows["4 başabaş + 1 yavaş (1.99×)"], rows["4 başabaş + 1 sansür"]
+    assert a_["row"] == b_["row"] and abs(a_["ub95"] - b_["ub95"]) < 0.5, "2x sınırında süreksizlik"
+    say("  2x sınırı: 1.99× (−148.75, yavaş) ile sansür (−149.82) AYNI satır, ub95 farkı "
+        f"{abs(a_['ub95'] - b_['ub95']):.2f} puan — OK")
+    say("  1x sınırı (belgelenmiş): −24 hızlı -> kesinlik ölçütü tetiklenir; −26 yavaş -> belirli 'belirsiz'.")
     # ub95 sansür sayısında MONOTON olmalı (eski kural değildi: k=3 < k=2 < k=4)
     base5 = [0.2, -0.1, 0.3, 0.0, 0.1]
-    ubs = [ub95(base5[:5 - k] + [CENS] * k, [False] * (5 - k) + [True] * k) for k in range(5)]
+    ubs = [ub95(tab(base5[:5 - k] + [CENS] * k, cens=range(5 - k, 5))) for k in range(5)]
     assert all(a > b for a, b in zip(ubs, ubs[1:])), f"ub95 sansürde monoton değil: {ubs}"
     say("  ub95, sansürlü seed sayısı k = 0..4 için: " + ", ".join(f"{u:+.1f}" for u in ubs) + "  (monoton — OK)")
+    # aritmetik tavan HER durumda: tavansız biçim bu senaryoda +31.4 verirdi
+    capped = rows["2 çok geniş hızlı + 3 sansür"]["ub95"]
+    uncapped = (2 * ci95([-62.5, -125.0])[2] + 3 * CENS) / 5
+    assert capped < -49 < 5 < uncapped, f"aritmetik tavan uygulanmıyor: ub95 = {capped:+.1f} (tavansız {uncapped:+.1f})"
+    say(f"  aritmetik tavan: [−62.5, −125, C, C, C] için ub95 = {capped:+.1f} (tavansız biçim {uncapped:+.1f} verirdi) — OK")
     # [S0 başarılı, S1 başarısız] TERK EDİLMEZ (3. denetimin bulduğu regresyon)
-    s0 = decide([6.5, 7.0, 7.5, 6.8, 7.2], quality_per_sec=NEG)
-    s1 = decide([-4.0, -3.5, -4.5, -3.8, -4.2], quality_per_sec=NEG)
+    s0 = decide(tab([6.5, 7.0, 7.5, 6.8, 7.2]), quality_per_sec=NEG)
+    s1 = decide(tab([-4.0, -3.5, -4.5, -3.8, -4.2]), quality_per_sec=NEG)
     for flag in (False, True):
-        assert abandon([s0, s1], [0.5, 0.5], escalation_used=flag)["abandon"] is False, \
+        assert abandon({"S0": s0, "S1": s1}, {"S0": 0.5, "S1": 0.5}, escalation_used=flag)["abandon"] is False, \
             "iki ölçek kuralı yalnızca SON ölçeğe bakıyor"
     say("  [S0 'başarılı', S1 'başarısız'] -> terk YOK (iki ölçek kuralı her iki ölçeğe bakıyor) — OK")
-    # Oracle headroom'u HER yolda bağlayıcı, ve ölçek BAŞINA:
-    rb = decide([-8.0, -8.1, -7.9, -8.05, -7.95], quality_per_sec=NEG)
-    assert abandon([rb], 5.0)["abandon"] is False, "oracle tek ölçekte bağlamıyor"
-    assert abandon([rb, rb], [0.5, 5.0], escalation_used=True)["abandon"] is False, "oracle S1'de bağlamıyor"
-    assert abandon([rb, rb], [5.0, 0.5], escalation_used=True)["abandon"] is False, "oracle S0'da bağlamıyor"
+    # Oracle headroom'u HER yolda bağlayıcı, ve ölçek BAŞINA (ölçek KİMLİĞİYLE eşlenir):
+    rb = decide(tab([-8.0, -8.1, -7.9, -8.05, -7.95]), quality_per_sec=NEG)
+    two = {"S0": rb, "S1": rb}
+    assert abandon({"S0": rb}, {"S0": 5.0})["abandon"] is False, "oracle tek ölçekte bağlamıyor"
+    assert abandon(two, {"S0": 0.5, "S1": 5.0}, escalation_used=True)["abandon"] is False, "oracle S1'de bağlamıyor"
+    assert abandon(two, {"S1": 0.5, "S0": 5.0}, escalation_used=True)["abandon"] is False, "oracle S0'da bağlamıyor"
     say("  oracle headroom'u (5.0 >= 2.0) tek ölçekte ve iki ölçeğin HER BİRİNDE terk etmeyi engelliyor — OK")
 
     # ---- BİRİNCİL-2'nin dört durumlu kuralı --------------------------------------------------
@@ -230,8 +268,9 @@ def main() -> None:
         for n in (5, 10):
             x = np.random.default_rng(11).normal(mu, sdd, size=(sims2, n))
             counts = dict.fromkeys(STATES, 0)
+            zero = dict.fromkeys(range(n), 0.0)       # H = 0: X − H = çekilen fark (aynı anahtarlar)
             for row in x:
-                counts[contribution(row.tolist())["state"]] += 1      # bilinmeyen durum -> KeyError
+                counts[contribution(dict(enumerate(row.tolist())), zero)["state"]] += 1   # bilinmeyen durum -> KeyError
             share[(mu, n)] = {k: v / sims2 for k, v in counts.items()}
             say(f"  {mu:+10.2f}p {n:3d} " + " ".join(f"{100*share[(mu, n)][s]:16.1f}%" for s in STATES))
     c5, c10 = share[(0.0, 5)]["ölçemedik"], share[(0.0, 10)]["ölçemedik"]
@@ -260,7 +299,7 @@ def main() -> None:
             m, lo, hi, s = draw(0.0, sd, 5, 4000, seed=7)
             fast = float(trip_precision(m, lo, hi, s).mean())
             slow = reachability(
-                lambda x: decide(x, quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz",
+                lambda x: decide(dict(enumerate(x)), quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz",
                 0.0, sd, 5, sims=4000, seed=7)
             say(f"  σ={sd:.2f}: vektörize %{100*fast:.2f} | decide() yolu %{100*slow:.2f} "
                 f"| fark {abs(fast-slow)*100:.2f} puan")

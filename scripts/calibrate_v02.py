@@ -98,10 +98,10 @@ def main() -> None:
     say("\n## 2. Eslestirilmis s_i: D'nin M'e gore tasarrufu (gercek iki mimari)")
     if ns["d"] is None:
         say("  D kolu L*'e ULASMIYOR: on-kaydin sansur kurali (v01 O3/EK1-B8) geregi N*_d sansurlu.")
-        dfin = [data["d"][s]["val"][-1][1] for s in SEEDS]
-        mfin = [data["m"][s]["val"][-1][1] for s in SEEDS]
-        say(f"  D son val ort {st.mean(dfin):.4f} | L* {LSTAR} | eksik {st.mean(dfin)-LSTAR:+.4f} nat")
-        prq = paired(mfin, dfin, SEEDS, SEEDS)
+        dfin = {s: data["d"][s]["val"][-1][1] for s in SEEDS}     # seed KİMLİĞİYLE anahtarlı
+        mfin = {s: data["m"][s]["val"][-1][1] for s in SEEDS}
+        say(f"  D son val ort {st.mean(dfin.values()):.4f} | L* {LSTAR} | eksik {st.mean(dfin.values())-LSTAR:+.4f} nat")
+        prq = paired(mfin, dfin)
         say(f"  esit tokende M-D farki {prq['mean']:+.4f} nat GA [{prq['ci95'][0]:+.4f}, "
             f"{prq['ci95'][1]:+.4f}] p={prq.get('p', float('nan')):.5f}  (TinyStories'te -0.0344 idi)")
         # Eslestirilmis sd'yi olcmek icin IKI KOLUN DA ulastigi yardimci hedef: dense'in kendi %80'i.
@@ -109,35 +109,38 @@ def main() -> None:
         LAUX = round(st.mean([data["d"][s]["at80"] for s in SEEDS]), 4)
         say("")
         say(f"  Kalibrasyon icin yardimci hedef L_aux = {LAUX} (dense'in %80 noktasi; iki kol da ulasiyor)")
-        NN = {a: [n_star(data[a][s]["val"], LAUX) for s in SEEDS] for a in ARMS}
+        NN = {a: {s: n_star(data[a][s]["val"], LAUX) for s in SEEDS} for a in ARMS}
         for a in ARMS:
-            say(f"    {a}: N* ort {st.mean(NN[a])/1e6:7.2f}M = butcenin %{100*st.mean(NN[a])/(STEPS*STEP):5.1f}'i "
-                f"| sd %{100*st.stdev(NN[a])/st.mean(NN[a]):.2f}")
+            nn = list(NN[a].values())
+            say(f"    {a}: N* ort {st.mean(nn)/1e6:7.2f}M = butcenin %{100*st.mean(nn)/(STEPS*STEP):5.1f}'i "
+                f"| sd %{100*st.stdev(nn)/st.mean(nn):.2f}")
         # s_i `src/stats.savings()` ile kurulur: seed KİMLİĞİNE göre, oran olarak. İlk hâl listeyi
         # KONUMA göre eşliyordu — `paired()`'ın regresyona bağladığı hatanın aynısı, birincil
-        # istatistiğin tam üstünde (ilk denetimin bulgusu). Burada sıralar aynı olduğu için sayı
-        # değişmiyor; değişen şey, değişmeyeceğinin artık YAPISAL olarak garanti olması.
-        s_i = savings([NN["m"][i] * ft["m"] for i in range(len(SEEDS))],
-                      [NN["d"][i] * ft["d"] for i in range(len(SEEDS))], SEEDS, SEEDS)["s_i"]
-        p2 = paired(s_i, [0.0]*len(SEEDS), SEEDS, SEEDS)
+        # istatistiğin tam üstünde (ilk denetimin bulgusu). Artık veri seed kimliğiyle anahtarlı
+        # taşınıyor: `src.stats` liste kabul ETMİYOR, konuma göre eşleme ifade edilemiyor.
+        obs = savings({s: NN["m"][s] * ft["m"] for s in SEEDS},
+                      {s: NN["d"][s] * ft["d"] for s in SEEDS})["obs"]
+        s_i = [obs[s].s for s in SEEDS]
+        p2 = paired({s: o.s for s, o in obs.items()}, dict.fromkeys(SEEDS, 0.0))
         sd_paired = p2["sd"]
         say(f"    s_i (M'in D'ye gore tasarrufu): {[round(x,2) for x in s_i]}")
-        dres = decide(s_i)      # w̄ bu kalibrasyonda verilmiyor; `decide()` bunu not olarak yazar
+        dres = decide(obs)      # w̄ bu kalibrasyonda verilmiyor; `decide()` bunu not olarak yazar
         say(f"    ort {p2['mean']:+.2f} puan | SD {sd_paired:.2f} puan | GA [{p2['ci95'][0]:+.2f}, "
             f"{p2['ci95'][1]:+.2f}] | p={p2.get('p', float('nan')):.5f} | karar: {dres['row']!r}")
         for note in dres["notes"]:          # notları DÜŞÜRME: "None sessiz değildir" garantisi
             say(f"      not: {note}")       # ancak not bir artifact'a ulaşırsa anlamlıdır
         say(f"    => OLCULMUS eslestirilmis sd(s_i) = {sd_paired:.2f} puan (gercek iki mimari arasi)")
     else:
-        F = {a: [ns[a][i] * ft[a] for i in range(len(SEEDS))] for a in ARMS}
-        s_i = [100 * (1 - F["d"][i] / F["m"][i]) for i in range(len(SEEDS))]
+        obs = savings({s: ns["d"][i] * ft["d"] for i, s in enumerate(SEEDS)},
+                      {s: ns["m"][i] * ft["m"] for i, s in enumerate(SEEDS)})["obs"]
+        s_i = [obs[s].s for s in SEEDS]
         say(f"  s_i (seed basina, puan): {[round(x,2) for x in s_i]}")
-        pr = paired(s_i, [0.0] * len(SEEDS), SEEDS, SEEDS)
+        pr = paired({s: o.s for s, o in obs.items()}, dict.fromkeys(SEEDS, 0.0))
         sd_paired = pr["sd"]
         say(f"  ort {pr['mean']:+.2f} puan | sd {sd_paired:.2f} puan | %95 GA "
             f"[{pr['ci95'][0]:+.2f}, {pr['ci95'][1]:+.2f}] | p={pr.get('p', float('nan')):.4f}")
         say(f"  -> dense, MoE'ye gore ayni hedefe {abs(pr['mean']):.1f} puan {'DAHA FAZLA' if pr['mean']<0 else 'daha az'} FLOP harciyor")
-        say(f"  karar kurali bu s_i'ye uygulanirsa: {decide(s_i)['row']!r}")
+        say(f"  karar kurali bu s_i'ye uygulanirsa: {decide(obs)['row']!r}")
 
     # --- 3. guc ---
     say("\n## 3. Karar kuralinin gucu (Monte Carlo, on-kayittaki BILESIK kural)")

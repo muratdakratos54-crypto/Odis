@@ -18,7 +18,20 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.stats import (T975, decide, multiplicity, paired, t_crit, t_sf)  # noqa: E402
+from src.stats import (T975, Obs, decide, multiplicity, paired, t_crit, t_sf)  # noqa: E402
+
+SEEDS10 = [11, 22, 33, 44, 55, 66, 77, 88, 99, 110]        # ön-kayıtlı karar seed'leri (EK1-B3)
+
+
+def T(values, cens=(), slow=()) -> dict:
+    """Değer listesini seed KİMLİĞİYLE anahtarlı tabloya çevirir; `cens`/`slow` = o KONUMDAKİ seed'in durumu.
+
+    `src.stats` liste kabul etmez (konuma göre eşleme kapalı); testler senaryoyu liste olarak
+    yazıp buradan geçirir. Kimlikler ön-kayıtlı seed'lerdir.
+    """
+    assert len(values) <= len(SEEDS10)
+    return {s: Obs(v, "sansürlü" if i in cens else "yavaş" if i in slow else "hızlı")
+            for i, (s, v) in enumerate(zip(SEEDS10, values))}
 
 # "Duvar saati her iki baseline'a karşı da pozitif" hâli. Ön-kayıt "güçlü başarı"yı `w̄(M) > 0`
 # VE `w̄(D) > 0` şartına bağlıyor, bu yüzden testler skaler değil EŞLEME geçiyor. Skaler geçmek
@@ -52,27 +65,35 @@ def test_t_crit_depends_on_df_and_is_conservative_when_missing():
 
 def test_paired_matches_by_seed_identity_not_position():
     """v3'te bulunan hata: konuma göre zip. Sıralar farklıysa yanlış seed'ler eşlenir."""
-    a, seeds_a = [1.0, 2.0, 3.0], [11, 22, 33]
-    b, seeds_b = [2.5, 0.5, 1.5], [33, 11, 22]               # aynı seed'ler, başka sıra
-    d = paired(a, b, seeds_a, seeds_b)
+    a = {11: 1.0, 22: 2.0, 33: 3.0}
+    b = {33: 2.5, 11: 0.5, 22: 1.5}                          # aynı seed'ler, başka EKLEME sırası
+    d = paired(a, b)
     assert d["per_seed"] == [0.5, 0.5, 0.5] and d["n"] == 3
-    assert d["seeds"] == [11, 22, 33]
-    assert paired(a, b)["per_seed"] != [0.5, 0.5, 0.5]       # konuma göre: yanlış cevap
+    assert d["seeds"] == [11, 22, 33] and d["dropped"] == []
+    # konuma göre eşleme bu girdide [-1.5, 1.5, 1.5] verirdi; imza onu İFADE EDEMEZ:
+    assert [x - y for x, y in zip(a.values(), b.values())] != d["per_seed"]
+    for bad in ([1.0, 2.0, 3.0], (1.0, 2.0, 3.0)):
+        with pytest.raises(TypeError, match="anahtarlanmış eşleme"):
+            paired(bad, b)
+        with pytest.raises(TypeError, match="anahtarlanmış eşleme"):
+            paired(a, bad)
 
 
 def test_paired_drops_unmatched_seeds():
-    b, seeds_b = [0.5, 1.5, 2.5], [11, 22, 33]
-    d = paired([1.0, 3.0], b, [11, 33], seeds_b)             # 22'nin koşusu eksik
+    b = {11: 0.5, 22: 1.5, 33: 2.5}
+    d = paired({11: 1.0, 33: 3.0}, b)                        # 22'nin koşusu eksik
     assert d["n"] == 2 and d["seeds"] == [11, 33] and d["per_seed"] == [0.5, 0.5]
-    assert paired([1.0], b, [99], seeds_b)["n"] == 0         # hiç eşleşme yok
+    assert d["dropped"] == [22]                              # düşen seed SESSİZ değil
+    none = paired({99: 1.0}, b)
+    assert none["n"] == 0 and none["dropped"] == [11, 22, 33, 99]   # hiç eşleşme yok
 
 
 def test_paired_ci_uses_t_of_n_minus_one():
     """v3'te bulunan hata: sabit t(2). n küçüldükçe GA GENİŞLEMELİ."""
     vals5, vals3 = [4.0, 5.0, 6.0, 5.0, 5.0], [4.0, 5.0, 6.0]
     s5 = [11, 22, 33, 44, 55]
-    d5 = paired(vals5, [0.0] * 5, s5, s5)
-    d3 = paired(vals3, [0.0] * 3, s5[:3], s5[:3])
+    d5 = paired(dict(zip(s5, vals5)), dict.fromkeys(s5, 0.0))
+    d3 = paired(dict(zip(s5[:3], vals3)), dict.fromkeys(s5[:3], 0.0))
     hw = lambda d: d["ci95"][1] - d["ci95"][0]
     assert hw(d3) > hw(d5)
     # elle kontrol: n=3, sd=1 -> yarı-genişlik t(2)*1/sqrt(3)
@@ -81,7 +102,7 @@ def test_paired_ci_uses_t_of_n_minus_one():
 
 
 def test_paired_zero_variance_has_no_p_but_has_ci():
-    d = paired([3.0, 3.0, 3.0], [0.0, 0.0, 0.0], [11, 22, 33], [11, 22, 33])
+    d = paired(dict.fromkeys([11, 22, 33], 3.0), dict.fromkeys([11, 22, 33], 0.0))
     assert d["sd"] == 0 and "p" not in d and d["ci95"] == [3.0, 3.0]
 
 
@@ -118,31 +139,31 @@ def _tight(mean: float, n: int = 5) -> list[float]:
 
 
 def test_decide_rows():
-    assert decide(_tight(12.0), quality_per_sec=W_BOTH)["row"] == "güçlü başarı"
-    assert decide(_tight(7.0), quality_per_sec=W_BOTH)["row"] == "başarılı"
-    assert decide(_tight(3.0), quality_per_sec=W_BOTH)["row"] == "belirsiz"
-    assert decide(_tight(0.0), quality_per_sec=W_BOTH)["row"] == "nötr"
-    assert decide(_tight(-5.0), quality_per_sec=W_BOTH)["row"] == "başarısız"
-    assert decide([-10, 0, 10, 2, 3], quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
+    assert decide(T(_tight(12.0)), quality_per_sec=W_BOTH)["row"] == "güçlü başarı"
+    assert decide(T(_tight(7.0)), quality_per_sec=W_BOTH)["row"] == "başarılı"
+    assert decide(T(_tight(3.0)), quality_per_sec=W_BOTH)["row"] == "belirsiz"
+    assert decide(T(_tight(0.0)), quality_per_sec=W_BOTH)["row"] == "nötr"
+    assert decide(T(_tight(-5.0)), quality_per_sec=W_BOTH)["row"] == "başarısız"
+    assert decide(T([-10, 0, 10, 2, 3]), quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
 
 
 def test_decide_strong_needs_positive_quality_per_sec():
     """FLOP kazancı >= %10 ama duvar saati kaybı: 'güçlü başarı' değil, çelişki etiketli 'başarılı'."""
-    r = decide(_tight(12.0), quality_per_sec=-3.0)
+    r = decide(T(_tight(12.0)), quality_per_sec=-3.0)
     assert r["row"] == "başarılı"
     assert any("mimari başarı / sistem başarısızlığı" in n for n in r["notes"])
-    assert decide(_tight(12.0), quality_per_sec=None)["row"] == "başarılı"
+    assert decide(T(_tight(12.0)), quality_per_sec=None)["row"] == "başarılı"
 
 
 def test_decide_conflict_label_whenever_wallclock_loses():
     """EK 1 B16: çelişki etiketi s̄ >= 10 şartına bağlı DEĞİL; s̄ > 0 ve w̄ <= 0 olan her durumda eklenir."""
     for mean, row in ((6.0, "başarılı"), (3.0, "belirsiz"), (1.0, "nötr")):
-        r = decide(_tight(mean), quality_per_sec=-2.0)
+        r = decide(T(_tight(mean)), quality_per_sec=-2.0)
         assert r["row"] == row
         assert any("mimari başarı / sistem başarısızlığı" in n for n in r["notes"]), (mean, r)
     # s̄ <= 0 iken FLOP kazancı yok, çelişki de yok
-    assert not any("çelişki" in n for n in decide(_tight(-4.0), quality_per_sec=-2.0)["notes"])
-    assert not any("mimari başarı" in n for n in decide(_tight(6.0), quality_per_sec=+2.0)["notes"])
+    assert not any("çelişki" in n for n in decide(T(_tight(-4.0)), quality_per_sec=-2.0)["notes"])
+    assert not any("mimari başarı" in n for n in decide(T(_tight(6.0)), quality_per_sec=+2.0)["notes"])
 
 
 def test_decide_wide_ci_is_a_precision_problem_not_a_scale_problem():
@@ -159,25 +180,25 @@ def test_decide_wide_ci_is_a_precision_problem_not_a_scale_problem():
     (σ = 6'da %59.7 -> %71.5, yani çare kuralı SIKIŞTIRIYORDU).
     """
     xs = [5.0 + d for d in (-6.0, -3.0, 0.0, 3.0, 6.0)]      # ortalama 5, sd 4.74
-    r = decide(xs, quality_per_sec=W_BOTH)
+    r = decide(T(xs), quality_per_sec=W_BOTH)
     assert r["mean"] == pytest.approx(5.0) and r["sd"] == pytest.approx(4.743, abs=1e-3)
     assert r["ci95"][0] <= 0 < 5.0 <= r["ci95"][1]
     assert r["row"] == "yüksek varyans / belirsiz" and r["determinate"] is False
     # Daralt: aynı ortalama, dar aralık -> artık belirli ve 'başarılı'
-    assert decide(_tight(5.0), quality_per_sec=W_BOTH)["row"] == "başarılı"
+    assert decide(T(_tight(5.0)), quality_per_sec=W_BOTH)["row"] == "başarılı"
 
 
 def test_decide_boundaries_are_inclusive_as_written():
-    assert decide(_tight(5.0), quality_per_sec=W_BOTH)["row"] == "başarılı"       # >= %5
-    assert decide(_tight(10.0), quality_per_sec=W_BOTH)["row"] == "güçlü başarı"  # >= %10
-    assert decide(_tight(2.0), quality_per_sec=W_BOTH)["row"] == "nötr"           # -2..+2 bandı kapalı
-    assert decide(_tight(-2.0), quality_per_sec=W_BOTH)["row"] == "nötr"
-    assert decide(_tight(2.001), quality_per_sec=W_BOTH)["row"] == "belirsiz"
+    assert decide(T(_tight(5.0)), quality_per_sec=W_BOTH)["row"] == "başarılı"       # >= %5
+    assert decide(T(_tight(10.0)), quality_per_sec=W_BOTH)["row"] == "güçlü başarı"  # >= %10
+    assert decide(T(_tight(2.0)), quality_per_sec=W_BOTH)["row"] == "nötr"           # -2..+2 bandı kapalı
+    assert decide(T(_tight(-2.0)), quality_per_sec=W_BOTH)["row"] == "nötr"
+    assert decide(T(_tight(2.001)), quality_per_sec=W_BOTH)["row"] == "belirsiz"
 
 
 def test_decide_one_censored_seed_blocks_success():
     xs = _tight(12.0)
-    r = decide(xs, quality_per_sec=W_BOTH, censored_mask=[False, False, False, False, True])
+    r = decide(T(xs, cens=[4]), quality_per_sec=W_BOTH)
     assert r["row"] == "belirsiz" and r["n_censored"] == 1
     assert any("sansürlü" in n and "LEHİNE" not in n for n in r["notes"])
 
@@ -185,7 +206,7 @@ def test_decide_one_censored_seed_blocks_success():
 def test_decide_two_censored_seeds_fail_outright():
     """EK 1 B8: >= 2 sansürlü seed -> doğrudan 'başarısız', tripwire'a bile bakılmaz."""
     xs = [8.0, 9.0, 8.5, -150.0, -150.0]
-    r = decide(xs, quality_per_sec=W_BOTH, censored_mask=[False, False, False, True, True])
+    r = decide(T(xs, cens=[3, 4]), quality_per_sec=W_BOTH)
     assert r["row"] == "başarısız" and r["n_censored"] == 2
     assert r["sd"] > 5.0                                     # ham sd tripwire'ı aşıyor ama satır 0 DEĞİL
 
@@ -197,29 +218,36 @@ def test_decide_tripwire_uses_uncensored_sd_only():
     tek bir sansür ortalamayı -25'e çeker ve sonuç zaten 'başarısız' olur. Kritik olan şudur: sonuç
     'varyans yüksek, daha çok seed lazım' DEĞİL, 'FOTON hedefe ulaşamıyor' demeli."""
     xs = [6.0, 6.1, 5.9, 6.05, -150.0]
-    r = decide(xs, quality_per_sec=W_BOTH, censored_mask=[False] * 4 + [True])
-    assert r["sd"] > 5.0 and r["sd_uncensored"] < 0.2        # ham sd büyük, sansürsüz sd küçük
+    r = decide(T(xs, cens=[4]), quality_per_sec=W_BOTH)
+    assert r["sd"] > 5.0 and r["sd_fast"] < 0.2              # ham sd büyük, hızlı seed'lerin sd'si küçük
     assert r["row"] != "yüksek varyans / belirsiz"           # B8'in engellediği yanlış okuma
     assert r["row"] == "başarısız" and r["n_censored"] == 1
     # Sansür olmadan aynı büyüklükte yayılım GERÇEKTEN tripwire üretir (mekanizma çalışıyor).
-    assert decide([-10, 0, 10, 2, 3], quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
+    assert decide(T([-10, 0, 10, 2, 3]), quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
     # Ve tek sansür, ortalama ezilmese bile başarıyı engeller (kemer + askı).
-    r2 = decide([12.0, 12.1, 11.9, 12.05, 12.0], quality_per_sec=W_BOTH,
-                censored_mask=[False] * 4 + [True])
+    r2 = decide(T([12.0, 12.1, 11.9, 12.05, 12.0], cens=[4]), quality_per_sec=W_BOTH)
     assert r2["row"] == "belirsiz"
 
 
-def test_decide_rejects_bad_mask_length():
-    with pytest.raises(ValueError):
-        decide(_tight(6.0), censored_mask=[False, True])
+def test_decide_rejects_positional_input_and_bad_status():
+    """Liste/tuple ÇALIŞMAZ: durum artık ayrı bir maske değil, değerle aynı kayıtta (`Obs`)."""
+    for bad in (_tight(6.0), tuple(_tight(6.0))):
+        with pytest.raises(TypeError, match="anahtarlanmış eşleme"):
+            decide(bad, quality_per_sec=W_BOTH)
+    with pytest.raises(ValueError, match="status"):
+        Obs(1.0, "censored")
+    with pytest.raises(ValueError, match="aşamaz"):
+        Obs(150.0)                                           # tasarruf +100 puanı aşamaz (birim hatası)
+    with pytest.raises(TypeError):
+        Obs(True)
 
 
 def test_decide_row_names_are_from_the_frozen_list():
     from src.stats import ROWS
     for mean in (-8, -2, 0, 3, 6, 12):
-        assert decide(_tight(float(mean)), quality_per_sec=W_BOTH)["row"] in ROWS
+        assert decide(T(_tight(float(mean))), quality_per_sec=W_BOTH)["row"] in ROWS
 
 
 def test_decide_needs_at_least_two_seeds():
     with pytest.raises(ValueError):
-        decide([5.0])
+        decide(T([5.0]))

@@ -481,7 +481,7 @@ Birincil-2'nin puanlaması şudur — **DÖRT durum, birbirini dışlayan ve tü
 |---|---|---|
 | **katkı var, büyük** | `lo > 0` ve `hi ≥ MDE` | "heterojenlik ölçülebilir katkı yaptı: +X.X puan, GA [a, b]" |
 | **katkı var, küçük** | `lo > 0` ve `hi < MDE` | "heterojenlik katkı yaptı ama katkı MDE'nin altında: +X.X puan" |
-| **katkı MDE kadar değil** | `lo ≤ 0` ve `hi < MDE` | "heterojenliğin katkısı MDE kadar büyük DEĞİL; sıfır olabilir" |
+| **katkı MDE kadar değil** | `lo ≤ 0` ve `hi < MDE` | "heterojenliğin katkısı MDE kadar büyük DEĞİL; sıfır ya da negatif olabilir" (`hi < 0` ise ayrıca "katkı NEGATİF" notu düşülür) |
 | **ölçemedik** | `lo ≤ 0` ve `hi ≥ MDE` | **"yeterince güçlü ölçemedik"** — "heterojenlik çürütüldü" DEĞİL |
 
 **DÜZELTME, kayda geçiyor:** ilk hâl ÜÇ durum tanımlıyordu ve "katkı var" (`lo > 0`) ile
@@ -500,13 +500,17 @@ düzeyinde taramamak, başka bir kuralı sınamaktır: gerçek "ölçemedik" pay
 Yani n=5'te en olası tek sonuç "MDE kadar değil", ama **"ölçemedik" %42.8** ile ondan sonra
 geliyor ve bu baştan kabul edilmiştir. `src/stats.decide()` birincil-2'ye
 **uygulanmaz** (eşikleri tasarruf için kalibre edilmiştir); uygulanan `src/stats.contribution()`'dır
-(`decide_primary()` içinden; farkı `s_i(X↔M) − s_i(H↔M)` olarak o kurar).
+(`decide_primary()` içinden). Kontrastı `s_i(X↔M) − s_i(H↔M)` olarak **`contribution()` kendisi,
+seed KİMLİĞİYLE kurar**: iki kolun tablosunu alır, hazır bir fark listesi kabul etmez (V4'teki
+taşıma kuralı). Anahtar kümeleri aynı değilse hata verir.
 
-**Birincil-2'de sansür:** X ya da H'nin herhangi bir seed'i sansürlüyse fark o seed'de tanımsızdır
-(ikame bir gözlem değil tek yanlı bir sınırdır ve farkı ±150 puan oynatır). O zaman birincil-2
-**"ölçemedik"** olarak raporlanır, `p₂ = 1` alınır (Holm'da birincil-1 α/2 ile sınanır: muhafazakâr
-yön) ve **seed DÜŞÜRÜLMEZ**. Ölçülü risk: H'nin bir seed'i sansürlüyken tam fark listesi "ölçemedik",
-o seed düşürülünce "katkı var, büyük" veriyordu.
+**Birincil-2'de başarısız seed:** X ya da H'nin herhangi bir seed'i **1× bütçede hedefe
+ulaşamadıysa** — sansürlü (2×'te de ulaşamadı) ya da yavaş (yalnızca zorunlu 2× koşusunda ulaştı;
+V3) — fark o seed'de anlamlı bir gözlem değildir: farkı onlarca puan oynatır ve t-aralığını
+patlatır. O zaman birincil-2 **"ölçemedik"** olarak raporlanır, `p₂ = 1` alınır (Holm'da birincil-1
+α/2 ile sınanır: muhafazakâr yön), hangi seed(ler) olduğu kimliğiyle yazılır ve **seed
+DÜŞÜRÜLMEZ**. Ölçülü risk: H'nin bir seed'i sansürlüyken tam fark listesi "ölçemedik", o seed
+düşürülünce "katkı var, büyük" veriyordu.
 
 ### Birincil-2'nin saptanabilir en küçük etkisi (MDE) — ŞİMDİ yazılıyor
 
@@ -558,14 +562,17 @@ Bağlayıcı sıra:
 
 1. Her iki endpoint için iki yanlı tek-örneklem t-testi `p` değeri hesaplanır (seed başına `s_i`
    ve seed başına `s_i(X) − s_i(H)` üzerinden).
-2. Holm uygulanır: küçük `p` α/2 = .025 ile, büyük `p` α = .05 ile karşılaştırılır.
+2. Holm **adım adım** (step-down) uygulanır: önce KÜÇÜK `p` α/2 = .025 ile karşılaştırılır;
+   **geçemezse durulur ve büyük `p` hiç sınanmaz** (ikisi de reddedilmez). Geçerse büyük `p`
+   α = .05 ile karşılaştırılır. İki eşiği bağımsız uygulamak Holm değildir.
 3. **Birincil-1'in satır adı, `p₁` Holm'dan GEÇMEZSE "başarılı" ya da "güçlü başarı" OLAMAZ.**
    O durumda satır "belirsiz"e düşürülür ve not olarak "Holm düzeltmesinden geçmedi" yazılır.
 4. Birincil-2 yukarıdaki **dört** durumla puanlanır. Aralığı **daima Holm'un İLK adımının
    düzeyindedir (α = .025, yani %97.5 GA)** — Holm'da o endpoint'e düşen adım hangisi olursa olsun.
    Bu bilinçli bir sadeleştirmedir ve muhafazakârdır: "katkı var" durumları `lo > 0` istediği için
-   `p₂ < .025` demektir, o da Holm'un HER adımından geçer; yani dört durum ile Holm asla
-   çelişemez (`decide_primary()` bunu assertion olarak denetler).
+   `p₂ < .025` demektir, o da Holm'un HER adımından geçer; yani dört durum ile Holm matematiksel
+   olarak çelişemez. Kayan nokta bıçak sırtında çelişirse `decide_primary()` istisna atmaz:
+   durumu **muhafazakâr yöne düşürür** ("katkı var" ilan edilmez) ve bunu not olarak yazar.
 5. **MDE eşiği n'den bağımsız SABİTTİR: 1.88 puan.** Kesinlik ölçütü yüzünden n = 10'a çıkılırsa
    MDE'nin istatistiksel karşılığı 1.02 puana düşer, ama dört durumdaki "küçük/büyük" sınırı
    1.88'de kalır. Gerekçe: o sınır bir **önemlilik çıtasıdır** (bu deneyin n=5 tasarımının
@@ -590,7 +597,7 @@ endpoint olduğu için bu hakların kime ait olduğu belirsizdi; kural:
   kullanılabilir (EK1-B3): S0'da harcandıysa S1'de kesinlik ölçütü tetiklenirse satır doğrudan
   "yetersiz kesinlik"tir (`decide(..., seed_right_available=False)`).
 * **Seed artırıldığında iki endpoint de yeni n ile yeniden hesaplanır** (`decide_primary()` iki
-  endpoint'i aynı seed kümesinde hesaplamayı zorlar; uzunluklar farklıysa hata verir).
+  endpoint'i aynı seed kümesinde hesaplamayı zorlar; X ve H'nin seed KİMLİKLERİ aynı değilse hata verir).
   Gerekçe: aksi hâlde "birincil-1'i n=5'te 'başarılı' bırak,
   birincil-2'yi n=10'da ölç" gibi bir seçim mümkün olurdu ve o seçim sonuca göre yapılabilirdi.
   Ölçülü risk: n=5'te GA [5.41, 5.59] ile "başarılı" olan bir sonuç, n=10'da GA [3.30, 5.20] ile
@@ -704,8 +711,8 @@ geçerlidir" dediği için öncelik kuralının burada yazılı olması **zorunl
 
 | sıra | koşul | satır |
 |---|---|---|
-| 0 | ≥ 2 FOTON seed'i `L*`'e ulaşmadı (sansür) | **başarısız** |
-| 1a | GA başarı eşiğini çözemiyor (kesinlik ölçütü), `n = 5` ve seed artırma hakkı DURUYOR | **yüksek varyans / belirsiz** → seed 10'a çıkılır (zorunlu) |
+| 0 | ≥ 2 FOTON seed'i `L*`'e 2× bütçede bile ulaşmadı (**sansürlü**; yavaş seed bu sayıma GİRMEZ) | **başarısız** |
+| 1a | aralık başarı eşiğini çözemiyor (kesinlik ölçütü), `n = 5` ve seed artırma hakkı DURUYOR | **yüksek varyans / belirsiz** → seed 10'a çıkılır (zorunlu) |
 | 1b | aynı, ama `n = 10` **ya da** seed artırma hakkı bu kampanyada zaten harcanmış | **yetersiz kesinlik** (terminal) |
 | 2 | `s̄ ≥ 10` ve GA alt > 0 ve `w̄(M) > 0` ve `w̄(D) > 0` | **güçlü başarı** |
 | 3 | `s̄ ≥ 5` ve GA alt > 0 | **başarılı** |
@@ -719,15 +726,40 @@ sonuç, GA'yı genişleterek yükseltme hakkı kazanırdı. Tablonun "< -%2, GA 
 ifadesindeki "çoğunlukla negatif" **bağlayıcı bir koşul değildir**, betimlemedir: `decide()`
 `s̄ < −2`'de GA'ya bakmaksızın "başarısız" döndürür ve GA sıfırı kesiyorsa bunu not olarak yazar.
 
-**KESİNLİK ÖLÇÜTÜ (satır 1) — mutlak sd eşiğinin yerini aldı.** Karar ancak şu ikisinden biri
-sağlanırsa belirlidir: (a) `GA alt > 0` **ve** `s̄ ≥ 5` → başarı KURULDU; (b) `GA üst < 5` → başarı
-DIŞLANDI. İkisi de sağlanmazsa aralık "eşiği geçiyor" ile "geçmiyor" arasında ayrım yapamıyor demektir
-ve sonuç "yüksek varyans / belirsiz"dir; seed 10'a çıkılır.
+**KESİNLİK ÖLÇÜTÜ (satır 1) — mutlak sd eşiğinin yerini aldı. TEK biçimi vardır.** Karar ancak
+şu ikisinden biri sağlanırsa belirlidir: (a) `GA alt > 0` **ve** `s̄ ≥ 5` → başarı KURULDU
+(`s̄` ve GA tam örnekten); (b) **`ub95 < 5`** → başarı DIŞLANDI. İkisi de sağlanmazsa aralık "eşiği
+geçiyor" ile "geçmiyor" arasında ayrım yapamıyor demektir ve sonuç "yüksek varyans / belirsiz"dir;
+seed 10'a çıkılır. `ub95`, `s̄`'nin başarısız-seed'e duyarlı %95 üst sınırıdır (tanımı VAZGEÇME
+KOŞULU bölümünde); **başarısız seed yokken düz %95 GA üst sınırının aynısıdır**, yani o durumda
+ölçüt "GA üst < 5" demektir ve aşağıdaki tablo ile V9'un güç sayıları o hâl için geçerlidir.
 
-**Bu ölçüt SANSÜRSÜZ seed'lerin aralığında değerlendirilir** (v01 EK1-B8(ii)'nin devamı: sansürlü
-bir seed "hedefe ulaşamadı"dır, "varyans yüksek" değil; −150'lik ikame aralığı şişirip sonucu
-"daha çok seed lazım" gibi okuturdu). Satırın kendisi ise tam örnek `s̄`'sinden (ikameli) gelir.
-Sansürsüz seed sayısı 2'den azsa ≥ 2 sansür kuralı zaten "başarısız" vermiştir.
+**Başarısız seed aralığı ŞİŞİRMEZ** (v01 EK1-B8(ii)'nin devamı). 1× bütçede hedefe ulaşamayan bir
+seed — sansürlü (ikame ≈ −150) ya da **yavaş** (yalnızca zorunlu 2× koşusunda ulaştı, `s_i` ölçülü
+ve tipik −25 … −150; V3) — "hedefe ulaşamadı"dır, "varyans yüksek" değil. Değeri `ub95`'e t-aralığının
+içinden değil **sabit** olarak girer; belirsizlik yalnızca 1×'te ulaşan ("hızlı") seed'lerden gelir.
+Satırın kendisi tam örnek `s̄`'sinden gelir (başarısız seed ortalamanın İÇİNDEDİR). Dördüncü denetimin
+bulduğu: yavaş seed sıradan gözlem sayıldığında tek bir seed aralığı [−42, +20]'ye şişiriyor,
+kampanya önce 10 seed'e sonra terminal "yetersiz kesinlik"e gidiyor, ve "başarısız" satırı ile
+vazgeçme yavaş seed'li HİÇBİR kampanyada ulaşılamıyordu; üstelik 1.99×'te ulaşan seed (−148.75)
+"yetersiz kesinlik", hiç ulaşamayan (−149.82) "başarısız" veriyordu. Şimdi ikisi aynı muameleyi görür.
+
+**Anlam kararları, açıkça:**
+* **Yavaş seed B8'in sansür sayımına GİRMEZ.** "≥ 2 sansür → başarısız" ve "≥ 1 sansür → başarı
+  yasak" hükümleri ikamenin FOTON lehine YANLI olmasına dayanır; yavaş seed'in değeri ikame değil
+  ölçümdür. Yavaş seed başarıyı yasaklamaz, ama tam örnek GA'sına girdiği için **n = 5'te** (a)
+  kolunu fiilen kapatır (`4 × +%60 + 1 yavaş −26` için bile GA alt < 0). **n = 10'da** hafif bir
+  yavaş seed'le (a) kolu sağlanabilir (`9 × +%20 + 1 yavaş −30` → `s̄ = +15`, GA alt +3.7 → başarı
+  satırı) ve bu bilinçlidir: on seed'den biri bütçeyi %4 aşmış, değeri ölçülmüş ve ortalamanın
+  içindedir. Aynı örnekte seed SANSÜRLÜ olsaydı B8 başarıyı yasaklardı.
+* **Tek durum süreksizliği 1× sınırındadır ve ön-kayıtlıdır.** 1× bütçenin hemen içinde ulaşan
+  seed (örn. `s_i = −24`) sıradan gözlemdir ve aralığı genişletir; hemen dışında ulaşan (`−26`)
+  sabit sayılır. `4 × +%10 + bir seed` örneğinde birincisi "yüksek varyans / belirsiz" (daha çok
+  seed ister), ikincisi belirli bir "belirsiz"dir (`ub95 = +3.38`) ve **iki ardışık ölçekte
+  tekrarlanırsa vazgeçmeyi tetikleyebilir**. Bu fark bilinçli kabul edilmiştir: kategorik her
+  kuralın bir sınırı vardır; sınırın yeri veriye göre değil bütçe tanımına göre (1× referans bütçe)
+  önceden sabittir ve seed'in durumu analist tarafından değil `src/stats.resolve_n_star()` tarafından
+  atanır. 2× sınırında süreksizlik YOKTUR (1.99× ile sansür aynı satırı verir, `ub95` farkı 0.21 puan).
 
 v01'in "eşleştirilmiş iyileşmenin sd'si > 5 puan" kuralı **kaldırıldı**, çünkü eşik mutlaktı ve n ile
 ölçeklenmiyordu: tek çaresi (10 seed) kendisini DAHA olası yapıyordu. Ölçüm
@@ -797,13 +829,29 @@ sıfırın üstünde olmalı. Aksi hâlde fark gürültüdür; σ = 0.88–1.20 
 yazılır, "trend artıyor, devam edilecek" olarak yazılamaz — ve zaten gidilecek bir basamak da yoktur
 (V8: dört kollu tavan 640×10, ve V5: en çok 2 ölçek).
 
+### Her satırdan sonra ne olur (v01 EK1-B10, yedinci satırla birlikte yeniden basılıyor)
+
+| satır | sonraki adım |
+|---|---|
+| güçlü başarı / başarılı | devam; S1 isteğe bağlı (yükseltme hakkı harcanmaz) |
+| belirsiz | **tek yükseltme hakkı kullanılır:** S1 + 5 seed |
+| yüksek varyans / belirsiz | 10 seed'e çıkılır (zorunlu, EK1-B3); tablo yeniden uygulanır. Yükseltme hakkı harcanmaz |
+| **yetersiz kesinlik** | **TERMİNAL.** Seed hakkı bitmiştir ve ölçek yükseltmesi bu satırın çaresi DEĞİLDİR (sorun ölçek değil kesinlik): yükseltme hakkı bu satırdan **doğmaz**. Sonuç **"sonuçsuz: ölçülemedi"** kaydedilir; hipotez ne doğrulanmış ne terk edilmiş sayılır ve bu bir devam gerekçesi değildir |
+| nötr | yükseltme hakkı kullanılabilir (S1 + 5 seed). Kullanılmazsa S0 sonucu nihaidir ve "sonuçsuz" kaydedilir |
+| başarısız | yükseltme hakkı kullanılabilir. Kullanılmazsa vazgeçme koşulunun tek ölçek yolu değerlendirilir (aşağıda) |
+
 ## VAZGEÇME KOŞULU — eşdeğerlik biçimi
 
-İki ardışık model ölçeğinde **`s̄`'nin %95 üst güven sınırı başarı eşiğinin (+%5) altında kalırsa**
-VE oracle-routing kazancı (null'ın üstünde) **her iki ölçekte** < %2 ise, prefix-tanınabilir dizi
-düzeyi top-1 FOTON hipotezi terk edilir. `src/stats.abandon()` uygular; **metin ile kod arasında
-fark olursa bu bölümün tablosu geçerlidir ve fark bir hatadır** (tablo `rule_reachability.py`'de
-senaryo senaryo assertion olarak durur).
+İki ardışık model ölçeğinde **`s̄`'nin başarısız-seed'e duyarlı %95 üst sınırı (`ub95`) başarı
+eşiğinin (+%5) altında kalırsa** VE oracle-routing kazancı (null'ın üstünde) **her iki ölçekte**
+< %2 ise, prefix-tanınabilir dizi düzeyi top-1 FOTON hipotezi terk edilir. `ub95 < +5` aynı zamanda
+kesinlik ölçütünün (b) koludur; dolayısıyla bu şartı sağlayan bir ölçek "yüksek varyans / belirsiz"
+ya da "yetersiz kesinlik" satırında OLAMAZ — tablodaki "hiçbiri … değil" şartı ayrı bir engel
+değil, aynı şartın öbür yüzüdür ve reddin gerekçesi doğru yazılsın ("ölçemedik") diye ayrıca
+denetlenir. `src/stats.abandon()` uygular; **metin ile kod arasında fark olursa bu bölümün tablosu
+geçerlidir ve fark bir hatadır** (tablo `rule_reachability.py`'de senaryo senaryo assertion olarak
+durur). Ölçek sonuçları ve oracle kazançları `abandon()`'a **ölçek kimliğiyle anahtarlı**
+(`{"S0": …, "S1": …}`) verilir; iki paralel dizi kabul edilmez (V4'teki taşıma kuralı).
 
 ### Vazgeçmenin İKİ yolu
 
@@ -817,18 +865,31 @@ hipotez ne doğrulanmış ne terk edilmiş sayılır, ve bu bir devam gerekçesi
 `[S0 "başarılı", S1 "başarısız"]` terk ETTİRMEZ: iki ölçek kuralı her iki ölçeğe bakar ve S0'ın
 aralığı +5'in üstündedir.
 
-### `ub95`: `s̄`'nin SANSÜRE DUYARLI %95 üst güven sınırı
+### `ub95`: `s̄`'nin BAŞARISIZ-SEED'E DUYARLI %95 üst güven sınırı
 
-    ub95 = ( n_u × (sansürsüz seed'lerin %95 GA üst sınırı) + Σ sansürlü ikameler ) / n
+    ub95 = min(  (100 × n_h + Σ sabit) / n ,
+                 (n_h × (hızlı seed'lerin %95 GA üst sınırı) + Σ sabit) / n  )
 
-Sansür yokken bu, `s̄`'nin düz %95 GA üst sınırının **aynısıdır**. Sansür varken düz t-aralığı
-KULLANILAMAZ, çünkü sansürlü bir seed'in ikamesi (≈ −150 puan) bir gözlem değil **tek yanlı bir
-sınırdır** — gerçek değer ondan da küçüktür. Onu gözlem gibi aralığa sokmak sd'yi şişirir:
-`[0.2, −0.1, 0.3, 0.0, −149.82]` için düz aralık **[−113, +53]** çıkar ve "üst sınır < +5" şartı
-sansürlü HER senaryoda sağlanamaz olur — yani kural tam ihtiyaç duyulduğu yerde ulaşılamazdı
-(ikinci denetim). Sansürlü seed'ler yukarı yönde belirsizlik taşımaz; belirsizlik yalnızca
-sansürsüz seed'lerden gelir. Sansürsüz seed sayısı 2'den azsa aralık kurulamaz ve aritmetik tavan
-(seed başına en çok +100 puan) kullanılır.
+`n_h` = 1× bütçede hedefe ulaşan ("hızlı") seed sayısı; "sabit" = başarısız seed'lerin değerleri:
+sansürlü seed'in ikamesi (≈ −150) ve yavaş seed'in 2× eğrisinden ölçülen `s_i`'si. İlk terim
+**aritmetik tavandır** (tasarruf seed başına +100 puanı aşamaz) ve **HER durumda** uygulanır;
+`n_h < 2` iken ikinci terim kurulamaz ve yalnızca tavan kalır. (Dördüncü denetim: bu metnin bir
+önceki hâli tavanı yalnızca `n_h < 2` için yazıyordu, kod ise her durumda uyguluyordu;
+`[−62.5, −125, C, C, C]` için tavansız biçim **+31.4**, tavanlı biçim **−49.9** verir — fark
+vazgeçme kararını çevirir. Kod doğruydu, metin düzeltildi.)
+
+Başarısız seed yokken bu, `s̄`'nin düz %95 GA üst sınırının **aynısıdır**. Varken düz t-aralığı
+KULLANILAMAZ: sansürlü bir seed'in ikamesi bir gözlem değil **tek yanlı bir sınırdır** (gerçek
+değer ondan da küçüktür), yavaş seed'in değeri ise ölçülmüş bir sabittir; ikisini gözlem gibi
+aralığa sokmak sd'yi şişirir. `[0.2, −0.1, 0.3, 0.0, −149.82]` için düz aralık **[−113, +53]** çıkar
+ve "üst sınır < +5" şartı başarısız seed'li HER senaryoda sağlanamaz olur — yani kural tam ihtiyaç
+duyulduğu yerde ulaşılamazdı (ikinci denetim). Başarısız seed'ler yukarı yönde belirsizlik taşımaz;
+belirsizlik yalnızca hızlı seed'lerden gelir.
+
+**Bu KOŞULLU bir sınırdır, açıkça:** gözlenen başarısızlık örüntüsü (kaç seed'in, hangi değerle
+başarısız olduğu) veri sayılır; başarısız seed ORANININ kendi örnekleme belirsizliği sınıra dahil
+değildir. Gerekçe v01 B8'in doktrinidir: beş seed'den birinin 1× bütçede hedefe ulaşamaması
+yöntemin gerçek bir başarısızlığıdır, giderilecek bir varyans değil.
 
 Bu biçim sansürlü seed sayısında **monotondur** (k = 0..4 için +0.3, −29.7, −59.5, −89.1, −99.9).
 Bir önceki uygulama yalnızca sansürsüz ALT örneğin aralığına bakıyordu ve monoton değildi: 3/5
@@ -836,12 +897,16 @@ sansürde 2 seed kalıyor, t(1) = 12.7 aralığı patlatıyor ve **en net başar
 hedefe ulaşamamış) tek ölçekte %53, iki ölçekte %78 olasılıkla terk edilemiyordu (üçüncü denetim).
 
 **Anlam kararı, açıkça: `4 × +%30 + 1 sansür`.** Birincil istatistik `s̄` hedefe ulaşamayan seed'i
-de İÇERİR (EK1-B8 ikamesi): burada `s̄ ≈ −5.9`, satır "başarısız", `ub95 = −5.85`. v01 B10 harfiyen:
-"başarısız"ta yükseltme hakkı **kullanılabilir**; kullanılmazsa hipotez terk edilir. Yani sahibin
-önünde iki yol vardır — S1'e çıkmak ya da terk — ve üçüncü bir "başarısız ama ne terk ne devam"
-hâli YOKTUR. (Bir önceki uygulama sansürsüz seed'lerin aralığına bakıp bu sonucu ne terk ediyor ne
-ilerletiyordu; o şart hiçbir bağlayıcı metinde yazmıyordu ve bir park yörüngesiydi.) Beş seed'den
-birinin 2× bütçede bile hedefe ulaşamaması yöntemin gerçek bir başarısızlığıdır, varyans değil.
+de İÇERİR (EK1-B8 ikamesi): burada `s̄ = −5.95`, satır "başarısız", `ub95 = −5.85`. v01 B10:
+"başarısız"ta yükseltme hakkı **kullanılabilir**; kullanılmazsa **ve oracle şartı sağlanıyorsa**
+(kazanç < %2) hipotez terk edilir. Yani istatistik tarafında üçüncü bir "başarısız ama ne terk ne
+devam" hâli YOKTUR; terk etmeyi engelleyebilen tek şey oracle şartıdır, ve o engellediğinde sonuç
+"terk edilmedi: mükemmel yönlendirmede hâlâ ≥ %2 kazanç var" diye yazılır — sorun o zaman fikirde
+değil router'dadır. (Bir önceki uygulama sansürsüz seed'lerin aralığına bakıp bu sonucu ne terk
+ediyor ne ilerletiyordu; o şart hiçbir bağlayıcı metinde yazmıyordu ve bir park yörüngesiydi.) Beş
+seed'den birinin 2× bütçede bile hedefe ulaşamaması yöntemin gerçek bir başarısızlığıdır, varyans
+değil. Aynı okuma yavaş seed için de geçerlidir: `4 başabaş + 1 yavaş (1.5×, −56)` → `s̄ = −11.12`,
+"başarısız", `ub95 = −10.89`.
 
 ### Oracle şartı — hangi ölçek, hangi hesap
 
@@ -853,6 +918,9 @@ FOTON'un eğitim döngüsü her eval noktasında val pencerelerini üç modülü
 `val_loss_oracle` (dizi başına en iyi modül) ve `val_loss_oracle_null` (B11'in null'ı) eğrilerini
 `metrics.jsonl`'a loglamak ZORUNDADIR; `s^oracle` o eğrilerin `n_star()`'ından gelir. V11'deki
 `last.pt` kuralı yalnızca alan başına val loss ve D1–D11 teşhisleri içindir, oracle için değil.
+Oracle ve null eğrileri `L*`'i kesmiyorsa **V3'ün prosedürünün aynısı** uygulanır (`resolve_n_star()`:
+1× eğrisi → aynı seed'in 2× koşusunun eğrisi → `N* = 2 × bütçe` ikamesi); ikisi de ikameye düşerse
+o seed'in kazancı 0'dır (mükemmel yönlendirme bile 2× bütçede hedefe ulaştırmıyor: headroom yok).
 
 **Eski biçim neden atıldı.** v01'den devralınan hâl `s̄ ≤ 0` **ve** `GA üst < +%2` idi: bir NOKTA
 TAHMİNİNİ bir ARALIK SINIRIYLA "ve" ile bağlıyor. GA yarı-genişliği ≈ 1.167σ olduğundan koşul
@@ -890,12 +958,15 @@ katkı yaptığı ancak **H'ye karşı** aynı ölçütte gösterilebilir (birin
 n=5'teki saptanabilir en küçük etkisi +1.88 puandır; oradan çıkan bir null "heterojenlik çürütüldü"
 değil "yeterince güçlü ölçemedik" demektir. İki uç noktaya Holm uygulanır ve Holm satır adının
 önündedir. Önce kesinlik ölçütüne bakılır: güven aralığı başarı eşiğini çözemiyorsa (ne "alt > 0 ve
-s̄ ≥ 5" ne "üst < 5") sonuç "yüksek varyans / belirsiz"dir ve seed 10'a çıkılır; bu hak kampanya
+s̄ ≥ 5" ne "üst sınır < 5") sonuç "yüksek varyans / belirsiz"dir ve seed 10'a çıkılır; bu hak kampanya
 başına bir kezdir ve 10 seed'de ya da hak harcanmışken yine çözülemiyorsa sonuç terminal olarak
-"yetersiz kesinlik"tir. Aralık eşiği çözüyor ve s̄ %2-5 arasındaysa sonuç belirsiz sayılır ve yalnızca
-bir üst ölçek basamağında tekrarlanır. İki ardışık ölçekte s̄'nin sansüre duyarlı %95 üst güven
-sınırı +%5'in altında kalır ve oracle-routing kazancı her iki ölçekte < %2 ise hipotez terk edilir;
-yükseltme hakkı kullanılmamışken satır "başarısız" ise aynı şartlarla tek ölçek yeter.
+"yetersiz kesinlik"tir. Buradaki üst sınır, 1× bütçede hedefe ulaşamayan (sansürlü ya da yavaş)
+seed'leri aralığa değil sabit değer olarak sokan `ub95`'tir; öyle bir seed bir yöntem
+başarısızlığıdır, varyans değil. Aralık eşiği çözüyor ve s̄ %2-5 arasındaysa sonuç belirsiz sayılır
+ve yalnızca bir üst ölçek basamağında tekrarlanır. İki ardışık ölçekte `ub95` +%5'in altında kalır
+(ki bu, o ölçeklerin kesinlik ölçütünü de çözdüğü demektir) ve oracle-routing kazancı her iki
+ölçekte < %2 ise hipotez terk edilir; yükseltme hakkı kullanılmamışken satır "başarısız" ise aynı
+şartlarla tek ölçek yeter.
 Bütün bunlar, FOTON modüllerinin baseline'ların YARISI kadar attention bağlantısı gördüğü —
 yani kalan eşitsizliğin FOTON'un aleyhine olduğu — koşulunda geçerlidir.
 
@@ -981,20 +1052,30 @@ Bu ön-kayıt içinde o yol **kapalıdır**.
 ### V3. `N*` ve aktif FLOP — interpolasyon kuralı PİNLİ
 
 `N*` = val loss eğrisinin `L*`'in altına **KALICI olarak** indiği token sayısı, **token ekseninde
-doğrusal interpolasyonla**. "Kalıcı": v01 EK1-B14 harfiyen — *"kesişimden sonraki eval noktası da
-≤ L* olmalı; değilse SONRAKİ kesişime bakılır"* — yani `N*`, `L*`'in ÜSTÜNDEKİ son eval noktasından
-hemen sonraki kesişimdir. Eğrinin son noktası `L*`'in üstündeyse seed hedefe ulaşmamıştır.
-Eval ızgarası **dört kolda da 250 adım** (v01 EK1-B6). Uygulama **`src/stats.n_star()`**; başka
-uygulama kullanılamaz.
+doğrusal interpolasyonla**. "Kalıcı", v01 EK1-B14'ün (*"kesişimden sonraki eval noktası da ≤ L*
+olmalı; değilse SONRAKİ kesişime bakılır"*) **bilinçli bir sıkılaştırmasıdır**: `N*`, `L*`'in
+ÜSTÜNDEKİ son eval noktasından hemen sonraki kesişimdir — yani kesişimden sonraki eval
+noktalarının **TÜMÜ** ≤ `L*` olmalıdır, yalnızca bir sonraki değil. B14'ün harfi tek bir sonraki
+noktaya bakar; iki nokta altta kalıp üçüncüde geri çıkan bir eğride B14 erken kesişimi kabul eder,
+bu kural etmez. Sıkılaştırma `N*`'ı yalnızca büyütebilir (FOTON'un aleyhine, dört kola aynı
+biçimde). Eğrinin son noktası `L*`'in üstündeyse o EĞRİ hedefe ulaşmamıştır (`n_star()` None
+döner) ve aşağıdaki prosedür devreye girer. Eval ızgarası **dört kolda da 250 adım** (v01 EK1-B6).
+Uygulama **`src/stats.n_star()`**; başka uygulama kullanılamaz.
 
 **Sansür prosedürü (v01 O3 ile B9'un birlikte okunuşu — tek anlamlı hâli):**
 1. FOTON seed'inin **1× bütçeli** eğrisi `L*`'i (kalıcı) kesiyorsa `N*` o eğriden okunur (B9).
 2. Kesmiyorsa aynı seed **2× bütçeyle yeniden koşulur** (O3). Bu koşu ZORUNLUDUR, isteğe bağlı
    değil — yapılıp yapılmayacağı sonuca göre seçilemez.
-3. 2× koşunun eğrisi `L*`'i kesiyorsa `N*` **o eğrinin** kesişimidir (seed sansürlü DEĞİLDİR;
-   `s_i` tipik olarak −25 ile −150 arasındadır).
+3. 2× koşunun eğrisi `L*`'i kesiyorsa `N*` **o eğrinin** kesişimidir ve seed **YAVAŞ**tır
+   (sansürlü DEĞİLDİR; `s_i` ölçülmüştür, tipik olarak −25 ile −150 arasındadır). Yavaş seed
+   B8'in sansür sayımına girmez, ama sansürlü seed gibi `ub95`'e sabit değer olarak girer ve
+   birincil-2'yi "ölçemedik" yapar (KARAR TABLOSU'ndaki kesinlik ölçütü paragrafı).
 4. Kesmiyorsa seed **SANSÜRLÜDÜR**: `N* = 2 × referans bütçe` ikamesiyle `s_i ≈ −150`. Bu ikame
    FOTON'un lehine yanlıdır (gerçek `N*` daha da büyüktür) ve raporda böyle anılır (B8(i)).
+
+Prosedürü **`src/stats.resolve_n_star()`** uygular ve seed'in durumunu (**hızlı / yavaş / sansürlü**)
+o atar; durum `s_i` ile AYNI kayıtta (`Obs`) taşınır, ayrı bir maske listesinde değil. 1× eğrisi
+kesiyorsa 2× eğrisine hiç bakılmaz (hangi eğrinin okunacağı seçilemez).
 
 İki kayıt düzeltmesi:
 
@@ -1013,8 +1094,10 @@ uygulama kullanılamaz.
   üretilmişti. Somut etkisi: 2750'de `L*`'in altına sarkıp 3000'de geri çıkan bir eğride ilk kesişim
   `N*`'ı 114.7M yerine 90.1M gösterir → `s_i` ~21 puan şişer → "nötr" bir sonuç "güçlü başarı" olur.
   Tek bir `if` farkı. Şimdi `src/stats.n_star()`'da uygulandı, kopya uygulamalar silindi, ve
-  `tests/test_stats_v02.py` sarkma senaryosunu regresyona bağladı. `L*`'e hiç ulaşmayan ya da
-  sürdürülmemiş kesişimli seed **SANSÜRLÜ** işlenir (None döner, sessizce atlanmaz).
+  `tests/test_stats_v02.py` sarkma senaryosunu regresyona bağladı. Son noktası `L*`'in üstünde
+  olan eğri için `n_star()` None döner; bu "seed sansürlü" demek DEĞİLDİR — yukarıdaki dört adım
+  işler (önce zorunlu 2× koşu). Sürdürülmemiş bir ara kesişim seed'i sansürlemez: sonraki kalıcı
+  kesişime bakılır.
 
     F(koşu) = N* × train_flops_per_token(koşunun config'i)
 
@@ -1053,8 +1136,34 @@ Seed başına `N*` ve `F_base,i` değerleri **`experiments/foton-v02-prereg/base
 içinde kayıtlıdır. Bu bölümün ilk hâlinde hiçbir yerde kayıtlı değillerdi: birincil istatistiğin
 paydası dondurulmuş artifact'lardan yeniden kurulamıyordu.
 
+**Paydanın KAYNAĞI pinlidir** (kampanya M'i yeniden koştuğu için iki aday vardı ve hangisinin
+kullanılacağı sonuca göre seçilebilirdi):
+* seed **{11, 22, 33, 44, 55}**: `F_base,i` = `baseline_reference.json`'daki DONDURULMUŞ değerler.
+  Kampanyanın aynı seed'lerdeki M koşuları yalnızca `w̄` (duvar saati, aynı blokta ölçülmek zorunda;
+  V11a) ve yeniden koşum sadakat kontrolü içindir; paydaya GİRMEZ.
+* seed **{66, 77, 88, 99, 110}** (yalnızca seed artırılırsa): dondurulmuş değer yoktur; `F_base,i`
+  aynı seed bloğunda koşulan M'in `N*`'ından gelir (`resolve_n_star()` ile, aynı prosedür).
+
+**VERİ TAŞIMA KURALI (yöntem şartı): seed başına sonuçlar seed KİMLİĞİYLE anahtarlı taşınır.**
+`src/stats`'ın karar fonksiyonlarının hepsi — `paired()`, `savings()`, `decide()`, `ub95()`,
+`contribution()`, `decide_primary()`, `abandon()` — girdi olarak **eşleme** alır
+(`dict[seed] → değer` ya da `dict[seed] → Obs(s, durum)`; `abandon()` için `dict[ölçek] → …`) ve
+liste/tuple verilince `TypeError` verir. İki kol ancak anahtar kümeleri AYNIYSA birleştirilir;
+değilse hata. Seed'in durumu (hızlı/yavaş/sansürlü) değerle aynı kayıtta taşınır, paralel bir maske
+listesinde değil. Sonuçlar eşlemenin ekleme sırasından bit düzeyinde bağımsızdır (kanonik sıra).
+Yükleyiciler eşlemeyi `src/stats.keyed()` ile kurar: aynı seed iki kez gelirse (yeniden koşulan
+seed'in iki kaydı) hata verir, `dict()` gibi sessizce ezmez.
+
+Neden bir yöntem şartı: **konuma göre eşleme hatası ÜÇ ayrı fonksiyonda üç kez çıktı** —
+`paired()` (v3), `savings()` (v02'nin ilk denetimi), `decide_primary()` (dördüncü denetim; X-s22
+ile H-s33 eşlenince "katkı var, büyük" olan sonuç "ölçemedik" çıkıyordu) — ve her seferinde
+fonksiyon yamalandı. Sorun fonksiyonlar değildi: paralel listeler yanlış eşlemeyi İFADE EDEBİLEN
+bir veri biçimidir. Yeni biçimde konum diye bir şey yoktur; yanlış kullanım çalışmaz, patlar.
+Mutasyon sınavı (V13) bu sınıf için ayrı bir blok taşır: eşlemeyi ekleme sırasına göre yapan,
+bir kaydıran, listeyi sessizce kabul eden, anahtar kümesi denetimini kapatan mutantlar.
+
 **Kararı geçersiz kılan üç hata regresyona bağlıdır** (`tests/test_stats.py`, `test_stats_v02.py`):
-eşleştirmenin seed kimliği yerine liste konumuna göre yapılması (hem `paired()` hem `savings()`),
+eşleştirmenin seed kimliği yerine konuma göre yapılması (yukarıdaki kuralın bütün fonksiyonlarda),
 t kritik değerinin n'den bağımsız sabit alınması, ve `n_star`'ın B14 sürdürme kontrolünü atlaması.
 Karar raporu yazılmadan önce bu testlerin geçtiği doğrulanır.
 
@@ -1381,8 +1490,15 @@ n=5'te **%97.5** GA yarı-genişliği **1.88 puan** = MDE çıtası (α=.05 vars
 **Değişemez** (liste denetimden sonra genişletildi; eklenenler **koyu**):
 `L*`, **`L_aux`**, `F_base` (referans sayı) ve `F_base,i`'nin tanımı, korpus (hash'ler) ve Tier A
 kısıtı, referans bütçe, birincil ölçüt ve istatistik, **iki birincil uç nokta ve Holm aile
-büyüklüğü**, test aileleri ve sayısı, karar tablosu ve eşikleri, **kesinlik ölçütü**, **vazgeçme
-koşulunun biçimi**, seed kümeleri, ölçek basamakları, oracle tanımı, ve mimari spesifikasyonu —
+büyüklüğü**, test aileleri ve sayısı, karar tablosu ve eşikleri, **kesinlik ölçütü (tek biçim,
+`ub95` ile)**, **`ub95`'in tanımı ve yavaş/sansürlü seed muamelesi**, **birincil-2'nin dört durumu,
+MDE çıtası ve başarısız-seed kuralı**, **vazgeçme koşulunun iki yolu**, **her satırdan sonraki adım
+tablosu**, **paydanın kaynağı**, **veri taşıma kuralı (seed kimliğiyle anahtarlı)**, seed kümeleri,
+ölçek basamakları, oracle tanımı, **`src/stats.py`'deki karar fonksiyonlarının DAVRANIŞI**
+(`n_star`, `resolve_n_star`, `savings`, `ub95`, `indeterminate`, `decide`, `contribution`,
+`decide_primary`, `abandon`, `multiplicity`: tag'den sonra yalnızca gözlemsel eşdeğer refactor
+yapılabilir; davranış değişikliği sapmadır ve testler + mutasyon sınavı bunu yakalamak içindir),
+ve mimari spesifikasyonu —
 şunları AÇIKÇA içerecek şekilde: **modül desen parametreleri (A: yerel W=150; B: dilated r=2, W=256;
 C: yarı-yerel W=256 + yarı-strided s=4, W=256)**, **router girdisi ve prefix uzunluğu k=64**,
 **gate işlemi (ham `p`, straight-through)**, **katman bölüşümü (3 paylaşılan + 2 yönlendirilen +
@@ -1456,8 +1572,18 @@ taranır (FOTON farklı bir mimari olduğu için sd'sinin büyük çıkması bek
 yazılır — "güven aralığının TAMAMI eşiğin bir tarafında" — nokta tahmini ile aralık sınırının
 birleşimi olarak değil. Bu biçimde n artırmak daima yardım eder, ve kural tetiklenmediğinde sonuç
 **"hipotez ayakta" değil "yetersiz kesinlik"** olarak ayrışır. Bu ön-kayıtta uygulandığı üç yer:
-vazgeçme koşulu (`GA üst < +%5`), kesinlik ölçütü (satır 1), ve birincil-2'nin null yorumu
-(`GA üst < MDE`).
+vazgeçme koşulu (`ub95 < +%5`), kesinlik ölçütü (satır 1; aynı `ub95`), ve birincil-2'nin null
+yorumu (`GA üst < MDE`).
+
+**Gauss-dışı kör nokta: başarısız seed'ler.** σ taraması yalnızca Gauss gürültüsünü tarar; bu
+ön-kayıtta kuralların ÜÇ kez öldüğü yer ise Gauss-dışıydı — hedefe ulaşamayan seed'ler. (i) Sansürlü
+ikame düz t-aralığına girince vazgeçme sansürlü her senaryoda ulaşılamazdı; (ii) yalnızca sansürsüz
+alt örneğe bakınca 3/5 sansür terk edilemiyordu; (iii) yavaş seed sıradan gözlem sayılınca yavaş
+seed'li her kampanya terminal "yetersiz kesinlik"e gidiyor, "başarısız" ve vazgeçme ulaşılamıyordu.
+Bu yüzden sınav, σ tablolarının yanında **başarısız-seed senaryo tablosu** taşır (sansürlü, yavaş,
+ikisi birlikte, n=10, 1× ve 2× sınırları; 16 senaryo) ve her senaryonun beklenen sonucu
+(satır, tek ölçekte terk, iki ölçekte terk) **assertion** olarak yazılıdır; 2× sınırında süreklilik
+ve aritmetik tavan da öyle. Yeni bir durdurma kuralı yazan, o tabloya senaryo eklemek zorundadır.
 
 ### V13. Her guard MUTASYON SINAVINDAN geçer (yöntem şartı)
 
@@ -1467,7 +1593,7 @@ kontrolü — için, koruduğu şey **kasten bozulur** ve doğrulayıcının bun
 Betik `scripts/mutation_guards.py`, kayıt `experiments/foton-v02-prereg/mutation_log.md`.
 **Yakalamadığı kanıtlanmamış guard, guard değildir.**
 
-**Neden bir yöntem şartı.** Bu belgenin denetim geçmişinde aynı sınıftan BEŞ olay var:
+**Neden bir yöntem şartı.** Bu belgenin denetim geçmişinde aynı sınıftan ALTI olay var:
 
 * `%33.8` guard'ı iki ondalıklı deseni (`%33.79`) arıyordu ve belgedeki gerçek hatayı (`%33.8`)
   kaçırdı;
@@ -1477,16 +1603,30 @@ Betik `scripts/mutation_guards.py`, kayıt `experiments/foton-v02-prereg/mutatio
 * kuyruğun Latin kare assertion'ı yalnızca `blok % kol == 0` iken çalışıyordu, yani kampanyanın
   gerçek biçiminde (5 × 4) hiç çalışmıyordu — mutasyon sınavı tasarlanırken bulundu;
 * `check_prereg_numbers.py`'a eklenen "her `L*` geçişini denetle" regex'i yanlış kaçışla yazılmıştı
-  (literal soru işareti arıyordu) ve SIFIR eşleşmeyle sessizce geçiyordu.
+  (literal soru işareti arıyordu) ve SIFIR eşleşmeyle sessizce geçiyordu;
+* aritmetik tavan örneğindeki "tavansız biçim" sayısı koda, teste ve bu metne ELLE **+31.3** diye
+  yazılmıştı; tarama onu hesaplamaya başlayınca **+31.4** çıktı. Tarama betiği sayıyı basıyor ama
+  hesaplamıyordu — elle yazılmış bir sabit, onu denetleyen guard'ı kandırır.
 
 Mutasyon sınavının ilk koşumu ayrıca iki gerçek boşluk buldu ve ikisi de kapatıldı: **+%5 başarı
 eşiğinin kendisi** hiçbir testle kilitli değildi (`SUCCESS = 5.0 → 4.0` mutantı hayatta kalıyordu,
 çünkü hiçbir test [4, 5) aralığında bir ortalama sınamıyordu), ve `evaluate()`'in prefix maskesi ile
 dondurulmuş preset değerlerinin hiç regresyon testi yoktu.
 
-Son durum (`mutation_log.md`): **79 mutant — 78 yakalandı, 1 kanıtlı eşdeğer, 0 hayatta kaldı.**
+Son durum (`mutation_log.md`): **109 mutant — 108 yakalandı, 1 kanıtlı eşdeğer, 0 hayatta kaldı.**
 Eşdeğer mutant (S27) kodu değiştiren ama davranışı değiştirmeyen mutanttır; kanıtıyla kayıtlıdır ve
-her koşumda yeniden denenir. Bunların hepsi gözden geçirmeyle değil, **bozup denemeyle** ortaya çıkar. Mutasyon sınavı geçici bir kopya
+her koşumda yeniden denenir.
+
+**Konuma göre eşleme sınıfı ayrı bir bloktur (E01–E16).** O hata üç ayrı fonksiyonda üç kez çıktı
+(V4'teki taşıma kuralı); yapısal düzeltmeden sonra mutantlar YAPIYI geri bozar: `paired()` /
+`savings()` / `contribution()` / `abandon()`'da eşlemeyi ekleme sırasına göre yapan (E01–E04, E06,
+E07), eşlemeyi bir kaydıran (E05), seed durumunu kimlik yerine sırayla eşleyen (E03), listeyi
+sessizce `dict(enumerate(…))` sayan ya da kapıyı hiç koymayan (E08, E09), anahtar kümesi denetimini
+kapatan (E10, E15, E16), kanonik sırayı kaldıran (E11), tekrar eden seed'i sessizce ezen (E12),
+tanımsız durumu ya da +100'ü aşan tasarrufu kabul eden (E13, E14). Onları yakalayan testler önce
+konum eşlemesinin o girdide GERÇEKTEN farklı sonuç verdiğini gösterir (yoksa hiçbir şeyi
+kilitlemiyor olurlardı), sonra X ile H'yi, FOTON ile baseline'ı, ölçek sonuçları ile oracle
+kazançlarını BAĞIMSIZ karıştırıp çıktının birebir aynı kaldığını denetler. Bunların hepsi gözden geçirmeyle değil, **bozup denemeyle** ortaya çıkar. Mutasyon sınavı geçici bir kopya
 üzerinde çalışır; depo ve dondurulmuş artifact'lar değişmez.
 
 ### V11a. Koşu sırası: dört kol İÇ İÇE koşulur (yöntem şartı)
@@ -1555,7 +1695,8 @@ ayrı ayrı gösterilir. Ayırt edilemiyorsa **ayırt edilemediği yazılır**, 
 
 ### V11. Zorunlu raporlama
 
-Karar tablosu satır adı birebir; `s̄`, sd, %95 GA, n, sansürlü seed sayısı, `w̄` ve GA'sı; taranan
+Karar tablosu satır adı birebir; `s̄`, sd, %95 GA, `ub95`, n, **sansürlü ve yavaş seed sayıları
+(seed kimlikleriyle)**, birincil-2'nin durumu ve GA'sı, Holm sonucu, `w̄` ve GA'sı; taranan
 FOTON varyantı sayısı ve tablosu; koşu defterindeki toplam/iptal/çöken koşu sayısı; her kolun
 `config.json` SHA-256'sı ve `git_head`/`src_sha256`'sı; `batch_size × eval_iters`; `eval_interval`;
 her kolun tam val eğrisi **ve alan başına val loss**; profiler-analitik FLOP farkı (her kol);
@@ -1563,13 +1704,14 @@ oracle kazancı ve null'ı; yapılan test sayısı (**"18 (2+5+11), keşifsel: k
 (O-X1); ve **D'ye karşı bağlam sayıları** (kapsam sınırı gereği zorunlu).
 
 **HER ZORUNLU MADDENİN TANIMLI BİR ARTIFACT'I VAR.** İlk hâlde yalnızca satır adının bağlayıcı bir
-biçimi vardı (`decide()` döndürüyor); geri kalan her şey "raporlanır" diyordu ama dosyası, yolu ve
+biçimi vardı (`decide_primary()` döndürüyor); geri kalan her şey "raporlanır" diyordu ama dosyası, yolu ve
 şeması yoktu, yani sessizce düşürülebilirdi. Tablo:
 
 | zorunlu madde | artifact |
 |---|---|
-| satır adı, `s̄`, sd, GA, n, sansürlü seed sayısı, notlar | `src/stats.decide()` çıktısı → `experiments/foton-v02/decision.json` |
-| `s_i` ve seed başına `N*`, `F_foton,i`, `F_base,i` | `experiments/foton-v02/savings.json` (`src/stats.savings()`) |
+| birincil-1 satır adı (Holm'dan SONRA), `s̄`, sd, GA, `ub95`, n, sansürlü/yavaş seed sayısı, notlar; birincil-2 durumu, GA'sı, `p`; Holm | **`src/stats.decide_primary()`** çıktısının TAMAMI → `experiments/foton-v02/decision.json` (`decide()`'ın tek başına çıktısı bağlayıcı değildir: Holm'u atlar) |
+| vazgeçme kararı, yolu, gerekçesi, `escalation_used` | `src/stats.abandon()` çıktısı → aynı dosya |
+| `s_i`, seed başına `N*`, **durum (hızlı/yavaş/sansürlü)**, `F_foton,i`, `F_base,i` ve paydanın kaynağı — seed kimliğiyle anahtarlı | `experiments/foton-v02/savings.json` (`src/stats.resolve_n_star()` + `savings()`) |
 | `w̄(M)`, `w̄(D)` ve GA'ları, **kümülatif saatten** | `experiments/foton-v02/walltime.json` (`scripts/baseline_reference.py` yöntemi) |
 | **koşu defteri** toplam/iptal/çöken/sürdürülmüş | `experiments/foton-v02-prereg/run_ledger.jsonl` (`scripts/run_ledger.py --report`) |
 | taranan FOTON varyantı sayısı ve tablosu (V7) | `experiments/foton-v02/v7_ablation.json` |

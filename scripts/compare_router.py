@@ -32,7 +32,7 @@ import statistics as st
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from src.stats import T975, multiplicity, paired, t_crit, t_sf  # noqa: E402
+from src.stats import T975, keyed, multiplicity, paired, t_crit, t_sf  # noqa: E402
 _t_sf = t_sf  # geriye uyumluluk: testler bu adı kullanıyor
 
 CONDITIONS = [
@@ -79,6 +79,17 @@ def ms(xs: list[float], fmt: str = ".4f") -> str:
 # Karar istatistiği src/stats.py'de toplandı: eşleşme seed KİMLİĞİNE göre, t kritik değeri n'e
 # bağlı, Holm/BH düzeltmesi. v3 denetimi bu iki hatayı burada bulmuştu; tek kaynak ve regresyon
 # testi (tests/test_stats.py) için taşındı. FOTON'un karar betiği de aynı modülü kullanır.
+
+def by_seed(rows: list[dict], values: list) -> dict:
+    """Bir kolun satırlarıyla AYNI sırada üretilmiş değer sütununu seed kimliğiyle anahtarlar.
+
+    `src.stats.paired()` liste kabul etmez (konuma göre eşleme kapalı). `keyed()` tekrar eden
+    seed'de hata verir; sütun satırlardan kısa/uzunsa da sessiz geçilmez.
+    """
+    if len(rows) != len(values):
+        raise ValueError(f"satır sayısı ({len(rows)}) ile değer sayısı ({len(values)}) uyuşmuyor")
+    return keyed((r["seed"], v) for r, v in zip(rows, values))
+
 
 def fmt_paired(p: dict, fmt: str = "+.4f") -> str:
     s = f"{p['mean']:{fmt}}"
@@ -203,7 +214,7 @@ def main() -> None:
             v = table[name][k]
             if any(x is None or (isinstance(x, float) and math.isnan(x)) for x in v):
                 continue
-            d = paired(v, b, [r["seed"] for r in data[k]["rows"]], [r["seed"] for r in data[base]["rows"]])
+            d = paired(by_seed(data[k]["rows"], v), by_seed(data[base]["rows"], b))
             diffs.setdefault(name, {})[k] = d
     for name in diffs:
         print(f"  {name:24s}" + " | ".join(f"{k.split('_')[0]}: {fmt_paired(diffs[name][k])}" for k in diffs[name]))
@@ -223,7 +234,7 @@ def main() -> None:
             v, b = table.get(name, {}).get(hi), table.get(name, {}).get(lo)
             if not v or not b or any(x is None for x in v) or any(x is None for x in b):
                 continue
-            d = paired(v, b, [r["seed"] for r in data[hi]["rows"]], [r["seed"] for r in data[lo]["rows"]])
+            d = paired(by_seed(data[hi]["rows"], v), by_seed(data[lo]["rows"], b))
             series_diffs.setdefault(f"{hi} - {lo}", {})[name] = d
             star = "*" if "ci95" in d and (d["ci95"][0] > 0 or d["ci95"][1] < 0) else ""
             cells.append(f"{name} {d['mean']:+.4f}{star}")

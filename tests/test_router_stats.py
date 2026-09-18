@@ -53,22 +53,30 @@ def test_t_sf_known_values():
 
 
 def test_paired_matches_by_seed_not_position():
-    a, seeds_a = [1.0, 2.0, 3.0], [1337, 1338, 1339]
-    b_shuffled, seeds_b = [2.5, 0.5, 1.5], [1339, 1337, 1338]
-    d = cr.paired(a, b_shuffled, seeds_a, seeds_b)
+    a = {1337: 1.0, 1338: 2.0, 1339: 3.0}
+    b_shuffled = {1339: 2.5, 1337: 0.5, 1338: 1.5}
+    d = cr.paired(a, b_shuffled)
     assert d["per_seed"] == [0.5, 0.5, 0.5] and d["n"] == 3
-    # Konuma göre zip yanlış cevabı verirdi: sıralama bozuk olduğu için farklar eşit olmazdı.
-    assert cr.paired(a, b_shuffled)["per_seed"] != [0.5, 0.5, 0.5]
+    # Konuma göre zip yanlış cevabı verirdi; imza artık onu İFADE EDEMİYOR (liste -> TypeError).
+    assert [x - y for x, y in zip(a.values(), b_shuffled.values())] != [0.5, 0.5, 0.5]
+    with pytest.raises(TypeError):
+        cr.paired([1.0, 2.0, 3.0], [2.5, 0.5, 1.5])
+    rows = [{"seed": 1339}, {"seed": 1337}, {"seed": 1338}]
+    assert cr.by_seed(rows, [2.5, 0.5, 1.5]) == b_shuffled
+    with pytest.raises(ValueError):
+        cr.by_seed(rows, [2.5, 0.5])                                  # kısa sütun sessiz geçmez
+    with pytest.raises(ValueError):
+        cr.by_seed(rows + [{"seed": 1337}], [2.5, 0.5, 1.5, 9.9])      # aynı seed iki kez
 
 
 def test_paired_drops_unmatched_seed_and_widens_ci():
-    b, seeds_b = [0.5, 1.5, 2.5], [1337, 1338, 1339]
-    full = cr.paired([1.0, 2.0, 3.0], b, seeds_b, seeds_b)
-    part = cr.paired([1.0, 3.0], b, [1337, 1339], seeds_b)          # s1338'in analizi eksik
-    assert part["n"] == 2 and part["per_seed"] == [0.5, 0.5]
+    b = {1337: 0.5, 1338: 1.5, 1339: 2.5}
+    full = cr.paired({1337: 1.0, 1338: 2.0, 1339: 3.0}, b)
+    part = cr.paired({1337: 1.0, 1339: 3.0}, b)                     # s1338'in analizi eksik
+    assert part["n"] == 2 and part["per_seed"] == [0.5, 0.5] and part["dropped"] == [1338]
     # Aynı (sıfır) sd'de n=2'nin GA'sı n=3'ten geniş olmalı; sabit t(2) bunu tersine çeviriyordu.
-    wide = cr.paired([1.0, 3.5], b, [1337, 1339], seeds_b)
-    narrow = cr.paired([1.0, 2.5, 3.5], b, seeds_b, seeds_b)
+    wide = cr.paired({1337: 1.0, 1339: 3.5}, b)
+    narrow = cr.paired({1337: 1.0, 1338: 2.5, 1339: 3.5}, b)
     assert (wide["ci95"][1] - wide["ci95"][0]) > (narrow["ci95"][1] - narrow["ci95"][0])
     assert full["n"] == 3
 

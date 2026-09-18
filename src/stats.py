@@ -11,13 +11,26 @@ Bu hatalar FOTON kararında tekrarlanırsa karar GEÇERSİZ olur, çünkü karar
 aralığının işaretine bakıyor. Bu yüzden fonksiyonlar burada toplanıp `tests/test_stats.py` ile regresyona
 bağlandı; FOTON'un karar betiği bu modülü kullanmak ZORUNDA (PREREGISTRATION O4).
 
-`decide()` karar tablosunu birebir uygular ve satır ADINI döndürür. Rapor "iyi görünüyor" diyemez:
+VERİ TAŞIMA BİÇİMİ — seed başına sonuçlar **seed kimliğiyle anahtarlanmış eşleme** olarak taşınır
+(`dict[seed] -> değer` ya da `dict[seed] -> Obs`). Paralel liste KABUL EDİLMEZ: `paired()`, `savings()`,
+`decide()`, `ub95()`, `contribution()`, `decide_primary()` ve `abandon()` liste alınca `TypeError`
+verir. Gerekçe: konuma göre eşleme hatası ÜÇ ayrı fonksiyonda üç kez çıktı (`paired` v3'te, `savings`
+v02'nin ilk denetiminde, `decide_primary` dördüncü denetimde) ve her seferinde fonksiyon yamalandı.
+Sorun fonksiyonlar değildi: iki paralel liste, yanlış eşlemeyi İFADE EDEBİLEN bir veri biçimidir ve
+sansür/yavaş maskeleri de aynı biçimde üçüncü, dördüncü paralel listelerdi. Eşlemede konum diye bir
+şey yoktur; iki kol ancak anahtar kümeleri AYNIYSA birleştirilir, değilse hata verilir. Durum
+(hızlı/yavaş/sansürlü) değerle AYNI kayıtta (`Obs`) taşınır, ayrı bir maskede değil.
+
+`decide_primary()` bağlayıcı kararı döndürür (iki birincil uç nokta + Holm); `decide()` onun
+birincil-1 adımıdır ve karar tablosunun satır ADINI döndürür. Rapor "iyi görünüyor" diyemez:
 satır adı buradan gelir.
 """
 from __future__ import annotations
 
 import math
 import statistics as st
+from collections.abc import Mapping
+from dataclasses import dataclass
 
 # %97.5 t kritik değerleri (iki yanlı %95), df -> t
 T975 = {1: 12.706205, 2: 4.302653, 3: 3.182446, 4: 2.776445, 5: 2.570582, 6: 2.446912, 7: 2.364624,
@@ -33,6 +46,9 @@ REQUIRED_N = (5, 10)    # bağlayıcı karar yalnızca 5 ya da 10 eşleştirilmi
 # sağlanabilir (v01 EK1-B16'nın aynı kolda bulduğu sorun).
 WBAR_KEYS = ("M", "D")
 CI_EPS = 1e-9           # GA sınırı sıfıra kayan nokta hassasiyetinde değerken kararı bit çevirmesin
+S_MAX = 100.0           # puan; tasarrufun aritmetik tavanı (F_foton = 0)
+SCALES = ("S0", "S1")   # ölçek basamakları, SIRASIYLA (ön-kayıt V5/V8: en çok 2 ölçek)
+STATUSES = ("hızlı", "yavaş", "sansürlü")    # bir FOTON seed'inin hedefe ulaşma durumu (V3)
 
 # Mutlak sd tripwire'ı (v01: sd > 5 puan) KULLANIMDAN KALDIRILDI. Neden, ölçümle:
 #
@@ -95,21 +111,108 @@ def _bcf(a: float, b: float, x: float, itmax: int = 300, eps: float = 3e-16) -> 
     return h
 
 
-def paired(a: list[float], b: list[float], seeds_a=None, seeds_b=None) -> dict:
-    """Eşleştirilmiş fark (a - b), **seed kimliğine göre**. Ortalama, sd, %95 GA t(n-1), iki yanlı p.
+# ------------------------------------------------------------------ seed kimliğiyle anahtarlı taşıma
 
-    seeds_a/seeds_b verilmezse konuma göre eşler ve bu YALNIZCA aynı sırayla verildiği kesin olan
-    listeler için doğrudur; karar hesabında daima seed listeleri verilmelidir (bkz. modül docstring'i).
+@dataclass(frozen=True)
+class Obs:
+    """Bir seed'in tasarruf gözlemi: `s` (yüzde puan) + hedefe ulaşma durumu.
+
+    Seed kimliği burada DEĞİL, eşlemenin ANAHTARINDADIR (`{11: Obs(5.2), 22: Obs(-56.0, "yavaş")}`):
+    kimlik tek bir yerde durur, kayıtla anahtar çelişemez.
+
+    status ∈ STATUSES (`resolve_n_star` üretir, elle doldurulmaz):
+      "hızlı"    — 1x bütçede hedefe (kalıcı) ulaştı
+      "yavaş"    — yalnızca ZORUNLU 2x koşusunda ulaştı; `s` 2x eğrisinden ÖLÇÜLDÜ (tipik −25 … −150)
+      "sansürlü" — 2x'te de ulaşamadı; `s`, `N* = 2 × bütçe` İKAMESİDİR (≈ −150) ve FOTON lehine yanlıdır
     """
-    if seeds_a is not None and seeds_b is not None:
-        pos = {s: i for i, s in enumerate(seeds_b)}
-        pairs = [(a[i], b[pos[s]]) for i, s in enumerate(seeds_a) if s in pos]
-        matched = [s for s in seeds_a if s in pos]
-    else:
-        pairs = list(zip(a, b))
-        matched = None
-    d = [x - y for x, y in pairs]
-    out = {"per_seed": d, "n": len(d), "seeds": matched, "mean": st.mean(d) if d else float("nan")}
+    s: float
+    status: str = "hızlı"
+
+    def __post_init__(self):
+        if isinstance(self.s, bool) or not isinstance(self.s, (int, float)):
+            raise TypeError(f"Obs.s sayı olmalı, {type(self.s).__name__} verildi")
+        s = float(self.s)
+        if s != s or s in (float("inf"), float("-inf")):
+            raise ValueError(f"Obs.s sonlu olmalı: {self.s}")
+        if s > S_MAX:
+            raise ValueError(f"Obs.s = {s} > {S_MAX}: tasarruf tanım gereği +100 puanı aşamaz "
+                             "(F_foton > 0); birim hatası olabilir (oran değil YÜZDE PUAN)")
+        if self.status not in STATUSES:
+            raise ValueError(f"Obs.status {STATUSES} içinden olmalı, verilen: {self.status!r}")
+        object.__setattr__(self, "s", s)
+
+
+def _need_mapping(x, name: str) -> Mapping:
+    """Konuma göre eşlemeyi KAPATAN kapı: liste/tuple/dizi alan çağrı çalışmaz, patlar."""
+    if not isinstance(x, Mapping):
+        raise TypeError(f"{name}: seed kimliğiyle anahtarlanmış eşleme gerekli (dict[seed] -> değer), "
+                        f"{type(x).__name__} verildi. Paralel listeler KABUL EDİLMEZ: konuma göre "
+                        "eşleme üç kez yanlış seed'leri eşledi (bkz. modül docstring'i).")
+    return x
+
+
+def _ordered(keys) -> list:
+    """Anahtarların KANONİK sırası: sonuç eşlemenin ekleme sırasına bit düzeyinde bile bağlı olmasın."""
+    try:
+        return sorted(keys)
+    except TypeError:
+        return sorted(keys, key=repr)
+
+
+def keyed(pairs) -> dict:
+    """`(seed, değer)` çiftlerinden eşleme kurar; aynı seed İKİ KEZ gelirse hata verir.
+
+    Yükleyiciler bunu kullanmalı: `dict(pairs)` tekrar eden anahtarda öncekini SESSİZCE ezer — koşu
+    defterinde yeniden koşulan bir seed'in iki kaydı varken hangisinin kazandığı sıraya bağlı olurdu.
+    """
+    out: dict = {}
+    for k, v in pairs:
+        if k in out:
+            raise ValueError(f"seed {k!r} iki kez verildi: hangisinin geçerli olduğu koşu defterinden "
+                             "seçilmeli, sıradan değil")
+        out[k] = v
+    return out
+
+
+def _keyed(x, name: str) -> dict:
+    """`dict[seed] -> float`, kanonik sırada. Değerler sonlu sayı olmalı."""
+    m = _need_mapping(x, name)
+    out = {}
+    for k in _ordered(m):
+        v = m[k]
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise TypeError(f"{name}[{k!r}] sayı olmalı, {type(v).__name__} verildi")
+        v = float(v)
+        if v != v or v in (float("inf"), float("-inf")):
+            raise ValueError(f"{name}[{k!r}] sonlu olmalı: {v}")
+        out[k] = v
+    return out
+
+
+def _table(x, name: str) -> dict:
+    """`dict[seed] -> Obs`, kanonik sırada. Çıplak sayı `Obs(sayı, "hızlı")` sayılır."""
+    m = _need_mapping(x, name)
+    return {k: (m[k] if isinstance(m[k], Obs) else Obs(m[k])) for k in _ordered(m)}
+
+
+def _same_seeds(a: Mapping, b: Mapping, name_a: str, name_b: str) -> None:
+    if set(a) != set(b):
+        raise ValueError(f"seed kümeleri aynı olmalı: {name_a} {_ordered(a)} vs {name_b} {_ordered(b)}")
+
+
+def paired(a: Mapping, b: Mapping) -> dict:
+    """Eşleştirilmiş fark (a − b), **seed kimliğine göre**. Ortalama, sd, %95 GA t(n−1), iki yanlı p.
+
+    a, b : `dict[seed] -> değer`. Yalnızca İKİ eşlemede de bulunan seed'ler eşlenir; bir tarafta
+    eksik olanlar `dropped` alanında raporlanır (sessiz değil). Birincil istatistik bunu KULLANMAZ:
+    `savings()` eksik seed'de hata verir.
+    """
+    fa, fb = _keyed(a, "a"), _keyed(b, "b")
+    matched = [s for s in fa if s in fb]
+    d = [fa[s] - fb[s] for s in matched]
+    dropped = _ordered(set(fa) ^ set(fb))
+    out = {"per_seed": d, "n": len(d), "seeds": matched, "dropped": dropped,
+           "mean": st.mean(d) if d else float("nan")}
     if len(d) > 1:
         sd = st.stdev(d)
         out["sd"] = sd
@@ -135,9 +238,10 @@ def n_star(curve: list[tuple[float, float]], target: float) -> float | None:
        şekilde seçildi; interpolasyon yalnızca `N*`'da devreye girer.)
 
     2. **Kesişim SÜRDÜRÜLMÜŞ olmalı** (v01 EK1-B14: "kesişimden sonraki eval noktası da ≤ L* olmalı;
-       değilse SONRAKİ kesişime bakılır"). Uygulama: `N*`, hedefin ÜSTÜNDEKİ son eval noktasından
-       hemen sonraki kesişimdir — yani ardından eğrinin bir daha hedefin üstüne çıkmadığı ilk
-       kesişim. Gürültülü bir eğri hedefin altına bir kez sarkıp geri çıkarsa o erken sarkma
+       değilse SONRAKİ kesişime bakılır"). Uygulama B14'ün BİLİNÇLİ bir SIKILAŞTIRMASIDIR: `N*`,
+       hedefin ÜSTÜNDEKİ son eval noktasından hemen sonraki kesişimdir — yani ardından eğrinin
+       bir daha HİÇ hedefin üstüne çıkmadığı ilk kesişim (B14 yalnızca bir sonraki noktaya bakar;
+       burada sonraki noktaların TÜMÜ ≤ L* olmalı). Sıkılaştırma `N*`'ı yalnızca büyütebilir. Gürültülü bir eğri hedefin altına bir kez sarkıp geri çıkarsa o erken sarkma
        `N*` sayılmaz: ölçülü örnek, 2750'de sarkıp 3000'de geri çıkan bir eğride ilk kesişim `N*`'ı
        114.7M yerine 90.1M gösteriyor, yani `s_i`'yi ~21 puan şişirip "nötr"ü "güçlü başarı" yapıyor.
 
@@ -147,8 +251,9 @@ def n_star(curve: list[tuple[float, float]], target: float) -> float | None:
        çeviriyordu. B14'ün kendisi uygulanıyor artık.
 
     Eğrinin SON noktası hedefin üstündeyse (hedefe ulaşılmadı ya da ulaşılıp kaybedildi) None döner.
-    Çağıran taraf None'ı sansür olarak işlemek ZORUNDA (bkz. `decide`'ın censored_mask'i); sessizce
-    atlamak seed'i kaybettirir ve eşleştirmeyi bozar.
+    None "bu EĞRİ hedefi kalıcı kesmiyor" demektir, "seed sansürlü" DEĞİL: sansür kararı
+    `resolve_n_star`'ındır (önce ZORUNLU 2x koşu; o da kesmezse sansür). Sessizce atlamak seed'i
+    kaybettirir; `savings()` eksik seed'de hata verir.
     """
     pts = sorted(curve)
     if not pts or pts[-1][1] > target:
@@ -160,36 +265,58 @@ def n_star(curve: list[tuple[float, float]], target: float) -> float | None:
     return a + (ya - target) / (ya - yb) * (b - a)
 
 
-def savings(f_foton: list[float], f_base: list[float],
-            seeds_f: list, seeds_b: list) -> dict:
+def resolve_n_star(curve_1x: list[tuple[float, float]], curve_2x: list[tuple[float, float]] | None,
+                   target: float, budget_tokens: float) -> tuple[float, str]:
+    """V3'ün sansür prosedürünü MEKANİK olarak uygular: (`N*`, durum), durum ∈ STATUSES.
+
+      "hızlı"    — 1x bütçeli eğri hedefi (kalıcı) kesti; `N*` o eğriden.
+      "yavaş"    — 1x kesmedi, ZORUNLU 2x koşu kesti; `N*` 2x eğrisinden.
+      "sansürlü" — 2x de kesmedi; `N* = 2 × bütçe` ikamesi.
+
+    Neden fonksiyon: hangi eğrinin okunacağını ve seed'in durumunu analist seçmesin. `Obs.status`
+    buradan gelir, elle doldurulmaz.
+    """
+    n1 = n_star(curve_1x, target)
+    if n1 is not None:
+        return n1, "hızlı"
+    if curve_2x is None:
+        raise ValueError("1x eğrisi hedefi kalıcı kesmiyor: 2x koşu ZORUNLU (V3 adım 2), eğrisi verilmeli")
+    n2 = n_star(curve_2x, target)
+    if n2 is not None:
+        return n2, "yavaş"
+    return 2.0 * float(budget_tokens), "sansürlü"
+
+
+def savings(f_foton: Mapping, f_base: Mapping, status: Mapping | None = None) -> dict:
     """Birincil istatistik: `s_i = 100 × (1 − F_foton,i / F_base,i)`, **seed KİMLİĞİNE göre**.
+
+    f_foton, f_base : `dict[seed] -> FLOP`. Anahtar kümeleri AYNI olmak zorunda; eksik/fazla seed
+                      sessizce atlanmaz, hata verir.
+    status          : `dict[seed] -> durum` (FOTON kolunun, `resolve_n_star`'dan); None ise hepsi "hızlı".
+
+    Döner: {"obs": dict[seed] -> Obs, "n", "mean", "sd"} — `obs` doğrudan `decide_primary()`'ye verilir.
 
     Neden ayrı bir fonksiyon: `paired()` FARK hesaplar, `s_i` ise ORAN. Denetim, `s_i`'yi kuran tek
     kodun eşleştirmeyi liste KONUMUNA göre yaptığını buldu — yani `paired()`'ın regresyona bağladığı
     hatanın aynısı, birincil istatistiğin tam üstünde. Bir kol yeniden koşulup listeye sonda
     eklendiğinde (koşu defteri bunu yapar) konum eşlemesi FOTON-s22'yi baseline-s33 ile eşliyordu.
-    Burada seed listeleri ZORUNLU ve eksik/fazla seed sessizce atlanmaz: hata verir.
 
     Ayrıca payda seed BAŞINA (`F_base,i`) — tek bir dondurulmuş skaler DEĞİL. Skaler payda
     kullanmak karşılaştırmayı eşleştirilmiş olmaktan çıkarır (baseline gürültüsü paydan silinir,
     GA yapay olarak daralır); ön-kayıt eşleştirilmiş GA'ya dayandığı için bu kararı geçersiz kılar.
     """
-    if sorted(seeds_f) != sorted(seeds_b):
-        raise ValueError(f"seed kümeleri aynı olmalı: FOTON {sorted(seeds_f)} vs "
-                         f"baseline {sorted(seeds_b)}")
-    if len(set(seeds_f)) != len(seeds_f):
-        raise ValueError(f"FOTON seed listesinde tekrar var: {seeds_f}")
-    if not (len(f_foton) == len(seeds_f) and len(f_base) == len(seeds_b)):
-        raise ValueError("FLOP listeleri seed listeleriyle aynı uzunlukta olmalı")
-    pos = {s: i for i, s in enumerate(seeds_b)}
-    s_i = []
-    for ff, s in zip(f_foton, seeds_f):          # FOTON'un sırası korunur; baseline KİMLİKLE bulunur
-        fb = f_base[pos[s]]
-        if fb <= 0:
-            raise ValueError(f"seed {s}: F_base = {fb}, pozitif olmalı")
-        s_i.append(100.0 * (1.0 - ff / fb))
-    return {"s_i": s_i, "seeds": list(seeds_f), "n": len(s_i),
-            "mean": st.mean(s_i), "sd": st.stdev(s_i) if len(s_i) > 1 else float("nan")}
+    ff, fb = _keyed(f_foton, "f_foton"), _keyed(f_base, "f_base")
+    _same_seeds(ff, fb, "FOTON", "baseline")
+    stat = {s: "hızlı" for s in ff} if status is None else dict(_need_mapping(status, "status"))
+    _same_seeds(ff, stat, "FOTON", "status")
+    obs = {}
+    for s in ff:
+        if fb[s] <= 0:
+            raise ValueError(f"seed {s}: F_base = {fb[s]}, pozitif olmalı")
+        obs[s] = Obs(100.0 * (1.0 - ff[s] / fb[s]), stat[s])      # baseline KİMLİKLE bulunur
+    vals = [o.s for o in obs.values()]
+    return {"obs": obs, "n": len(vals), "mean": st.mean(vals) if vals else float("nan"),
+            "sd": st.stdev(vals) if len(vals) > 1 else float("nan")}
 
 
 def ci95(values: list[float]) -> tuple[float, float, float]:
@@ -209,6 +336,9 @@ def indeterminate(mean: float, lo: float, hi: float) -> bool:
       * `lo > 0` **ve** `mean >= SUCCESS`  -> başarı KURULDU
       * `hi < SUCCESS`                     -> başarı DIŞLANDI
 
+    `decide()` `hi` olarak **`ub95`**'i verir: başarısız seed yokken düz GA üst sınırı, varken
+    başarısız seed'leri aralığa değil SABİT değer olarak sokan sınır (bkz. `ub95`).
+
     İkisi de sağlanmıyorsa aralık, "eşiği geçiyor" ile "geçmiyor" arasında ayrım yapamıyor demektir;
     sonuç "yüksek varyans / belirsiz"dir ve seed artırılır. Bu ölçütün mutlak sd eşiğine üstünlüğü:
     GA yarı-genişliği n ile küçüldüğü için **çare ölçütü gevşetir**, sıkılaştırmaz (bkz. SD_TRIPWIRE
@@ -219,56 +349,61 @@ def indeterminate(mean: float, lo: float, hi: float) -> bool:
     return hi >= SUCCESS
 
 
-S_MAX = 100.0           # puan; tasarrufun aritmetik tavanı (F_foton = 0)
+def ub95(obs: Mapping) -> float:
+    """`s̄`'nin BAŞARISIZ-SEED'E DUYARLI %95 üst sınırı — kesinlik ölçütünün (b) kolu ve vazgeçme kuralı buna bakar.
 
+        ub95 = min( (100 × n_h + Σ sabit) / n ,  (n_h × (hızlı seed'lerin %95 GA üst sınırı) + Σ sabit) / n )
 
-def ub95(savings: list[float], censored_mask: list[bool] | None = None) -> float:
-    """`s̄`'nin SANSÜRE DUYARLI %95 üst güven sınırı — vazgeçme kuralının baktığı tek sayı.
+    n_h = 1x bütçede hedefe ulaşan ("hızlı") seed sayısı; "sabit" = başarısız seed'lerin değerleri:
+    sansürlü seed'in ikamesi (≈ −150) ve yavaş seed'in 2x eğrisinden ÖLÇÜLEN `s_i`'si. Başarısız
+    seed yokken bu, düz %95 GA üst sınırının aynısıdır (tavanla kırpılmış).
 
-        ÜS = ( n_u × (sansürsüz seed'lerin %95 GA üst sınırı) + Σ sansürlü ikameler ) / n
+    Neden düz t-aralığı değil: başarısız bir seed'in değeri büyük ve negatiftir; onu t-aralığına
+    sokmak sd'yi şişirir. `[0.2, −0.1, 0.3, 0.0, −149.82]` için düz aralık [−113, +53] çıkar ve
+    "üst sınır < +5" şartı sağlanamaz (2. denetim: kural sansürde ulaşılamazdı). Sansürlü ikame
+    tek yanlı bir sınırdır (gerçek değer daha da küçük), yavaş seed'in değeri ölçülmüş bir
+    sabittir; ikisi de yukarı yönde belirsizlik TAŞIMAZ. Belirsizlik yalnızca hızlı seed'lerden gelir.
 
-    Neden düz t-aralığı değil: sansürlü bir seed'in ikamesi (~−150 puan) bir GÖZLEM değil, tek
-    yanlı bir SINIRDIR — gerçek değer ondan da küçüktür (koşu 2x bütçede bile hedefe ulaşmadı).
-    Onu gözlem gibi t-aralığına sokmak sd'yi şişirir: `[0.2, −0.1, 0.3, 0.0, −149.82]` için düz
-    aralık [−113, +53] çıkar ve "GA üst < +5" şartı sansürlü HER senaryoda sağlanamaz olur
-    (ikinci denetimin bulgusu: kural ulaşılamazdı). Doğru muamele: sansürlü seed'ler yukarı yönde
-    belirsizlik TAŞIMAZ, belirsizlik yalnızca sansürsüz seed'lerden gelir.
+    Yalnızca sansürsüz ALT örneğe bakmak da yanlıştı (3. denetim): 3/5 sansürde 2 seed kalıyor,
+    t(1) = 12.7 aralığı patlatıyor, en net başarısızlık terk edilemiyordu. Aritmetik tavan bu yüzden
+    HER durumda uygulanır (tasarruf seed başına +100 puanı aşamaz): `[−62.5, −125, C, C, C]`
+    için tavansız biçim +31.4, tavanlı biçim −49.9 verir.
 
-    Üçüncü denetimin bulduğu delik de burada kapanıyor: bir önceki hâl yalnızca sansürsüz ALT
-    örneğin aralığına bakıyordu; 3/5 sansürde 2 seed kalıyor, t(1) = 12.7 aralığı patlatıyor ve
-    EN NET başarısızlık (5 seed'in 3'ü hedefe ulaşamamış) terk edilemiyordu — kural sansür
-    sayısında monoton bile değildi (k=3 < k=2 < k=4). Bu sınır k'da monotondur: her sansürlü seed
-    onu ~30 puan aşağı çeker. Sansür yokken düz %95 GA üst sınırına eşittir, yani bağlayıcı
-    metindeki "`s̄`'nin %95 GA'sının tamamı +%5'in altında" ifadesinin aynısıdır.
+    Yavaş seed'ler (4. denetim): hedefe yalnızca 2x koşuda ulaşan seed sıradan bir gözlem sayılınca
+    1.99x'te (−148.75) sonuç "yetersiz kesinlik", sansürde (−149.82) "başarısız/terk" oluyordu —
+    bir puanlık farkla zıt terminal sonuçlar. İkisi de "1x'te hedefe ulaşamadı"dır, aynı muameleyi görür.
 
-    Sansürsüz seed sayısı 2'den azsa aralık kurulamaz; o zaman aritmetik tavan (seed başına en çok
-    +100 puan) kullanılır, ki 5 seed'in 4'ü sansürlüyken bile (100 − 600)/5 = −100'dür.
+    Bu, gözlenen başarısızlık örüntüsüne KOŞULLU bir üst sınırdır (başarısız seed oranının kendi
+    örnekleme belirsizliğini içermez); hızlı seed sayısı < 2 ise yalnızca aritmetik tavan kalır.
     """
-    n = len(savings)
-    mask = list(censored_mask) if censored_mask is not None else [False] * n
-    if len(mask) != n:
-        raise ValueError("censored_mask, savings ile aynı uzunlukta olmalı")
-    unc = [s for s, c in zip(savings, mask) if not c]
-    cens = [s for s, c in zip(savings, mask) if c]
-    arith = (S_MAX * len(unc) + sum(cens)) / n
-    if len(unc) >= 2:
-        return min(arith, (len(unc) * ci95(unc)[2] + sum(cens)) / n)
+    tab = _table(obs, "obs")
+    n = len(tab)
+    if n == 0:
+        raise ValueError("ub95: boş eşleme")
+    fast = [o.s for o in tab.values() if o.status == "hızlı"]
+    fixed = [o.s for o in tab.values() if o.status != "hızlı"]
+    arith = (S_MAX * len(fast) + sum(fixed)) / n
+    if len(fast) >= 2:
+        return min(arith, (len(fast) * ci95(fast)[2] + sum(fixed)) / n)
     return arith
 
 
-def abandon(scale_results: list[dict], oracle_gain_over_null, oracle_threshold: float = 2.0,
+def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, oracle_threshold: float = 2.0,
             escalation_used: bool = False) -> dict:
     """VAZGEÇME KOŞULU — ön-kayıttaki "Vazgeçmenin İKİ yolu" tablosunun birebir uygulaması.
 
-    scale_results : ölçek başına BAĞLAYICI `decide()` çıktısı (strict=True, n ∈ {5, 10}), ölçek sırasıyla
-    oracle_gain_over_null : ölçek BAŞINA oracle kazancının null'ın üstündeki payı (yüzde puan).
-        Tek ölçekte sayı, iki ölçekte ölçek sırasıyla dizi. İki ölçekte tek sayı KABUL EDİLMEZ:
-        S0 = 1.5 / S1 = 2.5 iken sonuç hangi sayının verildiğine bağlı olurdu.
+    scale_results : `dict[ölçek] -> decide_primary()["primary1"]` (ya da `decide()` çıktısı);
+        anahtarlar `SCALES`'ten ve BAŞTAN ardışık ({"S0"} ya da {"S0", "S1"}). Bağlayıcı olmalı
+        (strict=True, n ∈ {5, 10}).
+    oracle_gain_over_null : `dict[ölçek] -> oracle kazancının null'ın üstündeki payı` (yüzde puan),
+        AYNI anahtar kümesiyle. Ölçek sonuçları ile oracle kazançları KİMLİKLE eşlenir: iki paralel
+        dizi S0'ın kazancını S1'in sonucuyla eşleyebilirdi (S0 = 1.5 / S1 = 2.5 iken sonuç değişir).
     escalation_used : ölçek yükseltme hakkı kullanıldı mı (yalnızca tek ölçek yolunu etkiler)
 
-    İKİ ÖLÇEK yolu (elde >= 2 ölçek sonucu varsa DAİMA bu): son iki ölçeğin ikisinde de
-      `ub95 < +5`, hiçbiri "yüksek varyans / belirsiz" ya da "yetersiz kesinlik" değil, ve oracle
-      kazancı her iki ölçekte < eşik.
+    İKİ ÖLÇEK yolu (elde 2 ölçek sonucu varsa DAİMA bu): ikisinde de `ub95 < +5`, hiçbiri "yüksek
+      varyans / belirsiz" ya da "yetersiz kesinlik" değil, ve oracle kazancı her iki ölçekte < eşik.
+      (`ub95 < +5` kesinlik ölçütünün (b) kolunun kendisidir, yani ikinci şart birincisinden çıkar;
+      yine de ayrı denetlenir ki reddin GEREKÇESİ "ölçemedik" diye doğru yazılsın.)
     TEK ÖLÇEK yolu (v01 EK1-B10; yalnızca elde TEK ölçek sonucu varken): satır "başarısız",
       yükseltme hakkı KULLANILMAMIŞ, `ub95 < +5`, oracle kazancı < eşik.
 
@@ -280,36 +415,42 @@ def abandon(scale_results: list[dict], oracle_gain_over_null, oracle_threshold: 
     "ve" ile bağlıyordu; GA yarı-genişliği ~1.167σ olduğundan σ >~ 1.72'de tam başabaş bir FOTON
     asla terk edilemiyordu (v01 B10'da bir kez düzeltilen hatanın ikinci ortaya çıkışı; bkz. V12).
     """
-    if not scale_results:
+    res = _need_mapping(scale_results, "scale_results")
+    gains_in = _need_mapping(oracle_gain_over_null, "oracle_gain_over_null")
+    if not res:
         return {"abandon": False, "reason": "ölçek sonucu yok", "path": None}
-    for r in scale_results:
-        if "ub95" not in r or "row" not in r:
+    unknown = [k for k in res if k not in SCALES]
+    order = [k for k in SCALES if k in res]
+    if unknown or tuple(order) != SCALES[:len(order)]:
+        raise ValueError(f"abandon(): ölçek anahtarları {SCALES} içinden ve BAŞTAN ardışık olmalı, "
+                         f"verilen: {list(res)}")
+    if set(gains_in) != set(res):
+        raise ValueError(f"oracle kazancı ölçek BAŞINA ve AYNI ölçeklerle verilmeli: sonuçlar "
+                         f"{order}, oracle {list(gains_in)}")
+    for k in order:
+        r = res[k]
+        if not isinstance(r, Mapping) or "ub95" not in r or "row" not in r:
             raise ValueError("abandon(): girdi `decide()` çıktısı olmalı (`ub95` / `row` yok)")
         if not r.get("strict", False) or r.get("n") not in REQUIRED_N:
             raise ValueError(f"abandon(): bağlayıcı olmayan sonuç (strict={r.get('strict')}, "
                              f"n={r.get('n')}) vazgeçme kararını süremez")
-    two = len(scale_results) >= 2
-    used = scale_results[-2:] if two else scale_results
-    if isinstance(oracle_gain_over_null, (int, float)):
-        if two:
-            raise ValueError("iki ölçekte oracle kazancı ölçek BAŞINA verilmeli (dizi)")
-        gains = [float(oracle_gain_over_null)]
-    else:
-        gains = [float(g) for g in oracle_gain_over_null][-len(used):]
-    if len(gains) != len(used) or any(g != g or g in (float("inf"), float("-inf")) for g in gains):
+    two = len(order) >= 2
+    used = order[-2:]
+    gains = [float(gains_in[k]) for k in used]                 # oracle ölçekle KİMLİKLE eşlenir
+    if any(g != g or g in (float("inf"), float("-inf")) for g in gains):
         raise ValueError(f"oracle kazancı her ölçek için sonlu bir sayı olmalı: {gains}")
     oracle_ok = all(g < oracle_threshold for g in gains)
-    ubs = [r["ub95"] for r in used]
-    base = {"ub95": ubs, "oracle_ok": oracle_ok, "single_scale": not two,
-            "path": "iki ölçek" if two else "tek ölçek"}
+    ubs = [res[k]["ub95"] for k in used]
+    base = {"ub95": ubs, "oracle_ok": oracle_ok, "single_scale": not two, "scales": used,
+            "escalation_used": escalation_used, "path": "iki ölçek" if two else "tek ölçek"}
     why = []
     if two:
-        if any(r["row"] in ("yüksek varyans / belirsiz", "yetersiz kesinlik") for r in used):
+        if any(res[k]["row"] in ("yüksek varyans / belirsiz", "yetersiz kesinlik") for k in used):
             return {**base, "abandon": False,
                     "reason": "yetersiz kesinlik: bir ölçekte GA başarı eşiğini çözemedi; bu "
                               "'hipotez ayakta' DEĞİL, 'ölçemedik' demektir"}
     else:
-        r = used[0]
+        r = res[used[0]]
         if r["row"] != "başarısız":
             why.append(f"tek ölçek yolu yalnızca 'başarısız' satırından açılır (satır: '{r['row']}'); "
                        "iki ardışık ölçek sonucu gerekiyor")
@@ -354,13 +495,23 @@ PRIMARY_FAMILY = 2       # birincil-1 (X↔M) + birincil-2 (X↔H); Holm bu büy
 MDE_PRIMARY2 = 1.88      # puan; n=5, sd(fark) 1.20, Holm ilk adımı α=.025 (bkz. ön-kayıt)
 
 
-def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
+def contribution(s_x: Mapping, s_h: Mapping, mde: float = MDE_PRIMARY2,
                  alpha: float = 0.05 / PRIMARY_FAMILY, strict: bool = True) -> dict:
     """Birincil-2'nin DÖRT durumlu puanlaması. Karar tablosu birincil-2'ye UYGULANMAZ.
 
-    diffs : seed başına `s_i(X) − s_i(H)` (yüzde puan); SANSÜRSÜZ seed'ler (bkz. `decide_primary`)
+    s_x, s_h : `dict[seed] -> Obs` — X ve H kollarının M'e karşı tasarrufları (`savings()["obs"]`).
+               Kontrast `s_i(X) − s_i(H)` BURADA, seed KİMLİĞİYLE kurulur; hazır bir fark listesi
+               kabul edilmez, çünkü o liste bir yerde iki kolun KONUMA göre çıkarılmasıyla kurulmuş
+               olurdu (dördüncü denetim: X-s22 ile H-s33 eşlenince "katkı var, büyük" olan sonuç
+               "ölçemedik" çıkıyordu). Anahtar kümeleri aynı değilse hata.
 
-    Neden ayrı: karar tablosunun eşikleri (+%2/+%5/+%10) TASARRUF için kalibre edildi ve
+    BAŞARISIZ SEED KURALI: X ya da H'nin herhangi bir seed'i 1x bütçede hedefe ulaşamadıysa
+    (sansürlü ya da yavaş) fark o seed'de anlamlı bir gözlem değildir (farkı onlarca puan oynatır,
+    t-aralığını patlatır). O zaman durum "ölçemedik"tir, p = 1 alınır (Holm'da birincil-1 α/2 ile
+    sınanır: muhafazakâr yön) ve seed DÜŞÜRÜLMEZ — düşürmek sonuca göre seçilebilir bir analizdi:
+    ölçülü örnekte tam liste "ölçemedik", seed düşürülünce "katkı var, büyük".
+
+    Neden ayrı bir kural: karar tablosunun eşikleri (+%2/+%5/+%10) TASARRUF için kalibre edildi ve
     birincil-2 bir FARK kontrastıdır. `decide()`'a verilseydi +1.88 puanlık gerçek bir
     heterojenlik katkısı "nötr" satırına düşerdi (çünkü 1.88 < 2), yani deneyin asıl sorusunun
     olumlu cevabı "etki yok" diye etiketlenirdi.
@@ -372,16 +523,27 @@ def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
     Aralık Holm'un İLK adımının düzeyindedir (α = .025, yani %97.5 GA) ve MDE çıtası n'den
     bağımsız SABİTTİR (1.88 puan); ikisi de ön-kayıtta pinli.
     """
-    n = len(diffs)
+    x, h = _table(s_x, "s_x"), _table(s_h, "s_h")
+    _same_seeds(x, h, "X", "H")
+    n = len(x)
     if n < 2:
         raise ValueError("kontrast için en az 2 seed gerekir")
     if strict and n not in REQUIRED_N:
         # `decide()`'daki aynı boşluğun kopyası: bağlayıcı giriş 3 seed'den "katkı var, büyük"
         # damgası basabiliyordu.
         raise ValueError(f"bağlayıcı birincil-2 için n {REQUIRED_N} olmalı, verilen n={n}")
+    seeds = list(x)
+    failed = [s for s in seeds if x[s].status != "hızlı" or h[s].status != "hızlı"]
+    if failed:
+        return {"state": "ölçemedik", "mean": None, "sd": None, "n": n, "ci": None, "p": 1.0,
+                "alpha": alpha, "mde": mde, "seeds": seeds, "failed_seeds": failed,
+                "note": f"{len(failed)} seed'de ({failed}) X ya da H 1x bütçede hedefe ulaşamadı "
+                        "(sansürlü/yavaş): fark anlamlı bir gözlem değil, seed DÜŞÜRÜLMEZ; birincil-2 "
+                        "'ölçemedik' — 'heterojenlik çürütüldü' DEĞİL"}
+    diffs = [x[s].s - h[s].s for s in seeds]                   # H, X ile KİMLİKLE eşlenir
     m, sd = st.mean(diffs), st.stdev(diffs)
-    h = t_crit_alpha(n - 1, alpha) * sd / math.sqrt(n)
-    lo, hi = m - h, m + h
+    hw = t_crit_alpha(n - 1, alpha) * sd / math.sqrt(n)
+    lo, hi = m - hw, m + hw
     real, small = lo > CI_EPS, hi < mde        # CI_EPS: `decide()` ile aynı tolerans
     state = ("katkı var, büyük" if real and not small else
              "katkı var, küçük" if real and small else
@@ -394,8 +556,8 @@ def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
         # Dört durum katkının İŞARETİNİ ayırmıyor; anlamlı NEGATİF bir katkı "MDE kadar değil"e
         # düşer ve orada sessiz kalırdı. Durum adı değişmez (tablo pinli), not düşülür.
         note = "katkı NEGATİF: aralığın tamamı sıfırın altında — heterojenlik H'ye göre ZARAR veriyor"
-    return {"state": state, "mean": m, "sd": sd, "n": n, "ci": [lo, hi],
-            "alpha": alpha, "mde": mde, "note": note}
+    return {"state": state, "mean": m, "sd": sd, "n": n, "ci": [lo, hi], "p": _p_two_sided(diffs),
+            "alpha": alpha, "mde": mde, "seeds": seeds, "failed_seeds": [], "note": note}
 
 
 def _p_two_sided(values: list[float]) -> float:
@@ -407,59 +569,37 @@ def _p_two_sided(values: list[float]) -> float:
     return t_sf(abs(m / (sd / math.sqrt(n))), n - 1) * 2
 
 
-def decide_primary(s_xm: list[float], s_hm: list[float],
+def decide_primary(s_x: Mapping, s_h: Mapping,
                    quality_per_sec: float | dict[str, float] | None = None,
-                   censored_mask: list[bool] | None = None,
-                   censored_mask_h: list[bool] | None = None,
                    strict: bool = True, alpha: float = 0.05,
                    seed_right_available: bool = True) -> dict:
     """İKİ birincil uç noktayı BİRLİKTE karara bağlar: Holm (m = 2) satır adının ÖNÜNDEDİR.
 
-    s_xm : seed başına `s_i(X↔M)` — birincil-1'in istatistiği
-    s_hm : seed başına `s_i(H↔M)`, AYNI seed sırasıyla — birincil-2 `s_xm − s_hm` farkıdır
-    censored_mask / censored_mask_h : X ve H kollarının seed başına sansür bayrakları
+    s_x : `dict[seed] -> Obs`, `s_i(X↔M)` — birincil-1'in istatistiği (`savings()["obs"]`)
+    s_h : `dict[seed] -> Obs`, `s_i(H↔M)`, AYNI seed kümesiyle — birincil-2 `s_x − s_h` kontrastıdır
 
-    Neden farkı çağıran değil BU fonksiyon kuruyor: iki liste ayrı ayrı verilirse iki endpoint'in
-    farklı n'de (ör. birincil-1 n=5, birincil-2 n=10) ya da sansürlü bir seed DÜŞÜRÜLEREK
-    hesaplanması mümkün oluyordu — ön-kaydın "sonuca göre seçilebilir" diye adını koyduğu seçim.
-    Ölçülü örnek: H'nin bir seed'i sansürlüyken tam fark listesi "ölçemedik" veriyor, o seed
-    düşürülünce "katkı var, büyük". Artık uzunluklar eşit olmak ZORUNDA ve sansür burada işleniyor.
+    İki kol seed KİMLİĞİYLE birleşir; konum diye bir şey yoktur (bkz. modül docstring'i). Bu
+    fonksiyonun bir önceki hâli iki paralel listeyi `zip()` ile eşliyordu — `paired()` ve
+    `savings()`'in regresyona bağladığı hatanın ÜÇÜNCÜ ortaya çıkışı, birincil-2'nin tam üstünde.
 
-    SANSÜR KURALI (birincil-2): X ya da H'nin herhangi bir seed'i sansürlüyse fark o seed'de
-    tanımsızdır (ikame bir gözlem değil tek yanlı bir sınırdır; farkı ±150 puan oynatır). O zaman
-    birincil-2 "ölçemedik" olarak raporlanır, p₂ = 1 alınır ve Holm'da birincil-1 α/2 düzeyiyle
-    sınanır (muhafazakâr yön). Seed DÜŞÜRÜLMEZ.
+    Neden farkı çağıran değil kod kuruyor: iki endpoint'in farklı n'de (ör. birincil-1 n=5,
+    birincil-2 n=10) ya da başarısız bir seed DÜŞÜRÜLEREK hesaplanması mümkün olmasın — ön-kaydın
+    "sonuca göre seçilebilir" diye adını koyduğu seçim.
 
     Sıra (ön-kayıttaki "Holm iki endpoint'e NASIL uygulanır" bölümünün birebir uygulaması):
-      1. iki endpoint'in iki yanlı p değerleri,
-      2. Holm, aile büyüklüğü PİNLİ (`PRIMARY_FAMILY`),
+      1. iki endpoint'in iki yanlı p değerleri (birincil-2 "ölçemedik"se p₂ = 1),
+      2. Holm ADIM ADIM, aile büyüklüğü PİNLİ (`PRIMARY_FAMILY`): küçük p ilk adımı geçemezse durur,
       3. birincil-1 satırı `decide()`'dan; Holm'dan geçmediyse başarı satırları "belirsiz"e düşer,
-      4. birincil-2 durumu `contribution()`'dan. "Katkı var" durumları α/2 GA'sının alt sınırı > 0
-         şartına bağlı, bu da `p₂ < α/2` demek — Holm'un HER adımından geçer; tutarlılık yine de
-         denetlenir ve ihlali sessiz geçilmez.
+      4. birincil-2 durumu `contribution()`'dan (α/2 düzeyi). "Katkı var" `p₂ < α/2` demektir ve
+         Holm'un her adımından geçer; kayan nokta bıçak sırtında geçmezse muhafazakâr yöne düşürülür.
     """
-    if len(s_xm) != len(s_hm):
-        raise ValueError(f"iki endpoint AYNI seed kümesinde hesaplanır: n(X↔M) = {len(s_xm)}, "
-                         f"n(H↔M) = {len(s_hm)}")
-    n = len(s_xm)
-    mx = list(censored_mask) if censored_mask is not None else [False] * n
-    mh = list(censored_mask_h) if censored_mask_h is not None else [False] * n
-    if len(mx) != n or len(mh) != n:
-        raise ValueError("sansür maskeleri seed listeleriyle aynı uzunlukta olmalı")
-    r1 = decide(s_xm, quality_per_sec=quality_per_sec, censored_mask=mx, strict=strict,
+    x, h = _table(s_x, "s_x"), _table(s_h, "s_h")
+    _same_seeds(x, h, "X", "H")
+    r1 = decide(x, quality_per_sec=quality_per_sec, strict=strict,
                 seed_right_available=seed_right_available)
-    p1 = _p_two_sided(s_xm)
-    if any(mx) or any(mh):
-        k = sum(1 for a, b in zip(mx, mh) if a or b)
-        c2 = {"state": "ölçemedik", "mean": None, "sd": None, "n": n, "ci": None,
-              "alpha": alpha / PRIMARY_FAMILY, "mde": MDE_PRIMARY2,
-              "note": f"{k} seed'de X ya da H sansürlü: fark tanımsız, seed DÜŞÜRÜLMEZ; birincil-2 "
-                      "'ölçemedik' — 'heterojenlik çürütüldü' DEĞİL"}
-        p2 = 1.0
-    else:
-        diffs = [a - b for a, b in zip(s_xm, s_hm)]
-        c2 = contribution(diffs, alpha=alpha / PRIMARY_FAMILY, strict=strict)
-        p2 = _p_two_sided(diffs)
+    p1 = _p_two_sided([o.s for o in x.values()])
+    c2 = contribution(x, h, alpha=alpha / PRIMARY_FAMILY, strict=strict)
+    p2 = c2["p"]
     holm = multiplicity([("birincil-1", p1), ("birincil-2", p2)], alpha=alpha,
                         family_size=PRIMARY_FAMILY)
     passed = set(holm["holm"])
@@ -476,7 +616,7 @@ def decide_primary(s_xm: list[float], s_hm: list[float],
               "note": f"Holm sınırında (p₂ = {p2:.6f}): 'katkı var' ilan EDİLMEDİ"}
     return {"primary1": {**r1, "row": row1, "notes": notes1, "p": p1,
                          "holm_passed": "birincil-1" in passed},
-            "primary2": {**c2, "p": p2, "holm_passed": "birincil-2" in passed},
+            "primary2": {**c2, "holm_passed": "birincil-2" in passed},
             "holm": holm}
 
 
@@ -579,24 +719,22 @@ def _wbar(quality_per_sec) -> tuple[dict[str, float] | None, float | None]:
     return wmap, min(wmap.values())
 
 
-def decide(savings: list[float], quality_per_sec: float | dict[str, float] | None = None,
-           censored_mask: list[bool] | None = None, strict: bool = True,
-           seed_right_available: bool = True) -> dict:
+def decide(obs: Mapping, quality_per_sec: float | dict[str, float] | None = None,
+           strict: bool = True, seed_right_available: bool = True) -> dict:
     """PREREGISTRATION_V02 karar tablosunu (öncelik tablosu + v01 EK 1 B8/B16) birebir uygular.
 
     **Bağlayıcı karar bu fonksiyonla TEK BAŞINA verilmez**: iki birincil uç nokta Holm'la birlikte
     `decide_primary()`'de karara bağlanır; `decide()` onun birincil-1 adımıdır.
 
-    savings        : seed başına tasarruf, YÜZDE PUAN (`s_i`, bkz. `savings()`); sansürlü seed'ler
-                     için 2x bütçe ikamesiyle hesaplanmış değer
+    obs            : `dict[seed] -> Obs` — seed başına tasarruf (YÜZDE PUAN) ve durumu, **YALNIZCA
+                     FOTON kolunun** (`savings()["obs"]`). Liste KABUL EDİLMEZ. Durum baseline'ın
+                     değil FOTON'un durumudur: v02'de dense kolu `L*`'e ulaşmıyor ve onun
+                     başarısızlığı buraya yazılırsa FOTON, baseline yüzünden "başarısız" ilan edilir.
+                     - "sansürlü" (EK 1 B8): >= 1 -> "başarılı"/"güçlü başarı" YASAK; >= 2 -> doğrudan "başarısız"
+                     - "yavaş": değer ÖLÇÜLMÜŞTÜR, ikame değildir -> B8'in sansür sayımına GİRMEZ;
+                       ama sansürlü seed gibi `ub95`'e SABİT değer olarak girer (t-aralığına değil)
     quality_per_sec: w̄ (yüzde puan), baseline başına eşleme `{"M": .., "D": ..}`. **None geçmek
                      sessiz değildir**: "güçlü başarı" erişilemez ve bu bir NOT olarak kayda geçer.
-    censored_mask  : **YALNIZCA FOTON kolunun** seed başına sansür bayrağı (`n_star` None döndü).
-                     Baseline'ın sansürü buraya GİRMEZ — v02'de dense kolu `L*`'e ulaşmıyor ve
-                     maskeye onun beş sansürü konursa FOTON, baseline'ın yetersizliği yüzünden
-                     "başarısız" ilan edilir. EK 1 B8:
-                     - >= 1 sansürlü seed: "başarılı"/"güçlü başarı" YASAK
-                     - >= 2 sansürlü seed: sonuç doğrudan "başarısız"
     strict         : True ise `n` ön-kayıtlı seed sayılarından biri olmak ZORUNDA (`REQUIRED_N`).
                      False yalnızca keşifsel kullanım içindir; başarı satırlarını BLOKLAR ve sonuç
                      `abandon()`'a verilemez.
@@ -604,32 +742,41 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
                      False iken kesinlik ölçütü tetiklenirse satır doğrudan "yetersiz kesinlik"tir:
                      hak S0'da harcandıysa S1'de "seed 10'a çıkar" demek olmayan bir çaredir.
 
-    Döner: {"row", "mean", "sd", "sd_uncensored", "ci95", "ci95_uncensored", "ub95", "n",
-            "n_censored", "notes", "determinate", "strict", "w_bar"}
+    KESİNLİK ÖLÇÜTÜ (öncelik tablosu satır 1) TEK biçimdir: karar belirlidir ⟺
+    (`GA alt > 0` ve `s̄ >= 5`) ya da `ub95 < 5`. Başarısız seed yokken `ub95` düz GA üst sınırıdır.
+    Başarısız (sansürlü/yavaş) seed varken o seed aralığı ŞİŞİRMEZ: "1x'te hedefe ulaşamadı" bir
+    yöntem başarısızlığıdır, varyans değil. Dördüncü denetim buldu: yavaş seed sıradan gözlem
+    sayılınca tek bir seed (s_i −56 … −149) t-aralığını patlatıp her kampanyayı önce 10 seed'e,
+    sonra terminal "yetersiz kesinlik"e sürüyor, "başarısız" satırı ve vazgeçme ulaşılamıyordu.
+
+    Döner: {"row", "mean", "sd", "sd_fast", "ci95", "ci95_fast", "ub95", "n", "n_censored",
+            "n_slow", "seeds", "notes", "determinate", "strict", "seed_right_available", "w_bar"}
     """
-    n = len(savings)
+    tab = _table(obs, "obs")
+    seeds = list(tab)
+    vals = [o.s for o in tab.values()]
+    n = len(vals)
     if n < 2:
         raise ValueError("karar için en az 2 seed gerekir")
     # Kilit cümle BEŞ eşleştirilmiş seed istiyor, `decide()` ise iki seed'le "başarılı" damgası
-    # basıyordu — ve `paired()` eşleşmeyen seed'leri SESSİZCE düşürdüğü için kısa seed kümesi
-    # işleyişte ulaşılabilir bir durumdu. Artık bağlayıcı karar yalnızca 5 ya da 10 seed'le verilir.
+    # basıyordu — ve `paired()` eşleşmeyen seed'leri düşürdüğü için kısa seed kümesi işleyişte
+    # ulaşılabilir bir durumdu. Artık bağlayıcı karar yalnızca 5 ya da 10 seed'le verilir.
     if strict and n not in REQUIRED_N:
         raise ValueError(f"bağlayıcı karar için n {REQUIRED_N} olmalı, verilen n={n}. "
                          f"Keşifsel kullanım için strict=False (başarı satırları bloklanır).")
-    mask = list(censored_mask) if censored_mask is not None else [False] * n
-    if len(mask) != n:
-        raise ValueError("censored_mask, savings ile aynı uzunlukta olmalı")
-    n_cens = sum(mask)
+    n_cens = sum(o.status == "sansürlü" for o in tab.values())
+    n_slow = sum(o.status == "yavaş" for o in tab.values())
     wmap, wmin = _wbar(quality_per_sec)          # doğrulama HER dönüş yolundan önce
-    mean, lo, hi = ci95(savings)
-    sd = st.stdev(savings)
-    unc = [s for s, c in zip(savings, mask) if not c]
-    sd_unc = st.stdev(unc) if len(unc) > 1 else float("nan")
-    res = {"mean": mean, "sd": sd, "sd_uncensored": sd_unc, "n": n, "n_censored": n_cens,
-           "ci95": [lo, hi], "ub95": ub95(savings, mask), "strict": strict, "w_bar": wmap}
-    if len(unc) >= 2:
-        mu_, lo_, hi_ = ci95(unc)
-        res["ci95_uncensored"], res["mean_uncensored"] = [lo_, hi_], mu_
+    mean, lo, hi = ci95(vals)
+    sd = st.stdev(vals)
+    fast = [o.s for o in tab.values() if o.status == "hızlı"]
+    ub = ub95(tab)
+    res = {"mean": mean, "sd": sd, "sd_fast": st.stdev(fast) if len(fast) > 1 else float("nan"),
+           "n": n, "n_censored": n_cens, "n_slow": n_slow, "seeds": seeds, "ci95": [lo, hi],
+           "ub95": ub, "strict": strict, "seed_right_available": seed_right_available, "w_bar": wmap}
+    if len(fast) >= 2:
+        mu_, lo_, hi_ = ci95(fast)
+        res["ci95_fast"], res["mean_fast"] = [lo_, hi_], mu_
     w_complete = wmap is not None and set(WBAR_KEYS) <= set(wmap)
     notes: list[str] = []
 
@@ -667,21 +814,21 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
         if n_cens >= 1:
             extra.append(f"{n_cens} FOTON seed'i L*'e ulaşmadı; s̄ 2x bütçe ikamesiyle hesaplandı ve "
                          "bu ikame FOTON'un LEHİNE yanlıdır (EK 1 B8)")
+        if n_slow >= 1:
+            extra.append(f"{n_slow} FOTON seed'i L*'e yalnızca ZORUNLU 2x koşusunda ulaştı (yavaş): "
+                         "s_i 2x eğrisinden ölçüldü ve üst sınıra SABİT değer olarak girdi (V3 adım 3)")
         return {**res, "notes": notes + extra, "row": row, "determinate": determinate}
 
     if n_cens >= 2:                                        # EK 1 B8: iki veya daha fazla sansür -> başarısız
         notes.append(f"{n_cens} FOTON seed'i L*'e ulaşmadı: EK 1 B8 gereği sonuç doğrudan 'başarısız'")
         return finish("başarısız", True)
 
-    # ---- kesinlik ölçütü (mutlak sd tripwire'ının yerini aldı; v01 B8(ii) gereği SANSÜRSÜZ
-    #      seed'ler üzerinde: sansürlü seed "hedefe ulaşamadı"dır, "varyans yüksek" değil) ----
-    if len(unc) >= 2:
-        m_u, lo_u, hi_u = ci95(unc)
-        indet = indeterminate(m_u, lo_u, hi_u)
-        detail = f"sansürsüz {len(unc)} seed: s̄ {m_u:.2f}, GA [{lo_u:.2f}, {hi_u:.2f}]"
-    else:
-        indet, detail = True, f"yalnızca {len(unc)} sansürsüz seed: kesinlik DEĞERLENDİRİLEMEZ"
-    if indet:
+    # ---- kesinlik ölçütü (mutlak sd tripwire'ının yerini aldı). Üst sınır `ub95`'tir: başarısız
+    #      seed yokken düz GA üst sınırı, varken başarısız seed'leri SABİT sayan sınır ----
+    if indeterminate(mean, lo, ub):
+        detail = f"s̄ {mean:.2f}, GA alt {lo:.2f}, üst sınır (ub95) {ub:.2f}"
+        if n_cens or n_slow:
+            detail += f"; {n_cens} sansürlü + {n_slow} yavaş seed üst sınıra sabit değer olarak girdi"
         if n >= max(REQUIRED_N) or not seed_right_available:
             # TERMİNAL: EK1-B3 tek bir seed artırma hakkı veriyor (kampanya başına). Hak yoksa
             # "seed 10'a çıkar" demek olmayan bir çareye yönlendirmek olurdu.

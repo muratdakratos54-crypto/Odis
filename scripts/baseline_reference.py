@@ -125,11 +125,12 @@ def main() -> None:
             print(f"    s{r['seed']:<3d} N* {r['n_star']/1e6:7.3f}M | tam {r['sec_exact']:8.2f}s "
                   f"| oranlanmış {r['sec_prorated']:8.2f}s | hata %{100*(r['sec_prorated']/r['sec_exact']-1):+6.2f}")
 
-    tm_e = [r["sec_exact"] for r in aux["per_arm"]["m"]]
-    td_e = [r["sec_exact"] for r in aux["per_arm"]["d"]]
-    tm_p = [r["sec_prorated"] for r in aux["per_arm"]["m"]]
-    td_p = [r["sec_prorated"] for r in aux["per_arm"]["d"]]
-    pe, pp = paired(tm_e, td_e, SEEDS, SEEDS), paired(tm_p, td_p, SEEDS, SEEDS)
+    # seed KİMLİĞİYLE anahtarlı: `paired()` liste kabul etmez (konuma göre eşleme kapalı)
+    by_seed = lambda arm, key: {r["seed"]: r[key] for r in aux["per_arm"][arm]}   # noqa: E731
+    td_e, td_p = list(by_seed("d", "sec_exact").values()), list(by_seed("d", "sec_prorated").values())
+    pe = paired(by_seed("m", "sec_exact"), by_seed("d", "sec_exact"))
+    pp = paired(by_seed("m", "sec_prorated"), by_seed("d", "sec_prorated"))
+    assert pe["n"] == pp["n"] == len(SEEDS) and not pe["dropped"], "eksik seed: eşleştirme tam değil"
     print(f"\n  {'yöntem':12s} {'fark':>12s} {'%':>8s} {'GA95 (dk)':>22s} {'p':>9s}")
     for lab, pr, base in (("TAM", pe, td_e), ("oranlanmış", pp, td_p)):
         print(f"  {lab:12s} {pr['mean']/60:+9.3f} dk {100*pr['mean']/st.mean(base):+7.1f}% "

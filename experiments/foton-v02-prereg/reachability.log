@@ -64,24 +64,37 @@ bu yüzden σ aralığı 6.0'a kadar taranıyor — kural orada da anlamlı davr
   YORUM: tam eşikte güç ~%50 ve seed sayısıyla DÜZELMEZ — bağlayıcı olan nokta tahmini
   şartıdır (v01 O9'un yapısal sonucu, v02'de de geçerli). Eşik gevşetilmiyor.
 
-## SANSÜRLÜ senaryolar — vazgeçmenin İKİ yolu, beklentiler ASSERTION olarak
-  Vazgeçme kuralı `s̄`'nin SANSÜRE DUYARLI üst sınırına bakar (`src.stats.ub95`):
-  ÜS = (n_u × sansürsüz GA üst + Σ ikame) / n. Sansürlü ikame bir gözlem değil tek yanlı
-  bir sınırdır; onu düz t-aralığına sokmak aralığı [−113, +53]'e şişirip kuralı sansürlü
-  HER senaryoda ulaşılamaz yapıyordu (2. denetim). Yalnızca sansürsüz ALT örneğe bakmak ise
-  3/5 sansürde (2 seed, t(1) = 12.7) EN NET başarısızlığı terk edilemez kılıyordu (3. denetim).
+## BAŞARISIZ-SEED senaryoları (sansürlü / yavaş) — vazgeçmenin İKİ yolu, beklentiler ASSERTION olarak
+  Vazgeçme kuralı VE kesinlik ölçütü `s̄`'nin BAŞARISIZ-SEED'E DUYARLI üst sınırına bakar (`src.stats.ub95`):
+  ub95 = min( (100·n_h + Σ sabit)/n , (n_h × hızlı seed'lerin GA üst sınırı + Σ sabit)/n ).
+  'sabit' = 1x bütçede hedefe ulaşamayan seed'ler: sansürlü (ikame ≈ −150) ve yavaş (2x eğrisinden ölçülen).
+  Bunları düz t-aralığına sokmak aralığı [−113, +53]'e şişirip kuralı ulaşılamaz yapıyordu (2. denetim);
+  yalnızca sansürsüz ALT örneğe bakmak 3/5 sansürde (2 seed, t(1) = 12.7) en net başarısızlığı terk
+  edilemez kılıyordu (3. denetim); yavaş seed'i sıradan gözlem saymak her yavaş-seed'li kampanyayı
+  terminal 'yetersiz kesinlik'e sürüyordu (4. denetim). Aritmetik tavan HER durumda uygulanır.
   'tek' = tek ölçek yolu (v01 B10: satır 'başarısız' + hak kullanılmamış);
   'iki' = iki ardışık ölçek yolu. Oracle kazancı her senaryoda 0.5 (< 2).
-  senaryo                                 satır       s̄  düz GA üst     ub95    tek    iki
-  4 başabaş + 1 sansür                başarısız   -29.88       53.37   -29.65   EVET   EVET
-  4 × +%7 + 1 sansür                  başarısız   -24.35       62.73   -24.25   EVET   EVET
-  4 × +%30 + 1 sansür                 başarısız    -5.95       93.91    -5.85   EVET   EVET
-  3 başabaş + 2 sansür                başarısız   -59.85       42.13   -59.54   EVET   EVET
-  2 geniş + 3 sansür                  başarısız   -89.89       12.00   -87.35   EVET   EVET
-  sansür yok, başabaş                      nötr     0.10        0.30     0.30  hayır   EVET
-  sansür yok, −%8                     başarısız    -8.00       -7.90    -7.90   EVET   EVET
-  sansür yok, +%7                      başarılı     7.00        7.10     7.10  hayır  hayır
+  senaryo                                                 satır       s̄  düz GA üst     ub95    tek    iki
+  4 başabaş + 1 sansür                                başarısız   -29.88       53.37   -29.65   EVET   EVET
+  4 × +%7 + 1 sansür                                  başarısız   -24.35       62.73   -24.25   EVET   EVET
+  4 × +%30 + 1 sansür                                 başarısız    -5.95       93.91    -5.85   EVET   EVET
+  3 başabaş + 2 sansür                                başarısız   -59.85       42.13   -59.54   EVET   EVET
+  2 geniş + 3 sansür                                  başarısız   -89.89       12.00   -87.35   EVET   EVET
+  2 çok geniş hızlı + 3 sansür                        başarısız  -127.39      -80.41   -49.89   EVET   EVET
+  2 yavaş + 3 sansür                                  başarısız  -127.39      -80.41  -127.39   EVET   EVET
+  4 başabaş + 1 yavaş (1.5×)                          başarısız   -11.12       20.03   -10.89   EVET   EVET
+  4 başabaş + 1 yavaş (1.99×)                         başarısız   -29.67       52.99   -29.44   EVET   EVET
+  4 × +%7 + 1 yavaş (1.5×)                            başarısız    -5.59       29.40    -5.48   EVET   EVET
+  9 × −%8 + 1 yavaş (1.9×), n=10                      başarısız   -21.13        8.75   -21.09   EVET   EVET
+  başarısız seed yok, başabaş                              nötr     0.10        0.30     0.30  hayır   EVET
+  başarısız seed yok, −%8                             başarısız    -8.00       -7.90    -7.90   EVET   EVET
+  başarısız seed yok, +%7                              başarılı     7.00        7.10     7.10  hayır  hayır
+  4 × +%10 + 1 hızlı −24 (0.99×)      yüksek varyans / belirsiz     3.24       22.15    22.15  hayır  hayır
+  4 × +%10 + 1 yavaş −26 (1.01×)                       belirsiz     2.84       22.86     3.38  hayır   EVET
+  2x sınırı: 1.99× (−148.75, yavaş) ile sansür (−149.82) AYNI satır, ub95 farkı 0.21 puan — OK
+  1x sınırı (belgelenmiş): −24 hızlı -> kesinlik ölçütü tetiklenir; −26 yavaş -> belirli 'belirsiz'.
   ub95, sansürlü seed sayısı k = 0..4 için: +0.3, -29.7, -59.5, -89.1, -99.9  (monoton — OK)
+  aritmetik tavan: [−62.5, −125, C, C, C] için ub95 = -49.9 (tavansız biçim +31.4 verirdi) — OK
   [S0 'başarılı', S1 'başarısız'] -> terk YOK (iki ölçek kuralı her iki ölçeğe bakıyor) — OK
   oracle headroom'u (5.0 >= 2.0) tek ölçekte ve iki ölçeğin HER BİRİNDE terk etmeyi engelliyor — OK
 

@@ -206,6 +206,49 @@ def main() -> None:
                 check(mm.group(1) in (m.group(1), m.group(2)),
                       f"satır {i}: \"ölçemedik\" %{mm.group(1)} (log: %{m.group(1)} / %{m.group(2)})")
 
+    # ---- 5d) başarısız-seed senaryolarının metindeki sayıları: reachability.log'dan -------------
+    print("\n## 5d. Başarısız-seed senaryo sayıları reachability.log ile aynı mı?")
+    um = lambda x: x.replace("-", "−")               # noqa: E731  belge Unicode eksi kullanıyor
+    scen = {}
+    for l in rlog.split("\n"):
+        ms = re.match(r"^  (\S.*?)\s{2,}(\S.*?)\s+(-?\d+\.\d\d)\s+(-?\d+\.\d\d)\s+(-?\d+\.\d\d)\s+(EVET|hayır)\s+(EVET|hayır)$", l)
+        if ms:
+            scen[ms.group(1)] = dict(row=ms.group(2), mean=ms.group(3), ub=ms.group(5),
+                                     tek=ms.group(6), iki=ms.group(7))
+    check(len(scen) >= 16, f"reachability.log'da >= 16 başarısız-seed senaryosu (bulunan: {len(scen)})")
+
+    def scen_check(label, template):
+        r = scen.get(label)
+        check(r is not None, f"senaryo log'da: {label}")
+        if r:
+            ub = um(r["ub"]) if r["ub"].startswith("-") else "+" + r["ub"]
+            want = template.format(mean=um(r["mean"]), ub=ub, row=r["row"])
+            check(want in text, f"senaryo '{label}' metinde: {want!r}")
+
+    scen_check("4 × +%30 + 1 sansür", '`s̄ = {mean}`, satır "{row}", `ub95 = {ub}`')
+    scen_check("4 başabaş + 1 yavaş (1.5×)", '`s̄ = {mean}`,\n"{row}", `ub95 = {ub}`')
+    scen_check("4 × +%10 + 1 yavaş −26 (1.01×)", 'belirli bir "{row}"dir (`ub95 = {ub}`)')
+    for label, tek, iki in (("4 × +%10 + 1 hızlı −24 (0.99×)", "hayır", "hayır"),
+                            ("4 × +%10 + 1 yavaş −26 (1.01×)", "hayır", "EVET"),
+                            ("4 başabaş + 1 yavaş (1.99×)", "EVET", "EVET")):
+        r = scen.get(label, {})
+        check((r.get("tek"), r.get("iki")) == (tek, iki),
+              f"senaryo '{label}' terk sonucu metindeki gibi (tek {tek} / iki {iki})")
+    m = re.search(r"ub95 farkı ([0-9]+\.[0-9]+) puan", rlog)
+    check(m is not None, "reachability.log'da 2x sınırı satırı")
+    if m:
+        check(f"`ub95` farkı {m.group(1)} puan" in text, f"2x sınırındaki ub95 farkı metinde: {m.group(1)}")
+    m = re.search(r"ub95 = (-[0-9.]+) \(tavansız biçim (\+[0-9.]+) verirdi\)", rlog)
+    check(m is not None, "reachability.log'da aritmetik tavan satırı")
+    if m:
+        want = f"tavansız biçim **{m.group(2)}**, tavanlı biçim **{um(m.group(1))}**"
+        check(want in text, f"aritmetik tavan örneği metinde: {want}")
+    m = re.search(r"k = 0\.\.4 için: ([^ ]+(?:, [^ ]+){4})", rlog)
+    check(m is not None, "reachability.log'da ub95 monotonluk satırı")
+    if m:
+        want = "k = 0..4 için " + um(m.group(1))
+        check(want in text, f"ub95 monotonluk dizisi metinde: {want}")
+
     # ---- 5c) V13'ün mutasyon sayımı mutation_log.md ile aynı mı --------------------------------
     print("\n## 5c. V13'teki mutasyon sayımı kayıtla aynı mı?")
     mlog = open(os.path.join(ROOT, "experiments/foton-v02-prereg/mutation_log.md"), encoding="utf-8").read()
