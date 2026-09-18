@@ -18,6 +18,7 @@ FLOP/token: M 267,755,520 | D 267,411,456 (fark %0.13)
     d: N* ort  114.82M = butcenin % 80.1'i | sd %0.86
     s_i (M'in D'ye gore tasarrufu): [12.46, 14.03, 14.86, 14.22, 13.83]
     ort +13.88 puan | SD 0.88 puan | GA [+12.78, +14.98] | p=0.00000 | karar: 'başarılı'
+      not: w̄ (quality/sec) VERİLMEDİ: ikincil ölçüt değerlendirilmedi, bu yüzden 'güçlü başarı' satırı erişilemez ve çelişki kuralı uygulanamadı
     => OLCULMUS eslestirilmis sd(s_i) = 0.88 puan (gercek iki mimari arasi)
 
 ## 3. Karar kuralinin gucu (Monte Carlo, on-kayittaki BILESIK kural)

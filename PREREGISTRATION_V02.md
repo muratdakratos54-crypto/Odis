@@ -474,7 +474,8 @@ verildiğinde +1.88 puanlık bir gerçek heterojenlik katkısı "nötr" satırı
 +1.88 < +%2), yani deneyin asıl sorusunun olumlu cevabı "etki yok" diye etiketlenirdi.
 
 Birincil-2'nin puanlaması şudur — **DÖRT durum, birbirini dışlayan ve tüketen.** `lo` ve `hi`,
-`s̄(X) − s̄(H)`'ın %95 GA'sının sınırları (Holm'un o endpoint'e düşen düzeyinde), MDE = 1.88 puan:
+`s̄(X) − s̄(H)`'ın **%97.5 GA'sının** sınırları (Holm'un ilk adımı, α = .025; uygulama
+`src/stats.contribution()`), MDE = 1.88 puan:
 
 | durum | ölçüt | nasıl yazılır |
 |---|---|---|
@@ -541,13 +542,27 @@ demektir (~50 GPU saati) ve bu deneyin bütçesinde yoktur. Güçsüzlük **gide
 
 ### Holm iki endpoint'e NASIL uygulanır — ve satır adını nasıl etkiler
 
-`src/stats.multiplicity([(ad, p)], alpha=0.05, family_size=2)` ile. Bağlayıcı sıra:
+Uygulama **`src/stats.decide_primary()`** — iki endpoint'i BİRLİKTE karara bağlayan tek giriş
+noktası; içeride `multiplicity(..., family_size=2)`, `decide()` ve `contribution()` çağrılır.
+Karar raporu `decide()`'ı tek başına çağırarak yazılamaz: o yol Holm'u atlar. (Bu fonksiyon ikinci
+denetimden sonra eklendi; ondan önce kural yalnızca bu metinde vardı ve hiçbir koda bağlı değildi.)
+Bağlayıcı sıra:
 
-1. Her iki endpoint için eşleştirilmiş `p` değeri hesaplanır (`src/stats.paired`).
+1. Her iki endpoint için iki yanlı tek-örneklem t-testi `p` değeri hesaplanır (seed başına `s_i`
+   ve seed başına `s_i(X) − s_i(H)` üzerinden).
 2. Holm uygulanır: küçük `p` α/2 = .025 ile, büyük `p` α = .05 ile karşılaştırılır.
 3. **Birincil-1'in satır adı, `p₁` Holm'dan GEÇMEZSE "başarılı" ya da "güçlü başarı" OLAMAZ.**
    O durumda satır "belirsiz"e düşürülür ve not olarak "Holm düzeltmesinden geçmedi" yazılır.
-4. Birincil-2 yukarıdaki üç durumla puanlanır ve "katkı var" ancak `p₂` Holm'dan geçerse yazılır.
+4. Birincil-2 yukarıdaki **dört** durumla puanlanır. Aralığı **daima Holm'un İLK adımının
+   düzeyindedir (α = .025, yani %97.5 GA)** — Holm'da o endpoint'e düşen adım hangisi olursa olsun.
+   Bu bilinçli bir sadeleştirmedir ve muhafazakârdır: "katkı var" durumları `lo > 0` istediği için
+   `p₂ < .025` demektir, o da Holm'un HER adımından geçer; yani dört durum ile Holm asla
+   çelişemez (`decide_primary()` bunu assertion olarak denetler).
+5. **MDE eşiği n'den bağımsız SABİTTİR: 1.88 puan.** Kesinlik ölçütü yüzünden n = 10'a çıkılırsa
+   MDE'nin istatistiksel karşılığı 1.02 puana düşer, ama dört durumdaki "küçük/büyük" sınırı
+   1.88'de kalır. Gerekçe: o sınır bir **önemlilik çıtasıdır** (bu deneyin n=5 tasarımının
+   ayırt edebildiği en küçük katkı) ve veriyi gördükten sonra n ile birlikte kayarsa, "katkı
+   var, küçük" ile "katkı var, büyük" arasındaki ayrım sonradan seçilebilir hâle gelir.
 
 **Bu adım ilk hâlde EKSİKTİ:** Holm aile büyüklüğü 2 olarak pinlenmişti ama hiçbir şeye
 bağlanmamıştı, yani `p = 0.0371` gibi bir değerde satır "başarılı" çıkarken Holm hiçbir endpoint'i
@@ -700,7 +715,7 @@ v01'in "eşleştirilmiş iyileşmenin sd'si > 5 puan" kuralı **kaldırıldı**,
 
 | gerçek σ | eski kural (sd>5) n=5 → n=10 | kesinlik ölçütü n=5 → n=10 |
 |---|---|---|
-| 0.75 (ölçülen) | %0.0 → %0.0 | %0.0 → %0.0 |
+| 0.88 (ölçülen) | %0.0 → %0.0 | %0.0 → %0.0 |
 | 3.0 | %2.6 → %0.3 | %20.7 → **%0.4** |
 | 5.0 | %40.7 → **%43.6** ✗ | %59.4 → **%19.6** |
 | 6.0 | %59.7 → **%71.5** ✗ | %69.0 → **%34.6** |
@@ -756,7 +771,7 @@ desteklemez.
 
 Yalnızca BİR yükseltme hakkı: bir üst ölçek basamağı + 5 seed. **"Trend artıyor" sayısal olarak
 tanımlıdır ve tek başına devam gerekçesi değildir:** `s̄(S1) − s̄(S0)`'ın %95 GA'sının alt sınırı
-sıfırın üstünde olmalı. Aksi hâlde fark gürültüdür; σ = 0.75–1.02 puanda `+0.4` puanlık bir artış
+sıfırın üstünde olmalı. Aksi hâlde fark gürültüdür; σ = 0.88–1.20 puanda `+0.4` puanlık bir artış
 "artıyor" görünür ama ayırt edilemez. Ayırt edilemiyorsa sonuç **"ölçek bizi kurtarmıyor"** olarak
 yazılır, "trend artıyor, devam edilecek" olarak yazılamaz — ve zaten gidilecek bir basamak da yoktur
 (V8: dört kollu tavan 640×10, ve V5: en çok 2 ölçek).
@@ -773,7 +788,7 @@ TAHMİNİNİ bir ARALIK SINIRIYLA "ve" ile bağlıyor. GA yarı-genişliği ≈ 
 
 | σ | gereken `s̄` | başabaş FOTON (s̄=0) terk edilebilir mi? | P(vazgeç), iki ölçek, eski → yeni |
 |---|---|---|---|
-| 0.75 (ölçülen) | < +1.12 | evet | %24.9 → **%100** |
+| 0.88 (ölçülen) | < +0.97 | evet | %24.8 → **%100** |
 | **1.72** | **< 0.00** | **sınır** | %14.5 → **%99.3** |
 | 3.00 | < −1.50 | **HAYIR** | %3.8 → **%62.6** |
 | 6.00 (v01 O9'un beklentisi) | < −5.00 | **HAYIR** | %0.7 → %8.8 |
@@ -930,7 +945,8 @@ o hâlde router en ucuz modüle çökerek ölçülen tasarrufu şişirebilir.
 
     s_i = 100 × (1 − F_foton,i / F_base,i)     [yüzde puan, seed BAŞINA payda]
 
-Uygulama **`src/stats.savings()`** (oran, seed KİMLİĞİNE göre) + **`src/stats.decide()`**;
+Uygulama **`src/stats.savings()`** (oran, seed KİMLİĞİNE göre) + **`src/stats.decide_primary()`**
+(Holm'lu bileşik karar; içeride `decide()` ve `contribution()`);
 başka uygulama kullanılamaz. Ters payda (`F_base/F_foton − 1`) **kullanılamaz** (v01 EK1-B7).
 
 **Payda seed BAŞINADIR, dondurulmuş bir skaler DEĞİLDİR.** Bu bölümün ilk hâli `F_base,i` yazıyor,
@@ -1064,7 +1080,8 @@ Tarama tier'ında (seed {101,102,103}), %50 bütçe, **tam üç koşul** (daha f
 
 **KAZANAN NASIL SEÇİLİR — kural şimdi yazılıyor.** İlk hâl seçim ölçütünü söylemiyordu, ve doğal
 okuma (tarama val loss'u) seçim yanlılığı üretiyordu: 3 bağımsız çekimde beklenen maksimum 0.846·σ,
-yani ölçülen σ = 0.75'te `s̄`'ye **+0.3 ile +0.6 puan** hediye — nokta tahmini eşiğinin onda biri
+yani ölçülen σ = 0.88'de `s̄`'ye **+0.4 ile +0.7 puan** hediye (3 seed ortalaması üzerinden
+seçimde 0.846 × 0.88/√3 = 0.43; tek koşu üzerinden seçimde 0.846 × 0.88 = 0.74) — nokta tahmini eşiğinin onda biri
 mertebesinde ve birincil-1'in GA yarı-genişliğiyle aynı büyüklükte. Kural:
 
 * Kazanan **val loss'a göre SEÇİLMEZ.** Seçim ölçütü **router sağlığıdır** ve sıralaması şudur:
@@ -1296,7 +1313,9 @@ FOTON'un config'i `src/config.py`'de preset olarak sabitlenir ve **SHA-256'sı b
 `src/flops.py` genişletmesi ve `docs/flops.md` türetimi; O-X1 mikrobenchmark'ı; `src/attn_patterns.py`
 ile modül bağlantı sayılarının doğrulanması; ve **bütün test dosyalarının geçmesi**
 (`tests/test_stats.py`, `test_stats_v02.py`, `test_data_multi.py`, `test_attn_patterns.py`,
-`test_run_ledger.py`, `test_verify_pins.py`).
+`test_run_ledger.py`, `test_verify_pins.py`, `test_campaign_queue.py`); `scripts/check_prereg_numbers.py`
+ve `scripts/verify_pins.py --verify` sıfır hata ile; ve **`scripts/mutation_guards.py`'nin bütün
+mutantları yakalaması** (V13).
 
     __DOLDURULACAK: FOTON config SHA-256__   (`foton-h` ve `foton-x` preset'leri henüz yazılmadı)
 
@@ -1335,7 +1354,7 @@ görülmüyor; hesaplanınca görülüyor. İkinci kez aynı hatayı yaptıktan 
 
 **σ aralığı nasıl seçilir:** ölçülen `sd(s_i)`'den başlar ve **v01 O9'un beklentisine** kadar
 taranır (FOTON farklı bir mimari olduğu için sd'sinin büyük çıkması beklenir). Bu ön-kayıtta
-0.75 → 6.0. Tek bir σ'da sınamak yetmez; tam olarak büyük σ rejiminde kurallar ölüyor.
+0.88 → 6.0. Tek bir σ'da sınamak yetmez; tam olarak büyük σ rejiminde kurallar ölüyor.
 
 **SAĞLAM BİÇİM, tercih edilen kalıp:** bir durdurma kuralı, bir **eşdeğerlik** ifadesi olarak
 yazılır — "güven aralığının TAMAMI eşiğin bir tarafında" — nokta tahmini ile aralık sınırının
@@ -1343,6 +1362,36 @@ birleşimi olarak değil. Bu biçimde n artırmak daima yardım eder, ve kural t
 **"hipotez ayakta" değil "yetersiz kesinlik"** olarak ayrışır. Bu ön-kayıtta uygulandığı üç yer:
 vazgeçme koşulu (`GA üst < +%5`), kesinlik ölçütü (satır 1), ve birincil-2'nin null yorumu
 (`GA üst < MDE`).
+
+### V13. Her guard MUTASYON SINAVINDAN geçer (yöntem şartı)
+
+**Kural.** Bu ön-kaydın dayandığı her doğrulayıcı — regresyon testleri, `check_prereg_numbers.py`,
+`verify_pins.py`, `rule_reachability.py`'nin assertion'ları, `make_campaign_queue.py`'nin denge
+kontrolü — için, koruduğu şey **kasten bozulur** ve doğrulayıcının bunu **yakaladığı gösterilir**.
+Betik `scripts/mutation_guards.py`, kayıt `experiments/foton-v02-prereg/mutation_log.md`.
+**Yakalamadığı kanıtlanmamış guard, guard değildir.**
+
+**Neden bir yöntem şartı.** Bu belgenin denetim geçmişinde aynı sınıftan BEŞ olay var:
+
+* `%33.8` guard'ı iki ondalıklı deseni (`%33.79`) arıyordu ve belgedeki gerçek hatayı (`%33.8`)
+  kaçırdı;
+* `reachability.log` kendi defect'ini (`4 × +%7 + 1 sansür … terk EVET`) basıp geçti, çünkü
+  beklenti düzyazıydı, assertion değildi;
+* güç tablosu kontrolü tam olarak GÜNCELLENMİŞ satırlara bakıyordu, hatanın kaldığı satırlara değil;
+* kuyruğun Latin kare assertion'ı yalnızca `blok % kol == 0` iken çalışıyordu, yani kampanyanın
+  gerçek biçiminde (5 × 4) hiç çalışmıyordu — mutasyon sınavı tasarlanırken bulundu;
+* `check_prereg_numbers.py`'a eklenen "her `L*` geçişini denetle" regex'i yanlış kaçışla yazılmıştı
+  (literal soru işareti arıyordu) ve SIFIR eşleşmeyle sessizce geçiyordu.
+
+Mutasyon sınavının ilk koşumu ayrıca iki gerçek boşluk buldu ve ikisi de kapatıldı: **+%5 başarı
+eşiğinin kendisi** hiçbir testle kilitli değildi (`SUCCESS = 5.0 → 4.0` mutantı hayatta kalıyordu,
+çünkü hiçbir test [4, 5) aralığında bir ortalama sınamıyordu), ve `evaluate()`'in prefix maskesi ile
+dondurulmuş preset değerlerinin hiç regresyon testi yoktu.
+
+Son durum (`mutation_log.md`): **61 mutant — 60 yakalandı, 1 kanıtlı eşdeğer, 0 hayatta kaldı.**
+Eşdeğer mutant (S27) kodu değiştiren ama davranışı değiştirmeyen mutanttır; kanıtıyla kayıtlıdır ve
+her koşumda yeniden denenir. Bunların hepsi gözden geçirmeyle değil, **bozup denemeyle** ortaya çıkar. Mutasyon sınavı geçici bir kopya
+üzerinde çalışır; depo ve dondurulmuş artifact'lar değişmez.
 
 ### V11a. Koşu sırası: dört kol İÇ İÇE koşulur (yöntem şartı)
 
@@ -1391,8 +1440,17 @@ oturum-arası kaymayı İÇERMEZ, yani gerçek belirsizlik raporlanan GA'dan bü
 Seed bloğu + Latin kare bu yüzden bağlayıcı: aynı pencereyi dört kol paylaşır ve blok içi pozisyon
 kolla karışmaz. **Maliyeti sıfırdır, yalnızca kuyruk sırası değişir.**
 
-Bağlayıcı kurallar: (i) bir seed bloğu içindeki dört koşu **kesintisiz ve aynı sırada** (D, M, H, X)
-koşulur; (ii) duvar saati karşılaştırması **yalnızca aynı seed bloğu içinde** geçerlidir; (iii) bir
+Bağlayıcı kurallar: (i) bir seed bloğu içindeki dört koşu **kesintisiz** ve **kuyruk dosyasındaki
+sırayla** koşulur — o sıra `scripts/make_campaign_queue.py`'nin ürettiği **Latin kare kaydırmasıdır**
+(blok 1: D,M,H,X; blok 2: M,H,X,D; blok 3: H,X,D,M; blok 4: X,D,M,H; blok 5: D,M,H,X), sabit
+D,M,H,X DEĞİL. (Bu maddenin ilk hâli "aynı sırada (D, M, H, X)" diyordu ve üreteç Latin kareye
+çevrildikten sonra da öyle kalmıştı: bağlayıcı metin ile kuyruk birbiriyle çelişiyordu.) Sabit
+sıra blok-içi pozisyonu kolla TAM karıştırırdı: D hep soğuk GPU'da ilk, X hep ısınmış GPU'da son.
+**Artık dengesizlik, sayısıyla:** 5 blok × 4 kolda tam denge aritmetik olarak İMKÂNSIZDIR (ilk dört
+blok tam Latin kare, beşinci blok 0..3'ü bir permütasyonla ekler), ortalama blok-içi pozisyonlar
+D 1.20 / M 1.40 / H 1.60 / X 1.80; birincil karşıtlıklarda fark X−M = 0.40, X−H = 0.20 pozisyon.
+`check_balance()` her kolun her pozisyonu en az ⌊5/4⌋ = 1 kez gördüğünü assertion olarak denetler
+ve ihlalde kuyruk üretilmez; (ii) duvar saati karşılaştırması **yalnızca aynı seed bloğu içinde** geçerlidir; (iii) bir
 blok yarıda kesilirse (çökme, OOM, makine yeniden başlatma) **o bloğun tamamı** yeniden koşulur ve
 her ikisi de koşu defterine yazılır; (iv) blok sırası dışında koşulan hiçbir koşu duvar saati
 ölçütüne girmez; (v) **kol-etkisi mi zaman-etkisi mi** sorusu raporda cevaplanır: blok-içi

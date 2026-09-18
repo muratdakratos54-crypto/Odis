@@ -504,3 +504,154 @@ def test_abandon_blocked_by_indeterminate_terminal_row():
     assert r["row"] == "yetersiz kesinlik"
     res = abandon([r, r], oracle_gain_over_null=0.0)
     assert res["abandon"] is False and "yetersiz kesinlik" in res["reason"]
+
+
+# ------------------------------------------------- birincil-2 ve Holm'lu bileşik karar
+
+def test_contribution_four_states_partition_the_plane():
+    """Dört durum BİRBİRİNİ DIŞLAR ve TÜKETİR — sınırlar dahil.
+
+    İlk hâl üç durumluydu ve "katkı var" (lo > 0) ile "katkı yok" (hi < MDE) birlikte doğru
+    olabiliyordu; o hâl ("gerçek ama küçük") tabloda karşılıksızdı ve V12'nin taraması bunu
+    olasılıkların NEGATİFE dönmesiyle yakalamıştı.
+    """
+    from src.stats import MDE_PRIMARY2, contribution
+    cases = {
+        "katkı var, büyük": _five(3.0, sd=0.5),          # lo>0, hi>=MDE
+        "katkı var, küçük": _five(1.0, sd=0.2),          # lo>0, hi<MDE
+        "katkı MDE kadar değil": _five(0.0, sd=0.5),     # lo<=0, hi<MDE
+        "ölçemedik": _five(0.5, sd=2.0),                 # lo<=0, hi>=MDE
+    }
+    for want, xs in cases.items():
+        r = contribution(xs)
+        lo, hi = r["ci"]
+        assert r["state"] == want, f"{want}: GA [{lo:.2f}, {hi:.2f}] -> {r['state']}"
+        assert (lo > 0) == want.startswith("katkı var")
+        assert (hi < MDE_PRIMARY2) == (want in ("katkı var, küçük", "katkı MDE kadar değil"))
+    assert "çürütüldü" in contribution(cases["ölçemedik"])["note"]
+    assert contribution(cases["katkı var, büyük"])["note"] == ""
+
+
+def test_contribution_uses_holm_level_not_five_percent():
+    """GA, Holm'un İLK adımındaki α = .025 düzeyinde — %95 değil %97.5 aralığı.
+
+    Taramanın ilk hâli α = .05 aralıkları kullanıyordu ve "ölçemedik" payını gerçek katkı sıfırken
+    %24.6 gösteriyordu; kuralın kendi düzeyinde %42.8. Kuralı başka bir düzeyde taramak, başka bir
+    kuralı sınamaktır.
+    """
+    from src.stats import contribution, t_crit_alpha
+    xs = _five(1.2, sd=1.0)
+    r = contribution(xs)
+    assert r["alpha"] == pytest.approx(0.025)
+    half = (r["ci"][1] - r["ci"][0]) / 2
+    assert half == pytest.approx(t_crit_alpha(4, 0.025) * 1.0 / math.sqrt(5), rel=1e-6)
+    assert t_crit_alpha(4, 0.025) == pytest.approx(3.4954, abs=2e-4)
+    assert t_crit_alpha(4, 0.05) == pytest.approx(t_crit(4), abs=1e-5)       # tabloyla tutarlı
+    # %95'te "katkı var" olacak bir örnek, Holm düzeyinde "ölçemedik"e düşmeli:
+    ys = _five(1.3, sd=1.0)                          # t = 2.91: .025 < p < .05
+    m, lo95, _ = ci95(ys)
+    assert lo95 > 0 and not contribution(ys)["state"].startswith("katkı var")
+
+
+def test_contribution_is_not_scored_with_the_decision_table():
+    """MDE kadar gerçek bir heterojenlik katkısı `decide()`'da "nötr"e düşerdi — o yüzden ayrı kural."""
+    from src.stats import MDE_PRIMARY2, contribution
+    xs = _five(MDE_PRIMARY2, sd=0.3)
+    assert decide(xs, quality_per_sec=W_BOTH)["row"] == "nötr"       # tasarruf eşikleriyle yanlış etiket
+    assert contribution(xs)["state"].startswith("katkı var")          # doğru kuralla doğru etiket
+
+
+def test_decide_primary_holm_precedes_the_row_name():
+    """Holm'dan GEÇMEYEN birincil-1 "başarılı" OLAMAZ — kural artık kodda, yalnızca metinde değil.
+
+    Kurgu: s̄ = 6 ama gürültülü (p₁ ≈ .04), birincil-2 bütünüyle null (p₂ büyük). `decide()` tek
+    başına "başarılı" der (s̄ >= 5, %95 GA alt > 0); Holm'un ilk adımı .025 olduğu için p₁ geçmez
+    ve bileşik karar satırı "belirsiz"e düşürür.
+    """
+    from src.stats import decide_primary
+    s_xm = _five(6.0, sd=4.4)                        # t = 3.05, p ≈ .038
+    assert decide(s_xm, quality_per_sec=W_BOTH)["row"] == "başarılı"
+    out = decide_primary(s_xm, _five(0.0, sd=1.0), quality_per_sec=W_BOTH)
+    assert 0.025 < out["primary1"]["p"] < 0.05
+    assert out["primary1"]["row"] == "belirsiz" and out["primary1"]["holm_passed"] is False
+    assert any("Holm düzeltmesinden GEÇMEDİ" in n for n in out["primary1"]["notes"])
+    assert out["holm"]["n_tests"] == 2               # aile büyüklüğü PİNLİ
+
+
+def test_decide_primary_passes_clean_success_and_scores_primary2_separately():
+    from src.stats import decide_primary
+    out = decide_primary(_five(7.0, sd=0.8), _five(3.0, sd=0.5), quality_per_sec=W_BOTH)
+    assert out["primary1"]["row"] == "başarılı" and out["primary1"]["holm_passed"] is True
+    assert out["primary2"]["state"] == "katkı var, büyük" and out["primary2"]["holm_passed"] is True
+    # birincil-2 null iken birincil-1'in temiz başarısı DÜŞMEZ (p₁ çok küçük, Holm'un ilk adımını geçer)
+    out2 = decide_primary(_five(7.0, sd=0.8), _five(0.1, sd=1.2), quality_per_sec=W_BOTH)
+    assert out2["primary1"]["row"] == "başarılı"
+    assert out2["primary2"]["state"] in ("ölçemedik", "katkı MDE kadar değil")
+
+
+def test_abandon_refuses_hand_built_dict_without_uncensored_ci():
+    """Sansürlü bir sonuçta `ci95_uncensored` yoksa SESSİZCE tam örnek GA'sına düşülmez.
+
+    Sessiz geri-düşüş, kuralı sansürde ulaşılamaz yapan eski hatanın geri gelmesi demekti.
+    """
+    fake = {"row": "nötr", "ci95": [-113.0, 53.0], "n": 5, "n_censored": 1}
+    with pytest.raises(ValueError, match="ci95_uncensored"):
+        abandon([fake, fake], oracle_gain_over_null=0.0, escalation_used=True)
+
+
+def test_abandon_single_scale_path_has_three_preconditions():
+    """v01 B10'un tek-ölçek yolu: hak kullanılmamış + sansürsüz GA üst < eşik + oracle.
+
+    Kilitlenen regresyon: `4 × +%30 + 1 sansür` tek ölçekte terk ediliyordu (sansürsüz GA üst
+    sınırı +30.15 iken), çünkü dal yalnızca satır adına bakıyordu ve satırı tek başına sansür
+    ikamesi "başarısız" yapıyordu.
+    """
+    pos = decide([30.0, 30.1, 29.9, 30.05, -149.82], quality_per_sec={"M": -1.0, "D": -1.0},
+                 censored_mask=[False] * 4 + [True])
+    assert pos["row"] == "başarısız"
+    r = abandon([pos], oracle_gain_over_null=0.5)
+    assert r["abandon"] is False and "sansürsüz GA üst sınırı" in r["reason"]
+    assert abandon([pos, pos], oracle_gain_over_null=0.5, escalation_used=True)["abandon"] is False
+    # hak KULLANILDIYSA tek ölçek yolu kapalı: gerçek bir "başarısız" bile iki ölçek ister
+    bad = decide(_five(-8.0), quality_per_sec={"M": -1.0, "D": -1.0})
+    assert abandon([bad], oracle_gain_over_null=0.5, escalation_used=False)["abandon"] is True
+    assert abandon([bad], oracle_gain_over_null=0.5, escalation_used=True)["abandon"] is False
+    assert abandon([bad, bad], oracle_gain_over_null=0.5, escalation_used=True)["abandon"] is True
+
+
+# ------------------------------------------------- mutasyon sınavının bulduğu guard boşlukları
+
+def test_decision_thresholds_are_locked_literally_and_behaviourally():
+    """Karar tablosunun eşikleri ön-kayıtta donmuştur; burada HEM sabit HEM davranış kilitli.
+
+    Mutasyon sınavı buldu: `SUCCESS = 5.0 -> 4.0` mutantı HAYATTA KALIYORDU, çünkü hiçbir test
+    [4, 5) aralığında bir ortalamayı sınamıyordu (3.0 -> "belirsiz", 5.0 -> "başarılı" ikisi de
+    eşik 4'te geçer). Yani ön-kaydın en önemli sayısı olan +%5 eşiği, hiçbir guard ateşlenmeden
+    değiştirilebiliyordu.
+
+    Aralık içi değerler dar GA ile seçilir ki kesinlik ölçütü araya girmesin (s̄ = 4.99 gibi
+    eşiğe yapışık bir değer GA eşiği kestiği için "yüksek varyans / belirsiz" verir — o ayrı test).
+    """
+    from src import stats
+    assert (stats.SUCCESS, stats.STRONG, stats.NEUTRAL) == (5.0, 10.0, 2.0)
+    assert stats.REQUIRED_N == (5, 10) and stats.WBAR_KEYS == ("M", "D")
+    assert stats.PRIMARY_FAMILY == 2 and stats.MDE_PRIMARY2 == 1.88
+    for mean, row in ((4.5, "belirsiz"), (5.5, "başarılı"), (9.5, "başarılı"), (10.5, "güçlü başarı"),
+                      (1.5, "nötr"), (2.5, "belirsiz"), (-1.5, "nötr"), (-2.5, "başarısız")):
+        assert decide(_five(mean), quality_per_sec=W_BOTH)["row"] == row, (mean, row)
+
+
+def test_two_censored_seeds_give_basarisiz_with_the_b8_note_even_when_the_mean_would_not():
+    """EK1-B8(iii): >= 2 sansür -> doğrudan "başarısız". Kuralın KENDİSİ kilitleniyor.
+
+    Mutasyon sınavı gösterdi ki bu kural gerçekçi girdilerde fiilen yedekli: −150 ikamesi tam
+    örnek ortalamasını zaten negatife çekiyor ve satır `s̄ < −2` dalından yine "başarısız"
+    çıkıyor. Kuralın gerçekten bağladığı bölge, sansürsüz seed'lerin ÇOK büyük tasarruf ettiği
+    uç durumdur: [100, 100, 100, −150, −150] -> ortalama 0 -> kural OLMADAN satır "nötr" olurdu
+    (hedefe ulaşamayan iki seed'e rağmen). Test o bölgeyi ve notun varlığını kilitler.
+    """
+    r = decide([100.0, 100.0, 100.0, -150.0, -150.0], quality_per_sec=W_BOTH,
+               censored_mask=[False] * 3 + [True] * 2)
+    assert r["mean"] == pytest.approx(0.0)
+    assert r["row"] == "başarısız"
+    assert any("B8" in n and "doğrudan 'başarısız'" in n for n in r["notes"])

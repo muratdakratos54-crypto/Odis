@@ -22,6 +22,57 @@ import json
 import os
 
 
+def build_runs(arms: list[str], seeds: list[int], tag: str = "", stop_step: int = 0) -> list[dict]:
+    """Seed bloğu × Latin kare sırasıyla koşu listesi. Saf fonksiyon: testler ve mutasyon sınavı için."""
+    runs = []
+    for bi, s in enumerate(seeds):        # DIŞ döngü seed: blok = bir seed'in bütün kolları
+        # Blok İÇİ sıra her blokta KAYDIRILIR (Latin kare). Sabit sıra (her blokta D,M,H,X)
+        # blok-içi pozisyonu kolla TAM olarak karıştırırdı: D her zaman soğuk GPU'da ilk, X her
+        # zaman ısınmış GPU'da son. Bu, V11a'nın blokları arası için kırdığı confound'un aynısını
+        # blok içine taşımaktı. Kaydırma bedava: her kol her pozisyonu eşit sayıda görür.
+        order = arms[bi % len(arms):] + arms[:bi % len(arms)]
+        for a in order:
+            short = a.replace("foton-", "")
+            name = f"{tag + '-' if tag else ''}{short}-s{s}"
+            cmd = ["--preset", a, "--seed", str(s)]
+            if stop_step:
+                cmd += ["--stop_step", str(stop_step)]
+            runs.append({"name": name, "args": cmd, "_block": f"s{s}", "_arm": short})
+    return runs
+
+
+def positions(runs: list[dict], arms: list[str], seeds: list[int]) -> dict[str, list[int]]:
+    pos: dict[str, list[int]] = {a.replace("foton-", ""): [] for a in arms}
+    for s in seeds:
+        for i, r in enumerate([r for r in runs if r["_block"] == f"s{s}"]):
+            pos[r["_arm"]].append(i)
+    return pos
+
+
+def check_balance(runs: list[dict], arms: list[str], seeds: list[int]) -> None:
+    """V11a'nın iki şartını ASSERTION olarak denetler; ihlalde kuyruk ÜRETİLMEZ.
+
+    (1) her kol her blokta tam bir kez;
+    (2) Latin kare dengesi: her kol her blok-içi pozisyonu en az ⌊blok/kol⌋ kez görür.
+
+    (2)'nin ilk hâli yalnızca `blok % kol == 0` iken çalışıyordu — yani kampanyanın GERÇEK
+    biçiminde (5 seed × 4 kol) hiç çalışmıyordu. Mutasyon sınavı bunu yakaladı: rotasyon satırı
+    silinip sıra sabitlendiğinde hiçbir assertion ateşlenmiyordu. Yakalamadığı kanıtlanmamış
+    guard, guard değildir.
+    """
+    short = [a.replace("foton-", "") for a in arms]
+    for s in seeds:
+        block = [r["_arm"] for r in runs if r["_block"] == f"s{s}"]
+        assert sorted(block) == sorted(short), f"blok s{s} kol kümesi bozuk: {block}"
+    pos = positions(runs, arms, seeds)
+    floor = len(seeds) // len(arms)
+    for a in short:
+        for k in range(len(arms)):
+            seen = pos[a].count(k)
+            assert seen >= floor, (f"Latin kare dengesi bozuk: {a} kolu {k}. pozisyonu {seen} kez "
+                                   f"gördü, en az {floor} olmalı — blok-içi sıra kolla karışıyor")
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows konsolu cp1252 olabilir
     p = argparse.ArgumentParser()
@@ -35,20 +86,8 @@ def main() -> None:
 
     arms = [a.strip() for a in args.arms.split(",")]
     seeds = [int(s) for s in args.seeds.split(",")]
-    runs = []
-    for bi, s in enumerate(seeds):        # DIŞ döngü seed: blok = bir seed'in dört kolu
-        # Blok İÇİ sıra her blokta KAYDIRILIR (Latin kare). Sabit sıra (her blokta D,M,H,X)
-        # blok-içi pozisyonu kolla TAM olarak karıştırırdı: D her zaman soğuk GPU'da ilk, X her
-        # zaman ısınmış GPU'da son. Bu, V11a'nın blokları arası için kırdığı confound'un aynısını
-        # blok içine taşımaktı. Kaydırma bedava: her kol her pozisyonu eşit sayıda görür.
-        order = arms[bi % len(arms):] + arms[:bi % len(arms)]
-        for a in order:
-            short = a.replace("foton-", "")
-            name = f"{args.tag + '-' if args.tag else ''}{short}-s{s}"
-            cmd = ["--preset", a, "--seed", str(s)]
-            if args.stop_step:
-                cmd += ["--stop_step", str(args.stop_step)]
-            runs.append({"name": name, "args": cmd, "_block": f"s{s}", "_arm": short})
+    runs = build_runs(arms, seeds, tag=args.tag, stop_step=args.stop_step)
+    check_balance(runs, arms, seeds)
     q = {"out_dir": args.out_dir, "cwd": ".", "python": ".venv/Scripts/python.exe", "runs": runs,
          "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
          "_blocks": [[r["name"] for r in runs if r["_block"] == f"s{s}"] for s in seeds]}
@@ -59,29 +98,11 @@ def main() -> None:
     for i, s in enumerate(seeds):
         block = [r["name"] for r in runs if r["_block"] == f"s{s}"]
         print(f"  blok {i+1} (s{s}): " + ", ".join(block))
-    # kontrol 1: her kol her blokta TAM BİR KEZ
-    short_arms = [a.replace("foton-", "") for a in arms]
-    for s in seeds:
-        block = [r["_arm"] for r in runs if r["_block"] == f"s{s}"]
-        assert sorted(block) == sorted(short_arms), f"blok s{s} kol kümesi bozuk: {block}"
-    # kontrol 2: Latin kare — her kol her blok-içi POZİSYONU eşit sayıda görür (tam bölünüyorsa)
-    pos: dict[str, list[int]] = {a: [] for a in short_arms}
-    for s in seeds:
-        for i, r in enumerate([r for r in runs if r["_block"] == f"s{s}"]):
-            pos[r["_arm"]].append(i)
-    print("kontrol: her blokta her kol tam bir kez — OK")
-    print("Latin kare, kol -> gördüğü blok-içi pozisyonlar:")
-    for a in short_arms:
+    pos = positions(runs, arms, seeds)
+    print("kontrol: her blokta her kol tam bir kez; Latin kare dengesi assertion'dan geçti — OK")
+    print("kol -> gördüğü blok-içi pozisyonlar:")
+    for a in [x.replace("foton-", "") for x in arms]:
         print(f"  {a:4s} {pos[a]}  (ortalama pozisyon {sum(pos[a])/len(pos[a]):.2f})")
-    if len(seeds) % len(arms) == 0:
-        for a in short_arms:
-            assert sorted(pos[a]) == sorted(range(len(arms)) ) * (len(seeds)//len(arms)), \
-                f"{a} pozisyonları dengeli değil: {pos[a]}"
-        print("  -> pozisyonlar TAM dengeli (seed sayısı kol sayısının katı)")
-    else:
-        print(f"  -> seed sayısı ({len(seeds)}) kol sayısının ({len(arms)}) katı DEĞİL: "
-              f"pozisyon dengesi kısmi, ortalama pozisyonlar yukarıda raporlanıyor")
-
 
 if __name__ == "__main__":
     main()

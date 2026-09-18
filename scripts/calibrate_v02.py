@@ -29,7 +29,7 @@ from dataclasses import replace  # noqa: E402
 
 from src.config import PRESETS  # noqa: E402
 from src.flops import train_flops_per_token  # noqa: E402
-from src.stats import SUCCESS, decide, n_star, paired, t_crit  # noqa: E402
+from src.stats import SUCCESS, decide, n_star, paired, savings, t_crit  # noqa: E402
 
 STEP, STEPS, P80 = 32768, 4375, 3500
 RUNS, PREFIX = "checkpoints/foton-v02r", "r-"
@@ -113,12 +113,20 @@ def main() -> None:
         for a in ARMS:
             say(f"    {a}: N* ort {st.mean(NN[a])/1e6:7.2f}M = butcenin %{100*st.mean(NN[a])/(STEPS*STEP):5.1f}'i "
                 f"| sd %{100*st.stdev(NN[a])/st.mean(NN[a]):.2f}")
-        s_i = [100 * (1 - (NN["m"][i]*ft["m"]) / (NN["d"][i]*ft["d"])) for i in range(len(SEEDS))]
+        # s_i `src/stats.savings()` ile kurulur: seed KİMLİĞİNE göre, oran olarak. İlk hâl listeyi
+        # KONUMA göre eşliyordu — `paired()`'ın regresyona bağladığı hatanın aynısı, birincil
+        # istatistiğin tam üstünde (ilk denetimin bulgusu). Burada sıralar aynı olduğu için sayı
+        # değişmiyor; değişen şey, değişmeyeceğinin artık YAPISAL olarak garanti olması.
+        s_i = savings([NN["m"][i] * ft["m"] for i in range(len(SEEDS))],
+                      [NN["d"][i] * ft["d"] for i in range(len(SEEDS))], SEEDS, SEEDS)["s_i"]
         p2 = paired(s_i, [0.0]*len(SEEDS), SEEDS, SEEDS)
         sd_paired = p2["sd"]
         say(f"    s_i (M'in D'ye gore tasarrufu): {[round(x,2) for x in s_i]}")
+        dres = decide(s_i)      # w̄ bu kalibrasyonda verilmiyor; `decide()` bunu not olarak yazar
         say(f"    ort {p2['mean']:+.2f} puan | SD {sd_paired:.2f} puan | GA [{p2['ci95'][0]:+.2f}, "
-            f"{p2['ci95'][1]:+.2f}] | p={p2.get('p', float('nan')):.5f} | karar: {decide(s_i)['row']!r}")
+            f"{p2['ci95'][1]:+.2f}] | p={p2.get('p', float('nan')):.5f} | karar: {dres['row']!r}")
+        for note in dres["notes"]:          # notları DÜŞÜRME: "None sessiz değildir" garantisi
+            say(f"      not: {note}")       # ancak not bir artifact'a ulaşırsa anlamlıdır
         say(f"    => OLCULMUS eslestirilmis sd(s_i) = {sd_paired:.2f} puan (gercek iki mimari arasi)")
     else:
         F = {a: [ns[a][i] * ft[a] for i in range(len(SEEDS))] for a in ARMS}

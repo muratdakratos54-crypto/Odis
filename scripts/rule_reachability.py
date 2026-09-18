@@ -38,7 +38,7 @@ from src.stats import (  # noqa: E402
     t_crit, t_crit_alpha,
 )
 
-SIGMAS = (0.75, 1.5, 1.72, 3.0, 4.28, 5.0, 6.0)
+SIGMAS = (0.88, 1.5, 1.72, 3.0, 4.28, 5.0, 6.0)      # 0.88 = ÖLÇÜLEN sd(s_i), ikinci küme
 out: list[str] = []
 
 
@@ -115,7 +115,7 @@ def main() -> None:
 
     say("# Durdurma/tripwire kurallarının ulaşılabilirlik sınavı (ön-kayıt V12)")
     say(f"başarı eşiği = {SUCCESS} puan | GA = t(n−1) | sims = {args.sims:,}")
-    say("ÖLÇÜLEN sd(s_i) = 0.75 puan (M↔D, L_aux); v01 O9 FOTON'un sd'sinin BÜYÜK olmasını bekliyor,")
+    say("ÖLÇÜLEN sd(s_i) = 0.88 puan (M↔D, L_aux); v01 O9 FOTON'un sd'sinin BÜYÜK olmasını bekliyor,")
     say("bu yüzden σ aralığı 6.0'a kadar taranıyor — kural orada da anlamlı davranmak zorunda.")
 
     table("TRIPWIRE: tetiklenme oranı", {"kesinlik": trip_precision, "eski sd>5": trip_abs_sd},
@@ -123,7 +123,7 @@ def main() -> None:
     say("  YORUM — çarenin yönü: kesinlik ölçütünde n=5 -> n=10 oranı DÜŞÜYOR (çare kuralı")
     say("  gevşetiyor). Eski mutlak sd eşiğinde YÜKSELİYOR: tripwire'ın tek çaresi tripwire'ı daha")
     say("  olası yapıyordu ve tabloda 'n=10'da ateşlendi' satırı yoktu, yani kural kendi çıkmazını")
-    say("  üretiyordu. Kesinlik ölçütü ölçülen σ = 0.75'te hiç tetiklenmiyor (%0.0).")
+    say("  üretiyordu. Kesinlik ölçütü ölçülen σ = 0.88'de hiç tetiklenmiyor (%0.0).")
 
     table("VAZGEÇME: tek ölçekte tetiklenme (başabaş FOTON terk edilebiliyor mu?)",
           {"sağlam": abandon_robust, "eski": abandon_old}, mu=0.0, sims=args.sims)

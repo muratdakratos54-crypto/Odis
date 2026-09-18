@@ -48,17 +48,6 @@
    "_arm": "x"
   },
   {
-   "name": "d-s22",
-   "args": [
-    "--preset",
-    "foton-d",
-    "--seed",
-    "22"
-   ],
-   "_block": "s22",
-   "_arm": "d"
-  },
-  {
    "name": "m-s22",
    "args": [
     "--preset",
@@ -92,6 +81,39 @@
    "_arm": "x"
   },
   {
+   "name": "d-s22",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "22"
+   ],
+   "_block": "s22",
+   "_arm": "d"
+  },
+  {
+   "name": "h-s33",
+   "args": [
+    "--preset",
+    "foton-h",
+    "--seed",
+    "33"
+   ],
+   "_block": "s33",
+   "_arm": "h"
+  },
+  {
+   "name": "x-s33",
+   "args": [
+    "--preset",
+    "foton-x",
+    "--seed",
+    "33"
+   ],
+   "_block": "s33",
+   "_arm": "x"
+  },
+  {
    "name": "d-s33",
    "args": [
     "--preset",
@@ -114,25 +136,14 @@
    "_arm": "m"
   },
   {
-   "name": "h-s33",
-   "args": [
-    "--preset",
-    "foton-h",
-    "--seed",
-    "33"
-   ],
-   "_block": "s33",
-   "_arm": "h"
-  },
-  {
-   "name": "x-s33",
+   "name": "x-s44",
    "args": [
     "--preset",
     "foton-x",
     "--seed",
-    "33"
+    "44"
    ],
-   "_block": "s33",
+   "_block": "s44",
    "_arm": "x"
   },
   {
@@ -167,17 +178,6 @@
    ],
    "_block": "s44",
    "_arm": "h"
-  },
-  {
-   "name": "x-s44",
-   "args": [
-    "--preset",
-    "foton-x",
-    "--seed",
-    "44"
-   ],
-   "_block": "s44",
-   "_arm": "x"
   },
   {
    "name": "d-s55",
@@ -224,7 +224,7 @@
    "_arm": "x"
   }
  ],
- "_order": "seed-block interleaved (PREREGISTRATION_V02 V11a)",
+ "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
  "_blocks": [
   [
    "d-s11",
@@ -233,22 +233,22 @@
    "x-s11"
   ],
   [
-   "d-s22",
    "m-s22",
    "h-s22",
-   "x-s22"
+   "x-s22",
+   "d-s22"
   ],
   [
-   "d-s33",
-   "m-s33",
    "h-s33",
-   "x-s33"
+   "x-s33",
+   "d-s33",
+   "m-s33"
   ],
   [
+   "x-s44",
    "d-s44",
    "m-s44",
-   "h-s44",
-   "x-s44"
+   "h-s44"
   ],
   [
    "d-s55",

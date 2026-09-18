@@ -56,7 +56,8 @@ FORBIDDEN = {
     "%51.04": ["süre artışı"],     # süre artışı olarak meşru, tok/s olarak değil
     # Bir ondalıklı biçim de yasak: belge "%33.8" yazıyordu ve iki ondalıklı deseni
     # arayan ilk hâl onu kaçırdı — denetlediği hata sınıfının aynısı.
-    "%33.79": [], "%33.8": [],     # ilk kümenin tok/s düşüşü
+    # V13 bu guard'ın kendi tarihçesini anlatırken deseni BİLEREK anıyor ("guard" bağlamı).
+    "%33.79": ["guard"], "%33.8": ["guard"],     # ilk kümenin tok/s düşüşü
     "%51.0": ["süre artışı"], "%30.4": ["oturum", "1 |"],
     "13 test": [],                 # eski test sayımı
     "1 + 2 + 10": [],
@@ -76,7 +77,12 @@ def check(cond: bool, msg: str) -> None:
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    text = open(os.path.join(ROOT, PREREG), encoding="utf-8").read()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--prereg", default=os.path.join(ROOT, PREREG),
+                    help="denetlenecek belge; mutasyon sınavı bozulmuş bir KOPYA verir (V13)")
+    args = ap.parse_args()
+    text = open(args.prereg, encoding="utf-8").read()
     lines = text.split("\n")
 
     print("# Ön-kayıt sayı denetimi\n")
@@ -97,6 +103,14 @@ def main() -> None:
     print("\n## 2. L* ve türevleri artifact'larla uyuşuyor mu?")
     ls = json.load(open(os.path.join(ROOT, "experiments/foton-v02-prereg/lstar.json"), encoding="utf-8"))
     check(f"L* = {ls['lstar']}" in text, f"L* = {ls['lstar']} metinde")
+    # "Bir yerde geçiyor mu" yetmez: aynı nicelik belgede birden çok kez yazılı ve kopyalardan
+    # BİRİ bozulursa alt-dize kontrolü yine geçer. Her geçiş denetlenir; tarihsel atıflar
+    # (ilk kümenin maskesiz L*'i) bağlamıyla beyaz listededir.
+    for i, l in enumerate(lines, 1):
+        for m in re.finditer(r"L\\?\*`? = ([0-9]\.[0-9]+)", l):      # `L*` ya da Markdown kaçışlı `L\*`
+            historical = any(w in l for w in ("İlk küme", "maskesiz", "verdi"))
+            check(m.group(1) == str(ls["lstar"]) or historical,
+                  f"satır {i}: L* = {m.group(1)} (artifact {ls['lstar']})")
     check(f"{ls['at80_mean']:.6f}" in text, f"L* ortalaması {ls['at80_mean']:.6f} metinde")
     check(f"{ls['at80_sd']:.6f}" in text, f"L* sd {ls['at80_sd']:.6f} metinde")
     per = [ls["at80_per_seed"][str(s)] for s in SEEDS]
@@ -112,6 +126,10 @@ def main() -> None:
     check(f"{ft['m']:,}".replace(",", ".") in text, f"M FLOP/token {ft['m']:,} metinde (nokta ayırıcı)")
     check(f"{ft['d']:,}".replace(",", ".") in text, f"D FLOP/token {ft['d']:,} metinde")
     check(f"L_aux = {ref['auxiliary']['l_aux']}" in text, f"L_aux = {ref['auxiliary']['l_aux']} metinde")
+    for i, l in enumerate(lines, 1):
+        for m in re.finditer(r"L_aux`? = ([0-9]\.[0-9]+)", l):
+            check(m.group(1) == str(ref["auxiliary"]["l_aux"]),
+                  f"satır {i}: L_aux = {m.group(1)} (artifact {ref['auxiliary']['l_aux']})")
     fb = [r["f_base"] for r in ref["reference"]["per_arm"]["m"]]
     check(f"{st.mean(fb):.6e}".replace("e+16", "e16") in text
           or f"{st.mean(fb):.6e}" in text, f"F_base,i ortalaması {st.mean(fb):.6e} metinde")

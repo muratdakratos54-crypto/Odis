@@ -177,14 +177,13 @@ def savings(f_foton: list[float], f_base: list[float],
     if not (len(f_foton) == len(seeds_f) and len(f_base) == len(seeds_b)):
         raise ValueError("FLOP listeleri seed listeleriyle aynı uzunlukta olmalı")
     pos = {s: i for i, s in enumerate(seeds_b)}
-    s_i, order = [], []
-    for i, s in enumerate(sorted(seeds_f, key=lambda x: seeds_f.index(x))):
+    s_i = []
+    for ff, s in zip(f_foton, seeds_f):          # FOTON'un sırası korunur; baseline KİMLİKLE bulunur
         fb = f_base[pos[s]]
         if fb <= 0:
             raise ValueError(f"seed {s}: F_base = {fb}, pozitif olmalı")
-        s_i.append(100.0 * (1.0 - f_foton[seeds_f.index(s)] / fb))
-        order.append(s)
-    return {"s_i": s_i, "seeds": order, "n": len(s_i),
+        s_i.append(100.0 * (1.0 - ff / fb))
+    return {"s_i": s_i, "seeds": list(seeds_f), "n": len(s_i),
             "mean": st.mean(s_i), "sd": st.stdev(s_i) if len(s_i) > 1 else float("nan")}
 
 
@@ -255,7 +254,19 @@ def abandon(scale_results: list[dict], oracle_gain_over_null: float,
         sınavı onu göremiyordu, çünkü sınav yalnızca Gauss örnekleri çiziyor, sansür çizmiyor.
         Artık `rule_reachability.py` sansürlü senaryoyu da tarıyor.
         """
-        return r.get("ci95_uncensored", r["ci95"])[1]
+        unc = r.get("ci95_uncensored")
+        if unc is not None:
+            return unc[1]
+        # Sansürsüz GA yoksa iki durum var ve ikisi de AÇIKÇA ele alınıyor (eskiden sessiz
+        # bir `.get(..., r["ci95"])` geri-düşüşüydü):
+        #  * < 2 sansürsüz seed (yani >= 4/5 sansür): tam örnek GA'sı ikamelerin hâkimiyetinde,
+        #    üst sınırı zaten çok negatif -> onu kullanmak doğru ve muhafazakâr.
+        #  * sansür yok ama anahtar da yok: `decide()` çıktısı DEĞİL, elle kurulmuş bir sözlük.
+        if r.get("n_censored", 0) == 0 or r.get("n", 0) - r.get("n_censored", 0) < 2:
+            return r["ci95"][1]
+        raise ValueError("abandon(): sansürlü sonuçta `ci95_uncensored` yok — `decide()` çıktısı "
+                         "verilmeli; elle kurulmuş sözlükte tam örnek GA'sına sessizce düşmek "
+                         "kuralı ulaşılamaz yapan eski hatayı geri getirirdi")
 
     # B10: "başarısız" satırı TEK ölçekle vazgeçmeye yeter — AMA ÜÇ şartla, ve bu şartların
     # eksikliği bir regresyon üretmişti (aşağıda ölçümüyle).
@@ -373,6 +384,59 @@ def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
             "alpha": alpha, "mde": mde,
             "note": ("yeterince güçlü ölçemedik — 'heterojenlik çürütüldü' DEĞİL"
                      if state == "ölçemedik" else "")}
+
+
+def _p_two_sided(values: list[float]) -> float:
+    """Ortalamanın sıfırdan farkı için iki yanlı t-testi p değeri (tek örneklem)."""
+    n = len(values)
+    m, sd = st.mean(values), st.stdev(values)
+    if sd == 0:                                  # dejenere: bütün seed'ler aynı
+        return 0.0 if m != 0 else 1.0
+    return t_sf(abs(m / (sd / math.sqrt(n))), n - 1) * 2
+
+
+def decide_primary(s_xm: list[float], diffs_xh: list[float],
+                   quality_per_sec: float | dict[str, float] | None = None,
+                   censored_mask: list[bool] | None = None, strict: bool = True,
+                   alpha: float = 0.05) -> dict:
+    """İKİ birincil uç noktayı BİRLİKTE karara bağlar: Holm (m = 2) satır adının ÖNÜNDEDİR.
+
+    s_xm     : birincil-1, seed başına `s_i(X↔M)` (yüzde puan)
+    diffs_xh : birincil-2, seed başına `s_i(X) − s_i(H)` (yüzde puan)
+
+    Neden var: ön-kayıt "birincil-1'in satır adı, `p₁` Holm'dan geçmezse 'başarılı' OLAMAZ"
+    diyor, ama bu kuralı uygulayan KOD yoktu — Holm aile büyüklüğü 2 olarak pinlenmiş, hiçbir
+    şeye bağlanmamıştı. `decide()` tek başına çağrıldığında `p = 0.037` gibi bir değerde
+    "başarılı" dönerken Holm hiçbir endpoint'i reddetmiyordu ve çelişki raporda görünmezdi.
+    Bağlayıcı metin "başka uygulama kullanılamaz" dediği için kuralın kodda olması şart.
+
+    Sıra (ön-kayıttaki "Holm iki endpoint'e NASIL uygulanır" bölümünün birebir uygulaması):
+      1. iki endpoint'in iki yanlı p değerleri,
+      2. Holm, aile büyüklüğü PİNLİ (`PRIMARY_FAMILY`),
+      3. birincil-1 satırı `decide()`'dan; Holm'dan geçmediyse başarı satırları "belirsiz"e düşer,
+      4. birincil-2 durumu `contribution()`'dan. "Katkı var" durumları zaten α = .025 GA'sının
+         alt sınırı > 0 şartına bağlı, bu da `p₂ < .025` demek — Holm'un HER adımından geçer;
+         tutarlılık yine de denetlenir ve ihlali sessiz geçilmez.
+    """
+    r1 = decide(s_xm, quality_per_sec=quality_per_sec, censored_mask=censored_mask, strict=strict)
+    c2 = contribution(diffs_xh, alpha=alpha / PRIMARY_FAMILY)
+    p1, p2 = _p_two_sided(s_xm), _p_two_sided(diffs_xh)
+    holm = multiplicity([("birincil-1", p1), ("birincil-2", p2)], alpha=alpha,
+                        family_size=PRIMARY_FAMILY)
+    passed = set(holm["holm"])
+    row1, notes1 = r1["row"], list(r1["notes"])
+    if row1 in ("güçlü başarı", "başarılı") and "birincil-1" not in passed:
+        notes1.append(f"Holm düzeltmesinden GEÇMEDİ (p₁ = {p1:.4f}, p₂ = {p2:.4f}, aile "
+                      f"büyüklüğü {PRIMARY_FAMILY}): satır '{row1}' -> 'belirsiz'")
+        row1 = "belirsiz"
+    state2 = c2["state"]
+    if state2.startswith("katkı var") and "birincil-2" not in passed:
+        raise AssertionError(f"tutarsızlık: α={alpha / PRIMARY_FAMILY} GA'sı alt > 0 ama Holm "
+                             f"reddetmedi (p₁ = {p1}, p₂ = {p2}) — kuralın iki yarısı ayrıştı")
+    return {"primary1": {**r1, "row": row1, "notes": notes1, "p": p1,
+                         "holm_passed": "birincil-1" in passed},
+            "primary2": {**c2, "p": p2, "holm_passed": "birincil-2" in passed},
+            "holm": holm}
 
 
 def reachability(fires, mu: float, sigma: float, n: int, sims: int = 100_000,
