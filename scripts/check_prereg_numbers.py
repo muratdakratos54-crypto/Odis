@@ -215,7 +215,10 @@ def main() -> None:
         if ms:
             scen[ms.group(1)] = dict(row=ms.group(2), mean=ms.group(3), ub=ms.group(5),
                                      tek=ms.group(6), iki=ms.group(7))
-    check(len(scen) >= 16, f"reachability.log'da >= 16 başarısız-seed senaryosu (bulunan: {len(scen)})")
+    check(len(scen) >= 20, f"reachability.log'da >= 20 başarısız-seed senaryosu (bulunan: {len(scen)})")
+    check(f"; {len(scen)} senaryo)" in text, f"V12'deki senaryo sayısı log'la aynı: {len(scen)}")
+    for label, row in (("8 × ~+%35 + 2 yavaş (1.99×), n=10", "nötr"), ("8 × ~+%35 + 2 sansür, n=10", "başarısız")):
+        check(scen.get(label, {}).get("row") == row, f"iki sınır seed'i senaryosu '{label}' -> {row!r} (metindeki gibi)")
 
     def scen_check(label, template):
         r = scen.get(label)

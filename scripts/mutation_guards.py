@@ -53,6 +53,7 @@ G_DATA = PYTEST("tests/test_data_multi.py")
 G_ATTN = PYTEST("tests/test_attn_patterns.py")
 G_LEDGER = PYTEST("tests/test_run_ledger.py")
 G_QUEUE = PYTEST("tests/test_campaign_queue.py")
+G_OWNER = PYTEST("tests/test_owner_decision.py")
 G_REACH = [PY, "scripts/rule_reachability.py", "--sims", "4000", "--out", "_reach_mutant.log"]
 G_QSELF = [PY, "scripts/make_campaign_queue.py", "--arms", "foton-d,foton-m,foton-h,foton-x",
            "--seeds", "11,22,33,44,55", "--out", "_queue_mutant.json"]
@@ -101,6 +102,26 @@ MUTANTS: list[dict] = [
     # ------------------------------------------------------------------ ulaşılabilirlik sınavının assertion'ları
     # aynı bozulmalar, bu kez ulaşılabilirlik taramasının KENDİ assertion'larına karşı
     *[{**m, "guard": G_REACH, "file": S} for m in REACH_MUTANTS],
+    # ------------------------------------------------------------------ sahibin karar defteri (S1'den ÖNCE loglama)
+    dict(id="O01", guard=G_OWNER, file="scripts/owner_decision.py", what="gerekçesiz karar kabul ediliyor",
+         old='    if len((reason or "").strip()) < MIN_REASON:', new="    if False:"),
+    dict(id="O02", guard=G_OWNER, file="scripts/owner_decision.py", what="karar SONRADAN değiştirilebiliyor (ikinci satır kabul)",
+         old="    if read(log):", new="    if False:"),
+    dict(id="O03", guard=G_OWNER, file="scripts/owner_decision.py", what="'S1'e çıkma' kararı S1 kuyruğuna izin veriyor",
+         old="    if recs[0][\"choice\"] != \"S1'e çık\":\n        raise PermissionError(", new="    if False:\n        raise PermissionError("),
+    dict(id="O04", guard=G_OWNER, file="scripts/owner_decision.py", what="S1 koşusunun karardan ÖNCE başladığı yakalanmıyor",
+         old='        if not r.get("started") or r["started"] <= d["ts_local"]:', new="        if False:"),
+    dict(id="O05", guard=G_OWNER, file="scripts/owner_decision.py", what="karar loglanmamışken escalation_used sessizce False",
+         old='        raise ValueError(f"ölçek hakkı kararı kayıtlı değil ({log}): vazgeçme değerlendirmesinden önce loglanmalı")',
+         new="        return False"),
+    dict(id="O06", guard=G_OWNER, file="scripts/owner_decision.py", what="karar satırı dayanak dosyasının SHA-256'sını taşımıyor",
+         old='"basis_sha256": _sha256(basis),', new='"basis_sha256": None,'),
+    dict(id="O07", guard=G_OWNER, file="scripts/make_campaign_queue.py", what="S1 kuyruğu sahibin kararı OLMADAN üretiliyor (kapı kapalı)",
+         old='    if scale == "S1":', new="    if False:"),
+    dict(id="O08", guard=G_OWNER, file="scripts/make_campaign_queue.py", what="ölçek kol adından çıkarılmıyor (S1 preset'leri 'S0 kuyruğu' diye geçiyor)",
+         old='    return "S1" if all(s1) and arms else "S0"', new='    return "S0"'),
+    dict(id="O09", guard=G_OWNER, file="scripts/make_campaign_queue.py", what="karışık ölçekli kuyruk kabul ediliyor",
+         old="    if any(s1) and not all(s1):", new="    if False:"),
     # ------------------------------------------------------------------ belge ↔ artifact tutarlılığı
     dict(id="N01", guard=G_DOC, file=PREREG, what="eski L_aux (2.9646) belgeye geri girdi", append="\nL_aux = 2.9646\n"),
     dict(id="N02", guard=G_DOC, file=PREREG, what="eski tok/s düşüşü BİR ondalıkla (%33.8) geri girdi",
@@ -179,6 +200,15 @@ def mutate(text: str, m: dict) -> str:
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only", default="", help="virgüllü kimlik önekleri (ör. E,B,O0): HIZLI yineleme içindir, "
+                                                "kayıt dosyasına YAZMAZ — kayıt yalnızca tam koşumdan çıkar")
+    args = ap.parse_args()
+    only = tuple(x.strip() for x in args.only.split(",") if x.strip())
+    global MUTANTS
+    if only:
+        MUTANTS = [m for m in MUTANTS if m["id"].startswith(only)]
     tmp = tempfile.mkdtemp(prefix="foton_mut_")
     rows, survivors = [], []
     pins_tmp = os.path.join(ROOT, "experiments", "foton-v02-prereg", "_mutant_pins.json")
@@ -265,10 +295,11 @@ def main() -> None:
     for m, caught, _ in rows:
         if "equivalent" in m and not caught:
             out += ["", f"**{m['id']} neden eşdeğer:** {m['equivalent']}"]
-    with open(os.path.join(ROOT, LOG), "w", encoding="utf-8", newline="\n") as f:
-        f.write("\n".join(out) + "\n")
+    if not only:                              # kısmi koşum (`--only`) kaydı EZMEZ
+        with open(os.path.join(ROOT, LOG), "w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(out) + "\n")
     print(f"\n{len(rows)} mutant: {len(rows) - len(survivors) - n_eq} yakalandı, {n_eq} kanıtlı eşdeğer, "
-          f"{len(survivors)} hayatta kaldı -> {LOG}")
+          f"{len(survivors)} hayatta kaldı -> {LOG if not only else '(--only: kayda YAZILMADI)'}")
     if survivors:
         for m in survivors:
             print(f"  HAYATTA: {m['id']} — {m['what']}")

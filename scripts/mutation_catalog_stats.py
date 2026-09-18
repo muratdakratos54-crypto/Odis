@@ -30,6 +30,15 @@ UB_SPLIT_SLOW_ORDINARY = ('    fast = [o.s for o in tab.values() if o.status != 
                           '    fixed = [o.s for o in tab.values() if o.status == "sansürlü"]\n'
                           "    arith = ")
 PRECISION = "    if indeterminate(mean, lo, ub):"
+UB_SPLIT_POSITIONAL = ('    _v = [o.s for o in tab.values()]\n'
+                       '    _nh = sum(o.status == "hızlı" for o in tab.values())\n'
+                       "    fast, fixed = _v[:_nh], _v[_nh:]\n"
+                       "    arith = ")
+ABANDON_SIG = ("def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, *, escalation_used: bool,\n"
+               "            oracle_threshold: float = 2.0) -> dict:")
+ABANDON_SIG_POSITIONAL = ("def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, oracle_threshold: float = 2.0,\n"
+                          "            escalation_used: bool = False) -> dict:")
+FLIP = '(Obs(o.s, "yavaş" if o.status == "hızlı" else "hızlı") if s in seeds else o)'
 ORACLE = "    oracle_ok = all(g < oracle_threshold for g in gains)"
 HOLM_IF = '    if row1 in ("güçlü başarı", "başarılı") and "birincil-1" not in passed:'
 GATE = "    if not isinstance(x, Mapping):\n        raise TypeError("
@@ -73,6 +82,18 @@ STATS_MUTANTS = [
          old="    if unknown or tuple(order) != SCALES[:len(order)]:", new="    if False:"),
     dict(id="E16", what="abandon(): oracle kazancı ölçek BAŞINA ve aynı ölçeklerle verilmek zorunda değil",
          old="    if set(gains_in) != set(res):", new="    if False:"),
+    # --- tur 3 denetiminde HAYATTA KALAN iki konum-sınıfı mutant (E17, E18) ve "yanlış kullanım patlasın" kapıları ---
+    dict(id="E17", what="ub95(): hızlı/sabit ayrımı KONUMLA ('ilk n_h değer hızlıdır'); başarısız seed s11'deyken karar değişir",
+         old=UB_SPLIT, new=UB_SPLIT_POSITIONAL),
+    dict(id="E18", what="anahtar kümesi denetimi TEK YÖNLÜ: H'nin FAZLA seed'i kabul (birincil-1 n=5, birincil-2 n=10)",
+         old="    if set(a) != set(b):", new="    if set(a) - set(b):"),
+    dict(id="E19", what="bağlayıcı modda ön-kayıtlı seed kümesi denetimi kapalı (10 seed'in en iyi 5'i; dict(enumerate()) arka kapısı)",
+         old="        if set(m) not in allowed:", new="        if False:"),
+    dict(id="E20", what="bağlayıcı modda durumsuz (çıplak sayı) seed sessizce 'hızlı' sayılıyor",
+         old="        if bare:", new="        if False:"),
+    dict(id="E21", what="savings(): durum eşleme olmak zorunda değil, verilmezse/yanlışsa herkes 'hızlı'",
+         old='    stat = dict(_need_mapping(status, "status"))',
+         new='    stat = dict(status) if isinstance(status, Mapping) else {s: "hızlı" for s in ff}'),
     # ------------------------------------------------------------------ S: karar kuralı
     dict(id="S02", what="t kritik değeri n'den bağımsız sabit (v3 hatası)",
          old="    if df in T975:\n        return T975[df]", new="    if df in T975:\n        return T975[2]"),
@@ -128,7 +149,7 @@ STATS_MUTANTS = [
     dict(id="S29", what="abandon(): iki ölçek yolu hiç kullanılmıyor",
          old="    two = len(order) >= 2", new="    two = False"),
     dict(id="S30", what="abandon(): tek ölçek yolu 'nötr'den de açılıyor",
-         old='        if r["row"] != "başarısız":', new="        if False:"),
+         old='        elif r["row"] != "başarısız":', new="        elif False:"),
     dict(id="S31", what="abandon(): oracle ölçeklerden BİRİNDE geçse yetiyor",
          old=ORACLE, new="    oracle_ok = any(g < oracle_threshold for g in gains)"),
     dict(id="S32", what="abandon(): keşifsel (strict=False) sonuç terk kararını sürebiliyor",
@@ -173,6 +194,35 @@ STATS_MUTANTS = [
          new='    failed = [s for s in seeds if x[s].status == "sansürlü" or h[s].status == "sansürlü"]'),
     dict(id="S50", what="decide(): yavaş seed notu rapora düşmüyor",
          old="        if n_slow >= 1:\n            extra.append(", new="        if False:\n            extra.append("),
+    # --- tur 3 sonrası sertleştirmeler ---
+    dict(id="S51", what="resolve_n_star(): 1x yuvasına verilen eğrinin 1x bütçede bittiği denetlenmiyor (2x eğrisi -> 'hızlı')",
+         old="    if max(t for t, _ in curve_1x) > budget + tol:", new="    if False:"),
+    dict(id="S52", what="resolve_n_star(): 2x yuvasındaki eğrinin (1x, 2x] aralığında bittiği denetlenmiyor",
+         old="    if not (budget + tol < top2 <= 2.0 * budget + tol):", new="    if False:"),
+    dict(id="S53", what="abandon(): oracle kazancı tip denetimi yok ('0.5', True kabul)",
+         old='        if isinstance(g, bool) or not isinstance(g, (int, float)) or g != g or g in (float("inf"), float("-inf")):',
+         new="        if g != g:"),
+    dict(id="S54", what="abandon(): escalation_used bool olmak zorunda değil",
+         old="    if not isinstance(escalation_used, bool):", new="    if False:"),
+    dict(id="S55", what="abandon(): skalerler yine KONUMLU ve varsayılanlı (abandon(res, gains, True) eşiği 1.0 yapıyor)",
+         old=ABANDON_SIG, new=ABANDON_SIG_POSITIONAL),
+    dict(id="S56", what="abandon(): terminal satırda gerekçe yine 'iki ardışık ölçek gerekiyor' diyor",
+         old='        if r["row"] in ("yüksek varyans / belirsiz", "yetersiz kesinlik"):\n            why.append(',
+         new="        if False:\n            why.append("),
+    dict(id="S57", what="_wbar(): çıktı anahtar sırası çağıranın ekleme sırasını yankılıyor",
+         old="        wmap = {k: float(quality_per_sec[k]) for k in WBAR_KEYS if k in quality_per_sec}   # kanonik sıra",
+         new="        wmap = {k: float(v) for k, v in quality_per_sec.items()}"),
+    # --- 1x sınırı TEŞHİSİ (sahibin kararı: süreksizlik görünür yapılır) ---
+    dict(id="B01", what="teşhis bandı ±%10 -> ±%5",
+         old="BOUNDARY_BAND = 0.10     #", new="BOUNDARY_BAND = 0.05     #"),
+    dict(id="B02", what="karşı-olgu durumu ÇEVİRMİYOR (teşhis hep 'değişmiyor' der)", old=FLIP, new="o"),
+    dict(id="B03", what="bant TEK yanlı: 1x'in hemen İÇİNDE ulaşan hızlı seed raporlanmıyor",
+         old="lo_ <= rat[s] <= hi_]", new="1.0 < rat[s] <= hi_]"),
+    dict(id="B04", what="durum ile N*/bütçe oranının tutarlılığı denetlenmiyor",
+         old="            if not ok:", new="            if False:"),
+    dict(id="B05", what="teşhis BAĞLAYICI kararı değiştiriyor ('actual' karşı-olgudan geliyor)",
+         old="    actual = decide_primary(x, h, **kw)",
+         new="    actual = decide_primary(flipped(x, set(in_band(x, rx))), flipped(h, set(in_band(h, rh))), **kw)"),
 ]
 
 REACH_MUTANTS = [
@@ -184,7 +234,7 @@ REACH_MUTANTS = [
     dict(id="R04", what="(S13) tarama 3/5 sansür deliğini ve monotonluk ihlalini YAKALAMALI",
          old=UB, new="        return ci95(fast)[2]"),
     dict(id="R05", what="(S30) tarama 'nötr'den tek ölçekle terki YAKALAMALI",
-         old='        if r["row"] != "başarısız":', new="        if False:"),
+         old='        elif r["row"] != "başarısız":', new="        elif False:"),
     dict(id="R06", what="(S31) tarama oracle'ın ölçek BAŞINA bağlamadığını YAKALAMALI",
          old=ORACLE, new="    oracle_ok = any(g < oracle_threshold for g in gains)"),
     dict(id="R07", what="(S42) tarama aritmetik tavanın kalktığını YAKALAMALI",
@@ -193,4 +243,6 @@ REACH_MUTANTS = [
          old=UB_SPLIT, new=UB_SPLIT_SLOW_ORDINARY),
     dict(id="R09", what="(S44) tarama kesinlik ölçütünün düz GA'ya döndüğünü YAKALAMALI",
          old=PRECISION, new="    if indeterminate(mean, lo, hi):"),
+    dict(id="R10", what="(E17) tarama ub95'teki KONUMLU hızlı/sabit ayrımını YAKALAMALI (başarısız seed s11'de)",
+         old=UB_SPLIT, new=UB_SPLIT_POSITIONAL),
 ]

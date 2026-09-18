@@ -29,7 +29,7 @@ from dataclasses import replace  # noqa: E402
 
 from src.config import PRESETS  # noqa: E402
 from src.flops import train_flops_per_token  # noqa: E402
-from src.stats import SUCCESS, decide, n_star, paired, savings, t_crit  # noqa: E402
+from src.stats import SUCCESS, decide, keyed, n_star, paired, savings, t_crit  # noqa: E402
 
 STEP, STEPS, P80 = 32768, 4375, 3500
 RUNS, PREFIX = "checkpoints/foton-v02r", "r-"
@@ -118,8 +118,9 @@ def main() -> None:
         # KONUMA göre eşliyordu — `paired()`'ın regresyona bağladığı hatanın aynısı, birincil
         # istatistiğin tam üstünde (ilk denetimin bulgusu). Artık veri seed kimliğiyle anahtarlı
         # taşınıyor: `src.stats` liste kabul ETMİYOR, konuma göre eşleme ifade edilemiyor.
-        obs = savings({s: NN["m"][s] * ft["m"] for s in SEEDS},
-                      {s: NN["d"][s] * ft["d"] for s in SEEDS})["obs"]
+        obs = savings(keyed((s, NN["m"][s] * ft["m"]) for s in SEEDS),
+                      keyed((s, NN["d"][s] * ft["d"]) for s in SEEDS),
+                      dict.fromkeys(SEEDS, "hızlı"))["obs"]      # durum ZORUNLU: iki kol da L_aux'a 1x'te ulaşıyor
         s_i = [obs[s].s for s in SEEDS]
         p2 = paired({s: o.s for s, o in obs.items()}, dict.fromkeys(SEEDS, 0.0))
         sd_paired = p2["sd"]
@@ -131,8 +132,11 @@ def main() -> None:
             say(f"      not: {note}")       # ancak not bir artifact'a ulaşırsa anlamlıdır
         say(f"    => OLCULMUS eslestirilmis sd(s_i) = {sd_paired:.2f} puan (gercek iki mimari arasi)")
     else:
-        obs = savings({s: ns["d"][i] * ft["d"] for i, s in enumerate(SEEDS)},
-                      {s: ns["m"][i] * ft["m"] for i, s in enumerate(SEEDS)})["obs"]
+        assert all(v is not None for a in ARMS for v in ns[a]), "bu dal yalnız iki kol da L*'e ulaşınca koşar"
+        by_seed = {a: keyed(zip(SEEDS, ns[a])) for a in ARMS}    # ns[a], SEEDS döngüsüyle AYNI sırada kuruldu
+        obs = savings(keyed((s, by_seed["d"][s] * ft["d"]) for s in SEEDS),
+                      keyed((s, by_seed["m"][s] * ft["m"]) for s in SEEDS),
+                      dict.fromkeys(SEEDS, "hızlı"))["obs"]
         s_i = [obs[s].s for s in SEEDS]
         say(f"  s_i (seed basina, puan): {[round(x,2) for x in s_i]}")
         pr = paired({s: o.s for s, o in obs.items()}, dict.fromkeys(SEEDS, 0.0))

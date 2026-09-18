@@ -36,7 +36,7 @@ from dataclasses import replace  # noqa: E402
 
 from src.config import PRESETS  # noqa: E402
 from src.flops import train_flops_per_token  # noqa: E402
-from src.stats import n_star, paired  # noqa: E402
+from src.stats import keyed, n_star, paired  # noqa: E402
 
 STEP, STEPS = 32768, 4375
 RUNS, PREFIX = "checkpoints/foton-v02r", "r-"
@@ -126,7 +126,7 @@ def main() -> None:
                   f"| oranlanmış {r['sec_prorated']:8.2f}s | hata %{100*(r['sec_prorated']/r['sec_exact']-1):+6.2f}")
 
     # seed KİMLİĞİYLE anahtarlı: `paired()` liste kabul etmez (konuma göre eşleme kapalı)
-    by_seed = lambda arm, key: {r["seed"]: r[key] for r in aux["per_arm"][arm]}   # noqa: E731
+    by_seed = lambda arm, key: keyed((r["seed"], r[key]) for r in aux["per_arm"][arm])   # noqa: E731  tekrar eden seed -> HATA
     td_e, td_p = list(by_seed("d", "sec_exact").values()), list(by_seed("d", "sec_prorated").values())
     pe = paired(by_seed("m", "sec_exact"), by_seed("d", "sec_exact"))
     pp = paired(by_seed("m", "sec_prorated"), by_seed("d", "sec_prorated"))

@@ -22,6 +22,25 @@ import json
 import os
 
 
+S1_SUFFIX = "-s1"                 # S1 preset adları bununla biter (ön-kayıt: "Her satırdan sonra ne olur")
+S1_PREFIX = "s1-"                 # ... ve S1 koşu adları bu öneki alır (`owner_decision.verify_order` buna bakar)
+
+
+def short(arm: str) -> str:
+    """Kolun kısa adı: `foton-x` ve `foton-x-s1` -> `x`."""
+    a = arm.replace("foton-", "")
+    return a[:-len(S1_SUFFIX)] if a.endswith(S1_SUFFIX) else a
+
+
+def scale_of(arms: list[str]) -> str:
+    """Kuyruğun ölçeği KOL ADLARINDAN çıkar; ayrı bir bayrak yok ki S1 preset'leri "S0 kuyruğu" diye
+    üretilip sahibin karar kapısı atlanamasın. Karışık ölçek hata."""
+    s1 = [a.endswith(S1_SUFFIX) for a in arms]
+    if any(s1) and not all(s1):
+        raise ValueError(f"bir kuyrukta tek ölçek olur; karışık kollar: {arms}")
+    return "S1" if all(s1) and arms else "S0"
+
+
 def build_runs(arms: list[str], seeds: list[int], tag: str = "", stop_step: int = 0) -> list[dict]:
     """Seed bloğu × Latin kare sırasıyla koşu listesi. Saf fonksiyon: testler ve mutasyon sınavı için."""
     runs = []
@@ -32,17 +51,17 @@ def build_runs(arms: list[str], seeds: list[int], tag: str = "", stop_step: int 
         # blok içine taşımaktı. Kaydırma bedava: her kol her pozisyonu eşit sayıda görür.
         order = arms[bi % len(arms):] + arms[:bi % len(arms)]
         for a in order:
-            short = a.replace("foton-", "")
-            name = f"{tag + '-' if tag else ''}{short}-s{s}"
+            pre = S1_PREFIX if a.endswith(S1_SUFFIX) else ""
+            name = f"{pre}{tag + '-' if tag else ''}{short(a)}-s{s}"
             cmd = ["--preset", a, "--seed", str(s)]
             if stop_step:
                 cmd += ["--stop_step", str(stop_step)]
-            runs.append({"name": name, "args": cmd, "_block": f"s{s}", "_arm": short})
+            runs.append({"name": name, "args": cmd, "_block": f"s{s}", "_arm": short(a)})
     return runs
 
 
 def positions(runs: list[dict], arms: list[str], seeds: list[int]) -> dict[str, list[int]]:
-    pos: dict[str, list[int]] = {a.replace("foton-", ""): [] for a in arms}
+    pos: dict[str, list[int]] = {short(a): [] for a in arms}
     for s in seeds:
         for i, r in enumerate([r for r in runs if r["_block"] == f"s{s}"]):
             pos[r["_arm"]].append(i)
@@ -60,13 +79,13 @@ def check_balance(runs: list[dict], arms: list[str], seeds: list[int]) -> None:
     silinip sıra sabitlendiğinde hiçbir assertion ateşlenmiyordu. Yakalamadığı kanıtlanmamış
     guard, guard değildir.
     """
-    short = [a.replace("foton-", "") for a in arms]
+    shorts = [short(a) for a in arms]
     for s in seeds:
         block = [r["_arm"] for r in runs if r["_block"] == f"s{s}"]
-        assert sorted(block) == sorted(short), f"blok s{s} kol kümesi bozuk: {block}"
+        assert sorted(block) == sorted(shorts), f"blok s{s} kol kümesi bozuk: {block}"
     pos = positions(runs, arms, seeds)
     floor = len(seeds) // len(arms)
-    for a in short:
+    for a in shorts:
         for k in range(len(arms)):
             seen = pos[a].count(k)
             assert seen >= floor, (f"Latin kare dengesi bozuk: {a} kolu {k}. pozisyonu {seen} kez "
@@ -82,13 +101,26 @@ def main() -> None:
     p.add_argument("--out_dir", default="checkpoints/foton-v02")
     p.add_argument("--stop_step", type=int, default=0, help=">0 ise kısaltılmış (tarama) koşu")
     p.add_argument("--tag", default="", help="koşu adı öneki (ör. screen)")
+    p.add_argument("--owner_log", default=None, help="sahibin karar defteri (varsayılan: owner_decision.LOG)")
     args = p.parse_args()
 
     arms = [a.strip() for a in args.arms.split(",")]
     seeds = [int(s) for s in args.seeds.split(",")]
+    scale = scale_of(arms)
+    decision = None
+    if scale == "S1":
+        # Sahibin S1'e çıkma seçimi S1 KOŞULMADAN ÖNCE, zaman damgalı ve gerekçeli tek satır olarak
+        # loglanmış olmalı; o satır yoksa S1 kuyruğu ÜRETİLMEZ (seçim S1'in sonucuna göre yapılamasın).
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import owner_decision
+        try:
+            decision = owner_decision.require_s1_authorized(args.owner_log or owner_decision.LOG)
+        except PermissionError as e:
+            sys.exit(f"HATA: {e}")
     runs = build_runs(arms, seeds, tag=args.tag, stop_step=args.stop_step)
     check_balance(runs, arms, seeds)
     q = {"out_dir": args.out_dir, "cwd": ".", "python": ".venv/Scripts/python.exe", "runs": runs,
+         "_scale": scale, "_owner_decision": decision,
          "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
          "_blocks": [[r["name"] for r in runs if r["_block"] == f"s{s}"] for s in seeds]}
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
@@ -101,7 +133,7 @@ def main() -> None:
     pos = positions(runs, arms, seeds)
     print("kontrol: her blokta her kol tam bir kez; Latin kare dengesi assertion'dan geçti — OK")
     print("kol -> gördüğü blok-içi pozisyonlar:")
-    for a in [x.replace("foton-", "") for x in arms]:
+    for a in [short(x) for x in arms]:
         print(f"  {a:4s} {pos[a]}  (ortalama pozisyon {sum(pos[a])/len(pos[a]):.2f})")
 
 if __name__ == "__main__":

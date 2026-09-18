@@ -381,7 +381,8 @@ Bunun üç sonucu ön-kayda yazılıyor:
    liste hâlinde sayılıdır. `L*`'e karşı verilen kararla `L_aux`'a karşı bir sayının çelişmesi
    hâlinde **`L*` geçerlidir**; `L_aux` sonuç beyanı doğurmaz.
 
-**`L*` bu koşulardan donduruldu; kampanyanın eşleştirilmiş karşılaştırması AYRI koşular kullanır.**
+**`L*` bu koşulardan donduruldu; kampanyanın DUVAR SAATİ karşılaştırması (`w̄`) AYRI koşular
+kullanır — `s_i`'nin paydası ise bu dondurulmuş koşulardan gelir ve V4'te pinlidir.**
 Gerekçe **yalnızca duvar saatidir**: kampanya koşuları iç içe ve Latin kare düzeninde koşulmak
 zorundadır (V11a), bu koşular ise iki kollu bir kuyrukta koştu.
 
@@ -595,7 +596,7 @@ endpoint olduğu için bu hakların kime ait olduğu belirsizdi; kural:
   tetikleyici saymak veriyi gördükten sonra isteğe bağlı bir ikinci bakış hakkı demek olurdu.
   Tetiklendiğinde seed artırma **ZORUNLUDUR** (isteğe bağlı değil) ve **kampanya başına BİR kez**
   kullanılabilir (EK1-B3): S0'da harcandıysa S1'de kesinlik ölçütü tetiklenirse satır doğrudan
-  "yetersiz kesinlik"tir (`decide(..., seed_right_available=False)`).
+  "yetersiz kesinlik"tir (`decide_primary(..., seed_right_available=False)`).
 * **Seed artırıldığında iki endpoint de yeni n ile yeniden hesaplanır** (`decide_primary()` iki
   endpoint'i aynı seed kümesinde hesaplamayı zorlar; X ve H'nin seed KİMLİKLERİ aynı değilse hata verir).
   Gerekçe: aksi hâlde "birincil-1'i n=5'te 'başarılı' bırak,
@@ -701,8 +702,8 @@ Dört bağlayıcı sonuç:
 ```
 
 Bu beş satıra İKİsi daha eşlik eder: **"yüksek varyans / belirsiz"** (kesinlik ölçütü, çaresi
-seed artırmak) ve **"yetersiz kesinlik"** (aynı ölçüt n = 10'da yine çözemezse; TERMİNAL, çaresi
-yok). Tam liste `src/stats.ROWS` — **yedi** satır — ve **karar tablosunda olmayan hiçbir ifade
+seed artırmak) ve **"yetersiz kesinlik"** (aynı ölçüt n = 10'da yine çözemezse **ya da** tek seed
+artırma hakkı bu kampanyada zaten harcanmışken tetiklenirse; TERMİNAL, çaresi yok). Tam liste `src/stats.ROWS` — **yedi** satır — ve **karar tablosunda olmayan hiçbir ifade
 sonuç beyanı değildir.**
 
 **ÖNCELİK TABLOSU (v01 O5, buraya BİREBİR yeniden basılıyor).** Yukarıdaki beş satır tek başına
@@ -746,20 +747,45 @@ vazgeçme yavaş seed'li HİÇBİR kampanyada ulaşılamıyordu; üstelik 1.99×
 
 **Anlam kararları, açıkça:**
 * **Yavaş seed B8'in sansür sayımına GİRMEZ.** "≥ 2 sansür → başarısız" ve "≥ 1 sansür → başarı
-  yasak" hükümleri ikamenin FOTON lehine YANLI olmasına dayanır; yavaş seed'in değeri ikame değil
+  yasak" hükümleri ikamenin FOTON lehine YANLI olmasına dayanır (ikincisi fiilen yedekli bir
+  savunmadır — v01 B8'in kendi deyişiyle "kemer + askı": tek sansürlü seed tam örnek GA alt sınırını
+  n = 5'te hiçbir zaman, n = 10'da ancak hızlı seed'ler ≥ ~+%73 tasarruf ederken sıfırın üstüne
+  çıkarır; yasak hiçbir zaman ihlal edilmez); yavaş seed'in değeri ikame değil
   ölçümdür. Yavaş seed başarıyı yasaklamaz, ama tam örnek GA'sına girdiği için **n = 5'te** (a)
   kolunu fiilen kapatır (`4 × +%60 + 1 yavaş −26` için bile GA alt < 0). **n = 10'da** hafif bir
   yavaş seed'le (a) kolu sağlanabilir (`9 × +%20 + 1 yavaş −30` → `s̄ = +15`, GA alt +3.7 → başarı
   satırı) ve bu bilinçlidir: on seed'den biri bütçeyi %4 aşmış, değeri ölçülmüş ve ortalamanın
-  içindedir. Aynı örnekte seed SANSÜRLÜ olsaydı B8 başarıyı yasaklardı.
-* **Tek durum süreksizliği 1× sınırındadır ve ön-kayıtlıdır.** 1× bütçenin hemen içinde ulaşan
+  içindedir. O seed 2×'te de ulaşamasaydı (sansürlü; değeri ≈ −150 olurdu) B8 başarıyı yasaklardı.
+* **Tek başarısız seed'de tek durum süreksizliği 1× sınırındadır ve ön-kayıtlıdır.** 1× bütçenin hemen içinde ulaşan
   seed (örn. `s_i = −24`) sıradan gözlemdir ve aralığı genişletir; hemen dışında ulaşan (`−26`)
   sabit sayılır. `4 × +%10 + bir seed` örneğinde birincisi "yüksek varyans / belirsiz" (daha çok
   seed ister), ikincisi belirli bir "belirsiz"dir (`ub95 = +3.38`) ve **iki ardışık ölçekte
   tekrarlanırsa vazgeçmeyi tetikleyebilir**. Bu fark bilinçli kabul edilmiştir: kategorik her
   kuralın bir sınırı vardır; sınırın yeri veriye göre değil bütçe tanımına göre (1× referans bütçe)
   önceden sabittir ve seed'in durumu analist tarafından değil `src/stats.resolve_n_star()` tarafından
-  atanır. 2× sınırında süreksizlik YOKTUR (1.99× ile sansür aynı satırı verir, `ub95` farkı 0.21 puan).
+  atanır. **Tek başarısız seed'de** 2× sınırında süreksizlik YOKTUR (1.99× ile sansür aynı satırı
+  verir, `ub95` farkı 0.21 puan). **İki ya da daha çok başarısız seed'de** bir fark daha vardır ve o
+  da yukarıdaki anlam kararının doğrudan sonucudur: satır 0 yalnızca SANSÜRLÜ seed'leri sayar, yani
+  iki sansürlü seed doğrudan "başarısız" verirken 1.99×'te ulaşan iki yavaş seed satırını `s̄`'den
+  alır. Gerçekçi aralıkta ikisi de "başarısız"tır (iki başarısız seed `s̄`'yi ~−30 puan çeker); satırlar
+  ancak n = 10'da hızlı seed'ler ortalama ≥ ~+%34.7 tasarruf ederken ayrışır (`8 × ~+%35 + 2 yavaş` →
+  "nötr", `+ 2 sansür` → "başarısız"; ikisi de iki ölçekte terk edilebilir). Tur 3 denetimi bu
+  cümlenin ilk hâlinin ("2× sınırında süreksizlik YOKTUR", kayıtsız şartsız) fazla iddialı olduğunu
+  buldu; senaryo artık ulaşılabilirlik tablosunda assertion olarak durur.
+  **Sahibin kararı (2026-09-19, tag'den önce): süreksizlik KALIR.** Üç gerekçe: sınır veriden değil
+  bütçe tanımından gelir; istismar edilemez (durum mekanik atanır); ve **yönü muhafazakârdır** —
+  yavaş seed'in değeri negatiftir ve sabit girmesi üst sınırı yalnızca aşağı çeker, yani aralığı
+  daima başarısızlık/terk yönüne daraltır; başarı kolu (a) tam örnek GA'sına bakar ve durumdan
+  etkilenmez. Aleyhimize çalışan, istismar edilemeyen bir süreksizlik kabul edilebilir.
+* **Süreksizlik kaldırılmaz, GÖRÜNÜR yapılır — 1× SINIRI TEŞHİSİ (karar kuralı DEĞİLDİR).** Sonuç
+  raporunda, X ya da H kolunun herhangi bir seed'inin `N*`'ı 1× referans bütçenin **±%10 bandına**
+  (`0.90 ≤ N*/bütçe ≤ 1.10`; bant bu satırda, veri görülmeden pinlenmiştir) düşerse, kararın
+  sınırın DİĞER tarafında ne olacağı da yazılır: banddaki seed'lerin durumu tersine çevrilir
+  (hızlı ↔ yavaş; `s_i` aynı kalır, değişen yalnızca muameledir), hepsi birlikte, ve
+  `decide_primary()` yeniden koşulur. Uygulama `src/stats.boundary_diagnostic()`. **Bağlayıcı karar
+  her hâlükârda mekanik durum atamasından çıkandır**; karşı-olgu satırı bir sonuç beyanı değildir,
+  yalnızca "bu sonuç sınıra ne kadar yakın" sorusunun cevabıdır. Duyurulmuş süreksizlik gizli
+  olandan iyidir.
 
 v01'in "eşleştirilmiş iyileşmenin sd'si > 5 puan" kuralı **kaldırıldı**, çünkü eşik mutlaktı ve n ile
 ölçeklenmiyordu: tek çaresi (10 seed) kendisini DAHA olası yapıyordu. Ölçüm
@@ -775,7 +801,7 @@ v01'in "eşleştirilmiş iyileşmenin sd'si > 5 puan" kuralı **kaldırıldı**,
 Yeni ölçütte çare kuralı **gevşetiyor**; eskisinde sıkıştırıyordu. Yanlış pozitif oranı (gerçek
 etki 0 iken "başarılı") her σ'da %5'in altında: en kötü σ=6, n=5'te %1.2.
 
-**TERMİNAL KURAL — n=10'da yine tetiklenirse ne olur.** Eski kuralın çıkmazı "n=10'da ateşlendi"
+**TERMİNAL KURAL — n=10'da (ya da seed hakkı harcanmışken) yine tetiklenirse ne olur.** Eski kuralın çıkmazı "n=10'da ateşlendi"
 satırının olmamasıydı; yeni kuralda o satır var ve şudur: **sonuç "yetersiz kesinlik" olarak
 raporlanır ve bu bir sonuç beyanıdır**, "nötr" değil ve "belirsiz" de değil. B3 ikinci bir seed
 artırma hakkı vermiyor, ölçek yükseltmesi de bu durumun çaresi değil (sorun ölçek değil kesinlik).
@@ -795,8 +821,11 @@ tablosunun satır adı (içeride `decide()`, Holm'dan SONRA), birincil-2 için d
 
 ## SEED POLİTİKASI
 
-Karar koşuları 5 eşleştirilmiş seed: **{11, 22, 33, 44, 55}**. Tripwire ateşlenirse eklenecek ikinci
-beş: **{66, 77, 88, 99, 110}**. Tarama/debug koşuları: **{101, 102, 103}** (karar seed'leriyle ayrık).
+Karar koşuları 5 eşleştirilmiş seed: **{11, 22, 33, 44, 55}** (S0'da da, yükseltme hakkı
+kullanılırsa S1'de de). Kesinlik ölçütü tetiklenirse eklenecek ikinci beş: **{66, 77, 88, 99, 110}**.
+Bağlayıcı karar fonksiyonları (`strict=True`) yalnızca bu iki anahtar kümesini kabul eder
+(`src/stats.DECISION_SEEDS`, `EXTRA_SEEDS`): n doğru olsa bile başka bir seed kümesi — on seed'in
+"en iyi beşi", ya da konumlu veriyi `dict(enumerate(…))` ile yeniden ifade etmek — hata verir. Tarama/debug koşuları: **{101, 102, 103}** (karar seed'leriyle ayrık).
 Aynı seed = aynı veri sırası, batch sırası, alan seçimi, dropout RNG politikası, eval örnekleri —
 ve bu iddia artık **gerçekten doğru**: veri akışı dizi başına tanımlı ve mikro-batch bölüşümünden
 bağımsız (V1). Eskiden `get_batch` generator'ı `batch_size`'a bağlı tükettiği için aynı seed farklı
@@ -839,6 +868,19 @@ yazılır, "trend artıyor, devam edilecek" olarak yazılamaz — ve zaten gidil
 | **yetersiz kesinlik** | **TERMİNAL.** Seed hakkı bitmiştir ve ölçek yükseltmesi bu satırın çaresi DEĞİLDİR (sorun ölçek değil kesinlik): yükseltme hakkı bu satırdan **doğmaz**. Sonuç **"sonuçsuz: ölçülemedi"** kaydedilir; hipotez ne doğrulanmış ne terk edilmiş sayılır ve bu bir devam gerekçesi değildir |
 | nötr | yükseltme hakkı kullanılabilir (S1 + 5 seed). Kullanılmazsa S0 sonucu nihaidir ve "sonuçsuz" kaydedilir |
 | başarısız | yükseltme hakkı kullanılabilir. Kullanılmazsa vazgeçme koşulunun tek ölçek yolu değerlendirilir (aşağıda) |
+
+**Sahibin seçimi S1 KOŞULMADAN ÖNCE loglanır (yöntem şartı).** "nötr" ve "başarısız" satırlarında
+ölçek hakkını kullanıp kullanmamak sahibin takdirindedir ve o seçim sonucu değiştirir ("başarısız"ta
+hak kullanılmazsa vazgeçmenin tek ölçek yolu, kullanılırsa iki ölçek yolu açılır). Seçim S1'in
+sonucu görüldükten sonra kayda geçirilebilseydi sonuca göre yapılabilirdi. Bu yüzden S0 kararından
+sonra, **her satırda** (zorunlu olan "belirsiz" dahil), seçim **zaman damgalı, gerekçeli TEK satır**
+olarak `experiments/foton-v02/owner_decisions.jsonl`'a yazılır (`scripts/owner_decision.py`): seçim
+("S1'e çık" / "S1'e çıkma"), gerekçe, yerel + UTC zaman, dayandığı S0 `decision.json`'unun SHA-256'sı,
+`git_head`. Defter tek karar kabul eder; karar değiştirilemez. Mekanik bağlar: (i) S1 kuyruğu
+(`make_campaign_queue.py`; S1 preset adları `-s1` ile biter ve koşu adları `s1-` önekini alır) "S1'e
+çık" satırı olmadan ÜRETİLMEZ; (ii) rapor aşamasında `owner_decision.py --verify` her S1 koşusunun
+koşu defterindeki başlangıcının karar satırından SONRA olduğunu denetler; (iii) `abandon()`'ın
+`escalation_used` girdisi bu defterden okunur, varsayılan değeri yoktur.
 
 ## VAZGEÇME KOŞULU — eşdeğerlik biçimi
 
@@ -900,7 +942,9 @@ hedefe ulaşamamış) tek ölçekte %53, iki ölçekte %78 olasılıkla terk edi
 de İÇERİR (EK1-B8 ikamesi): burada `s̄ = −5.95`, satır "başarısız", `ub95 = −5.85`. v01 B10:
 "başarısız"ta yükseltme hakkı **kullanılabilir**; kullanılmazsa **ve oracle şartı sağlanıyorsa**
 (kazanç < %2) hipotez terk edilir. Yani istatistik tarafında üçüncü bir "başarısız ama ne terk ne
-devam" hâli YOKTUR; terk etmeyi engelleyebilen tek şey oracle şartıdır, ve o engellediğinde sonuç
+devam" hâli YOKTUR; gerçekçi aralıkta terk etmeyi engelleyebilen tek şey oracle şartıdır (satır 0
+"başarısız" verdiği hâlde `ub95 ≥ +5` kalması için n = 10'da iki sansüre rağmen hızlı seed'lerin GA
+üst sınırının ≥ ~+%43.7 olması gerekir; o uç durumda tablo geçerlidir ve `ub95` de engeller), ve oracle engellediğinde sonuç
 "terk edilmedi: mükemmel yönlendirmede hâlâ ≥ %2 kazanç var" diye yazılır — sorun o zaman fikirde
 değil router'dadır. (Bir önceki uygulama sansürsüz seed'lerin aralığına bakıp bu sonucu ne terk
 ediyor ne ilerletiyordu; o şart hiçbir bağlayıcı metinde yazmıyordu ve bir park yörüngesiydi.) Beş
@@ -921,6 +965,12 @@ FOTON'un eğitim döngüsü her eval noktasında val pencerelerini üç modülü
 Oracle ve null eğrileri `L*`'i kesmiyorsa **V3'ün prosedürünün aynısı** uygulanır (`resolve_n_star()`:
 1× eğrisi → aynı seed'in 2× koşusunun eğrisi → `N* = 2 × bütçe` ikamesi); ikisi de ikameye düşerse
 o seed'in kazancı 0'dır (mükemmel yönlendirme bile 2× bütçede hedefe ulaştırmıyor: headroom yok).
+**Oracle/null için ayrı bir 2× koşu YAPILMAZ:** 2× koşu yalnızca FOTON'un kendi 1× eğrisi `L*`'i
+kesmediğinde vardır (V3 adım 2) ve o koşu oracle/null eğrilerini de loglar. FOTON 1×'te ulaşmış ama
+null eğrisi 1×'te kesmiyorsa 2× eğrisi yoktur ve null doğrudan ikameye düşer; bu, kazancı
+(`s^oracle − s^null`) BÜYÜTÜR, yani vazgeçmeyi ZORLAŞTIRIR (muhafazakâr yön). Oracle eğrisi tanım
+gereği hiçbir eval noktasında FOTON'un kendi eğrisinin üstünde olamaz (dizi başına en iyi modül;
+router'ın seçtiği modül de adaylar arasındadır), dolayısıyla FOTON 1×'te ulaştıysa oracle da ulaşmıştır.
 
 **Eski biçim neden atıldı.** v01'den devralınan hâl `s̄ ≤ 0` **ve** `GA üst < +%2` idi: bir NOKTA
 TAHMİNİNİ bir ARALIK SINIRIYLA "ve" ile bağlıyor. GA yarı-genişliği ≈ 1.167σ olduğundan koşul
@@ -1075,9 +1125,15 @@ Uygulama **`src/stats.n_star()`**; başka uygulama kullanılamaz.
 
 Prosedürü **`src/stats.resolve_n_star()`** uygular ve seed'in durumunu (**hızlı / yavaş / sansürlü**)
 o atar; durum `s_i` ile AYNI kayıtta (`Obs`) taşınır, ayrı bir maske listesinde değil. 1× eğrisi
-kesiyorsa 2× eğrisine hiç bakılmaz (hangi eğrinin okunacağı seçilemez).
+kesiyorsa 2× eğrisine hiç bakılmaz (hangi eğrinin okunacağı seçilemez) — 2× eğrisi daha erken
+kesse bile. Fonksiyon eğrilerin yuvalarıyla tutarlı olduğunu da denetler: 1× yuvasındaki eğri 1×
+bütçede, 2× yuvasındaki (1×, 2×] aralığında bitmek zorundadır; 2× koşunun eğrisi 1× yuvasına
+düşerse yavaş bir seed "hızlı" etiketlenirdi (tur 3 denetiminde ölçüldü) ve bu artık hata verir.
+Durum "hangi eğri kesti"ye göre atanır: zorunlu 2× koşu ayrı bir koşu olduğu için, yeniden koşum
+gürültüsü içinde 1× bütçeden az önce kesebilir (`N*/bütçe` ≈ 0.99, durum yine "yavaş"); bu yalnızca
+1× sınırının dibinde mümkündür ve o seed 1× sınırı teşhisinin bandındadır, raporlanır.
 
-İki kayıt düzeltmesi:
+Üç kayıt düzeltmesi:
 
 * **`L*` interpolasyonsuzdur ama `N*` DEĞİLDİR.** Bu dosyanın `L*` bölümü "interpolasyon gerekmiyor,
   o yargı kararı yok" diyor ve bu `L*` için doğru (bütçe, %80 noktası tam bir eval noktasına düşecek
@@ -1088,7 +1144,8 @@ kesiyorsa 2× eğrisine hiç bakılmaz (hangi eğrinin okunacağı seçilemez).
 * **B14 iki kez yanlış uygulandı.** İlk uygulama sürdürme kontrolünü hiç yapmıyordu (aşağıda).
   İkincisi ters yöne düştü: sürdürülmemiş bir kesişim görünce "sonraki kesişime bakmak" yerine
   seed'i SANSÜRLÜYORDU — tek bir 0.0005 nat'lık sıçrama, hedefin 0.025 nat altında biten bir koşuyu
-  −150 puana ve bütün sonucu "başarısız"a çeviriyordu. Şimdiki uygulama B14'ün kendisidir.
+  −150 puana ve bütün sonucu "başarısız"a çeviriyordu. Şimdiki uygulama B14'ün yukarıda tanımlanan
+  SIKILAŞTIRILMIŞ hâlidir (kesişimden sonraki noktaların TÜMÜ ≤ `L*`).
 * **B14 başta hiçbir yerde uygulanmamıştı.** Ön-kayıt kuralı yazıyordu, var olan tek `n_star` uygulaması
   (`scripts/calibrate_v02.py`) sürdürme kontrolünü atlıyordu, ve V9'un bütün sayıları o uygulamayla
   üretilmişti. Somut etkisi: 2750'de `L*`'in altına sarkıp 3000'de geri çıkan bir eğride ilk kesişim
@@ -1138,21 +1195,36 @@ paydası dondurulmuş artifact'lardan yeniden kurulamıyordu.
 
 **Paydanın KAYNAĞI pinlidir** (kampanya M'i yeniden koştuğu için iki aday vardı ve hangisinin
 kullanılacağı sonuca göre seçilebilirdi):
-* seed **{11, 22, 33, 44, 55}**: `F_base,i` = `baseline_reference.json`'daki DONDURULMUŞ değerler.
+* **S0**, seed **{11, 22, 33, 44, 55}**: `F_base,i` = `baseline_reference.json`'daki DONDURULMUŞ değerler.
   Kampanyanın aynı seed'lerdeki M koşuları yalnızca `w̄` (duvar saati, aynı blokta ölçülmek zorunda;
   V11a) ve yeniden koşum sadakat kontrolü içindir; paydaya GİRMEZ.
-* seed **{66, 77, 88, 99, 110}** (yalnızca seed artırılırsa): dondurulmuş değer yoktur; `F_base,i`
-  aynı seed bloğunda koşulan M'in `N*`'ından gelir (`resolve_n_star()` ile, aynı prosedür).
+* **S0**, seed **{66, 77, 88, 99, 110}** (yalnızca seed artırılırsa): dondurulmuş değer yoktur;
+  `F_base,i` aynı seed bloğunda koşulan M'in `N*`'ından gelir (`resolve_n_star()` ile, aynı prosedür).
+* **S1** (yükseltme hakkı kullanılırsa), bütün seed'ler: dondurulmuş değer yoktur (S0'ın değerleri
+  başka bir modele ve başka bir `L*`'e aittir, S1'de KULLANILAMAZ); `F_base,i` aynı seed bloğunda
+  koşulan, V8b'nin kuralıyla belirlenen en iyi baseline'ın `N*`'ından gelir. S1'de seed başına tek
+  bir baseline koşusu vardır, yani seçilecek ikinci bir aday yoktur.
 
 **VERİ TAŞIMA KURALI (yöntem şartı): seed başına sonuçlar seed KİMLİĞİYLE anahtarlı taşınır.**
 `src/stats`'ın karar fonksiyonlarının hepsi — `paired()`, `savings()`, `decide()`, `ub95()`,
 `contribution()`, `decide_primary()`, `abandon()` — girdi olarak **eşleme** alır
 (`dict[seed] → değer` ya da `dict[seed] → Obs(s, durum)`; `abandon()` için `dict[ölçek] → …`) ve
 liste/tuple verilince `TypeError` verir. İki kol ancak anahtar kümeleri AYNIYSA birleştirilir;
-değilse hata. Seed'in durumu (hızlı/yavaş/sansürlü) değerle aynı kayıtta taşınır, paralel bir maske
+değilse hata — iki YÖNDE de (H'nin fazla seed'i de hatadır: "birincil-1 n=5, birincil-2 n=10"
+ifade edilemez). Tek istisna `paired()`'dır: o da yalnızca kimlikle eşler ama farklı anahtar
+kümesinde hata vermez, ortak seed'leri eşleyip düşenleri `dropped` alanında raporlar; karar yolunda
+(`savings → decide_primary → abandon`) KULLANILMAZ, yalnızca duvar saati ve kalibrasyon
+betiklerinde kullanılır ve onlar `dropped`'ın boş olduğunu assertion ile denetler. **Bağlayıcı modda
+iki şey daha zorunludur:** anahtarlar ön-kayıtlı seed'lerdir (SEED POLİTİKASI) ve her seed'in durumu
+AÇIKÇA verilir — `savings()`'in `status` argümanının varsayılanı yoktur ve durumsuz (çıplak sayı)
+bir seed sessizce "hızlı" sayılmaz, reddedilir (tur 3'te ölçüldü: aynı FLOP'lar durumla
+"başarısız", durumsuz "yüksek varyans / belirsiz" veriyordu). `abandon()`'ın skaler girdileri
+yalnız anahtar kelimeyle verilir ve `escalation_used`'ın varsayılanı yoktur. Seed'in durumu (hızlı/yavaş/sansürlü) değerle aynı kayıtta taşınır, paralel bir maske
 listesinde değil. Sonuçlar eşlemenin ekleme sırasından bit düzeyinde bağımsızdır (kanonik sıra).
-Yükleyiciler eşlemeyi `src/stats.keyed()` ile kurar: aynı seed iki kez gelirse (yeniden koşulan
-seed'in iki kaydı) hata verir, `dict()` gibi sessizce ezmez.
+Karar yolundaki yükleyiciler eşlemeyi `src/stats.keyed()` ile kurar: aynı seed iki kez gelirse
+(yeniden koşulan seed'in iki kaydı) hata verir, `dict()` gibi sessizce ezmez. (`keyed()` `11` ile
+`"11"`'i ayrı seed sayar; bu zararsızdır, çünkü iki kolun anahtar kümeleri eşit olmak zorundadır ve
+bağlayıcı mod yalnızca ön-kayıtlı TAM SAYI seed'leri kabul eder.)
 
 Neden bir yöntem şartı: **konuma göre eşleme hatası ÜÇ ayrı fonksiyonda üç kez çıktı** —
 `paired()` (v3), `savings()` (v02'nin ilk denetimi), `decide_primary()` (dördüncü denetim; X-s22
@@ -1493,10 +1565,12 @@ kısıtı, referans bütçe, birincil ölçüt ve istatistik, **iki birincil uç
 büyüklüğü**, test aileleri ve sayısı, karar tablosu ve eşikleri, **kesinlik ölçütü (tek biçim,
 `ub95` ile)**, **`ub95`'in tanımı ve yavaş/sansürlü seed muamelesi**, **birincil-2'nin dört durumu,
 MDE çıtası ve başarısız-seed kuralı**, **vazgeçme koşulunun iki yolu**, **her satırdan sonraki adım
-tablosu**, **paydanın kaynağı**, **veri taşıma kuralı (seed kimliğiyle anahtarlı)**, seed kümeleri,
+tablosu**, **sahibin seçiminin S1'den önce loglanması kuralı**, **1× sınırı teşhisinin bandı
+(±%10) ve tanımı**, **paydanın kaynağı**, **veri taşıma kuralı (seed kimliğiyle anahtarlı)**, seed kümeleri,
 ölçek basamakları, oracle tanımı, **`src/stats.py`'deki karar fonksiyonlarının DAVRANIŞI**
 (`n_star`, `resolve_n_star`, `savings`, `ub95`, `indeterminate`, `decide`, `contribution`,
-`decide_primary`, `abandon`, `multiplicity`: tag'den sonra yalnızca gözlemsel eşdeğer refactor
+`decide_primary`, `abandon`, `multiplicity`, `boundary_diagnostic` ve yardımcıları `Obs`, `keyed`, `paired`,
+`ci95`, `t_crit`, `t_crit_alpha`, `_wbar`: tag'den sonra yalnızca gözlemsel eşdeğer refactor
 yapılabilir; davranış değişikliği sapmadır ve testler + mutasyon sınavı bunu yakalamak içindir),
 ve mimari spesifikasyonu —
 şunları AÇIKÇA içerecek şekilde: **modül desen parametreleri (A: yerel W=150; B: dilated r=2, W=256;
@@ -1581,9 +1655,12 @@ ikame düz t-aralığına girince vazgeçme sansürlü her senaryoda ulaşılama
 alt örneğe bakınca 3/5 sansür terk edilemiyordu; (iii) yavaş seed sıradan gözlem sayılınca yavaş
 seed'li her kampanya terminal "yetersiz kesinlik"e gidiyor, "başarısız" ve vazgeçme ulaşılamıyordu.
 Bu yüzden sınav, σ tablolarının yanında **başarısız-seed senaryo tablosu** taşır (sansürlü, yavaş,
-ikisi birlikte, n=10, 1× ve 2× sınırları; 16 senaryo) ve her senaryonun beklenen sonucu
-(satır, tek ölçekte terk, iki ölçekte terk) **assertion** olarak yazılıdır; 2× sınırında süreklilik
-ve aritmetik tavan da öyle. Yeni bir durdurma kuralı yazan, o tabloya senaryo eklemek zorundadır.
+ikisi birlikte, n=10, 1× ve 2× sınırları, başarısız seed'in İLK anahtarda olduğu hâl, iki sınır
+seed'i; 20 senaryo) ve her senaryonun beklenen sonucu (**satır**, tek ölçekte terk, iki ölçekte terk)
+**assertion** olarak yazılıdır; tek başarısız seed'de 2× sınırındaki süreklilik, sonucun başarısız
+seed'in HANGİ seed olduğundan bağımsızlığı ve aritmetik tavan da öyle. (Tur 3 denetimi buldu: satır
+16 senaryonun yalnız 12'sinde assertion'dı, ve başarısız seed her fixture'da en büyük anahtardaydı —
+ikisi de düzeltildi.) Yeni bir durdurma kuralı yazan, o tabloya senaryo eklemek zorundadır.
 
 ### V13. Her guard MUTASYON SINAVINDAN geçer (yöntem şartı)
 
@@ -1613,21 +1690,36 @@ eşiğinin kendisi** hiçbir testle kilitli değildi (`SUCCESS = 5.0 → 4.0` mu
 çünkü hiçbir test [4, 5) aralığında bir ortalama sınamıyordu), ve `evaluate()`'in prefix maskesi ile
 dondurulmuş preset değerlerinin hiç regresyon testi yoktu.
 
-Son durum (`mutation_log.md`): **109 mutant — 108 yakalandı, 1 kanıtlı eşdeğer, 0 hayatta kaldı.**
+Son durum (`mutation_log.md`): **136 mutant — 135 yakalandı, 1 kanıtlı eşdeğer, 0 hayatta kaldı.**
 Eşdeğer mutant (S27) kodu değiştiren ama davranışı değiştirmeyen mutanttır; kanıtıyla kayıtlıdır ve
 her koşumda yeniden denenir.
 
-**Konuma göre eşleme sınıfı ayrı bir bloktur (E01–E16).** O hata üç ayrı fonksiyonda üç kez çıktı
+**Konuma göre eşleme sınıfı ayrı bir bloktur (E01–E21).** O hata üç ayrı fonksiyonda üç kez çıktı
 (V4'teki taşıma kuralı); yapısal düzeltmeden sonra mutantlar YAPIYI geri bozar: `paired()` /
 `savings()` / `contribution()` / `abandon()`'da eşlemeyi ekleme sırasına göre yapan (E01–E04, E06,
-E07), eşlemeyi bir kaydıran (E05), seed durumunu kimlik yerine sırayla eşleyen (E03), listeyi
+E07), eşlemeyi bir kaydıran (E05), listeyi
 sessizce `dict(enumerate(…))` sayan ya da kapıyı hiç koymayan (E08, E09), anahtar kümesi denetimini
 kapatan (E10, E15, E16), kanonik sırayı kaldıran (E11), tekrar eden seed'i sessizce ezen (E12),
-tanımsız durumu ya da +100'ü aşan tasarrufu kabul eden (E13, E14). Onları yakalayan testler önce
+tanımsız durumu ya da +100'ü aşan tasarrufu kabul eden (E13, E14). **Tur 3 denetimi bu sınıftan İKİ
+mutantın hayatta kaldığını buldu ve ikisi de artık katalogdadır:** `ub95()` içinde hızlı/sabit
+ayrımını "ilk n_h değer hızlıdır" diye KONUMLA yapan mutant (E17; bütün fixture'lar başarısız seed'i
+en büyük seed anahtarına koyduğu için 93 testin hepsini ve taramayı geçiyordu — o mutantta aynı
+örnek yavaş seed s11'deyken "yüksek varyans / belirsiz", s55'teyken "başarısız" veriyordu) ve
+anahtar kümesi denetimini tek yönlü yapan mutant (E18; H'nin fazla seed'i). E19–E21 "yanlış kullanım
+patlasın" kapılarıdır: ön-kayıtlı seed kümesi, açık durum, `savings()`'te zorunlu durum. Aynı
+turun bulduğu üçüncü test boşluğu (`resolve_n_star` 1× kesse bile 2× eğrisini okuyan mutant, yalnız
+2× eğrisi DAHA ERKEN kestiğinde görünür) S48'in testine eklendi. Onları yakalayan testler önce
 konum eşlemesinin o girdide GERÇEKTEN farklı sonuç verdiğini gösterir (yoksa hiçbir şeyi
 kilitlemiyor olurlardı), sonra X ile H'yi, FOTON ile baseline'ı, ölçek sonuçları ile oracle
 kazançlarını BAĞIMSIZ karıştırıp çıktının birebir aynı kaldığını denetler. Bunların hepsi gözden geçirmeyle değil, **bozup denemeyle** ortaya çıkar. Mutasyon sınavı geçici bir kopya
 üzerinde çalışır; depo ve dondurulmuş artifact'lar değişmez.
+
+**Denetim kaydı.** Karar-kritik yüzeyin üç turluk adversaryal denetimi, her turun HIGH sayısı, son
+turun (tur 3: **HIGH = 0**) bütün MEDIUM/LOW bulguları ve her birinin akıbeti
+`experiments/foton-v02-prereg/audit_log.md` dosyasındadır. Tur 3'ten sonra, tag'den önce yapılan
+sertleştirmeler dördüncü bir denetimden geçmemiştir (tur 4 yoktur); geçerli girdide hiçbir kararı
+değiştirmedikleri, denetlenen commit ile son hâlin 40.000 rastgele kampanyada karşılaştırılmasıyla
+gösterilmiştir (fark 0) ve o kayıtta yazılıdır.
 
 ### V11a. Koşu sırası: dört kol İÇ İÇE koşulur (yöntem şartı)
 
@@ -1711,6 +1803,8 @@ biçimi vardı (`decide_primary()` döndürüyor); geri kalan her şey "raporlan
 |---|---|
 | birincil-1 satır adı (Holm'dan SONRA), `s̄`, sd, GA, `ub95`, n, sansürlü/yavaş seed sayısı, notlar; birincil-2 durumu, GA'sı, `p`; Holm | **`src/stats.decide_primary()`** çıktısının TAMAMI → `experiments/foton-v02/decision.json` (`decide()`'ın tek başına çıktısı bağlayıcı değildir: Holm'u atlar) |
 | vazgeçme kararı, yolu, gerekçesi, `escalation_used` | `src/stats.abandon()` çıktısı → aynı dosya |
+| **sahibin ölçek hakkı seçimi** (S1'den ÖNCE, zaman damgalı, gerekçeli) ve sıra denetimi | `experiments/foton-v02/owner_decisions.jsonl` (`scripts/owner_decision.py`; `--verify` çıktısı rapora girer) |
+| **1× sınırı teşhisi**: ±%10 bandındaki seed'ler ve sınırın diğer tarafındaki karşı-olgu satırı/durumu (TEŞHİS, karar değil) | `src/stats.boundary_diagnostic()` çıktısı → `experiments/foton-v02/boundary_diagnostic.json` (bantta seed yoksa da yazılır: "bantta seed yok") |
 | `s_i`, seed başına `N*`, **durum (hızlı/yavaş/sansürlü)**, `F_foton,i`, `F_base,i` ve paydanın kaynağı — seed kimliğiyle anahtarlı | `experiments/foton-v02/savings.json` (`src/stats.resolve_n_star()` + `savings()`) |
 | `w̄(M)`, `w̄(D)` ve GA'ları, **kümülatif saatten** | `experiments/foton-v02/walltime.json` (`scripts/baseline_reference.py` yöntemi) |
 | **koşu defteri** toplam/iptal/çöken/sürdürülmüş | `experiments/foton-v02-prereg/run_ledger.jsonl` (`scripts/run_ledger.py --report`) |

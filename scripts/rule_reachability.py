@@ -178,39 +178,52 @@ def main() -> None:
                 for i, (sd_, v) in enumerate(zip(SEEDS, vals))}
 
     scen = [
-        # (etiket, s_i, sansürlü konumlar, yavaş konumlar, tek ölçekte terk?, iki ölçekte terk?)
-        ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [4], [], True, True),
+        # (etiket, s_i, sansürlü konumlar, yavaş konumlar, tek ölçekte terk?, iki ölçekte terk?, SATIR)
+        ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [4], [], True, True, "başarısız"),
+        # başarısız seed İLK anahtarda (s11): sonuç seed'in HANGİ seed olduğuna bağlı olmamalı. Tur 3'te
+        # hayatta kalan konum-sınıfı mutant (ub95'te "ilk n_h değer hızlıdır") yalnız burada görünür.
+        ("1 sansür (s11'de) + 4 başabaş", [CENS, 0.2, -0.1, 0.3, 0.0], [0], [], True, True, "başarısız"),
+        ("1 yavaş (s11'de, 1.5×) + 4 başabaş", [-56.0, 0.2, -0.1, 0.3, 0.0], [], [0], True, True, "başarısız"),
         # s̄ hedefe ulaşamayan seed'i İÇERİR: 4 × +%7 + 1 sansür -> s̄ ≈ −24, satır "başarısız".
         # v01 B10: hak kullanılmazsa terk (oracle şartı sağlanıyorsa); sahibin diğer yolu S1'dir.
-        ("4 × +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [4], [], True, True),
-        ("4 × +%30 + 1 sansür", [30.0, 30.1, 29.9, 30.05, CENS], [4], [], True, True),
-        ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [3, 4], [], True, True),
+        ("4 × +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [4], [], True, True, "başarısız"),
+        ("4 × +%30 + 1 sansür", [30.0, 30.1, 29.9, 30.05, CENS], [4], [], True, True, "başarısız"),
+        ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [3, 4], [], True, True, "başarısız"),
         # 3. denetimin bulduğu delik: 2 sansürsüz seed'in aralığı t(1) = 12.7 ile patlıyor.
-        ("2 geniş + 3 sansür", [0.5, -0.5, CENS, CENS, CENS], [2, 3, 4], [], True, True),
+        ("2 geniş + 3 sansür", [0.5, -0.5, CENS, CENS, CENS], [2, 3, 4], [], True, True, "başarısız"),
         # 4. denetim (A): tavan HER durumda — iki hızlı seed'in t(1) aralığı +303'e çıkıyor.
-        ("2 çok geniş hızlı + 3 sansür", [-62.5, -125.0, CENS, CENS, CENS], [2, 3, 4], [], True, True),
-        ("2 yavaş + 3 sansür", [-62.5, -125.0, CENS, CENS, CENS], [2, 3, 4], [0, 1], True, True),
+        ("2 çok geniş hızlı + 3 sansür", [-62.5, -125.0, CENS, CENS, CENS], [2, 3, 4], [], True, True, "başarısız"),
+        ("2 yavaş + 3 sansür", [-62.5, -125.0, CENS, CENS, CENS], [2, 3, 4], [0, 1], True, True, "başarısız"),
         # 4. denetim (C): yavaş seed bir yöntem başarısızlığıdır, varyans değil.
-        ("4 başabaş + 1 yavaş (1.5×)", [0.2, -0.1, 0.3, 0.0, -56.0], [], [4], True, True),
-        ("4 başabaş + 1 yavaş (1.99×)", [0.2, -0.1, 0.3, 0.0, -148.75], [], [4], True, True),
-        ("4 × +%7 + 1 yavaş (1.5×)", [7.0, 7.1, 6.9, 7.05, -56.0], [], [4], True, True),
-        ("9 × −%8 + 1 yavaş (1.9×), n=10", [-8.0 + 0.02 * i for i in range(9)] + [-140.0], [], [9], True, True),
+        ("4 başabaş + 1 yavaş (1.5×)", [0.2, -0.1, 0.3, 0.0, -56.0], [], [4], True, True, "başarısız"),
+        ("4 başabaş + 1 yavaş (1.99×)", [0.2, -0.1, 0.3, 0.0, -148.75], [], [4], True, True, "başarısız"),
+        ("4 × +%7 + 1 yavaş (1.5×)", [7.0, 7.1, 6.9, 7.05, -56.0], [], [4], True, True, "başarısız"),
+        ("9 × −%8 + 1 yavaş (1.9×), n=10", [-8.0 + 0.02 * i for i in range(9)] + [-140.0], [], [9], True, True, "başarısız"),
         # "nötr" satırı tek ölçek yoluna GİRMEZ (o yol yalnızca "başarısız"tan açılır).
-        ("başarısız seed yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [], [], False, True),
-        ("başarısız seed yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [], [], True, True),
+        ("başarısız seed yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [], [], False, True, "nötr"),
+        ("başarısız seed yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [], [], True, True, "başarısız"),
         # etki eşiğin üstünde kurulmuş: hiçbir yolda terk edilemez
-        ("başarısız seed yok, +%7", [7.0, 7.1, 6.9, 7.05, 6.95], [], [], False, False),
+        ("başarısız seed yok, +%7", [7.0, 7.1, 6.9, 7.05, 6.95], [], [], False, False, "başarılı"),
         # 1x SINIRI (belgelenmiş tek durum süreksizliği): sınırın hemen içinde ulaşan seed aralığa
         # girer (kesinlik ölçütü tetiklenir), hemen dışında ulaşan sabit sayılır.
-        ("4 × +%10 + 1 hızlı −24 (0.99×)", [10.0, 10.5, 9.5, 10.2, -24.0], [], [], False, False),
-        ("4 × +%10 + 1 yavaş −26 (1.01×)", [10.0, 10.5, 9.5, 10.2, -26.0], [], [4], False, True),
+        ("4 × +%10 + 1 hızlı −24 (0.99×)", [10.0, 10.5, 9.5, 10.2, -24.0], [], [], False, False, "yüksek varyans / belirsiz"),
+        ("4 × +%10 + 1 yavaş −26 (1.01×)", [10.0, 10.5, 9.5, 10.2, -26.0], [], [4], False, True, "belirsiz"),
+        # İKİ sınır seed'i, n = 10, hızlı seed'ler ~+%35 (gerçekçi aralığın kenarı): satır 0 yalnızca
+        # SANSÜRLÜ seed'leri sayar (ön-kayıtlı anlam kararı), dolayısıyla iki yavaş seed ile iki
+        # sansürlü seed farklı satır verir. Tur 3 buldu: metin "2× sınırında süreksizlik YOKTUR"
+        # diyordu; tek başarısız seed'de doğru, ikide değil. Artık metin de tablo da bunu söylüyor.
+        ("8 × ~+%35 + 2 yavaş (1.99×), n=10", [28.0, 41.0, 33.0, 38.0, 34.0, 36.0, 35.0, 37.0, -148.75, -148.75],
+         [], [8, 9], False, True, "nötr"),
+        ("8 × ~+%35 + 2 sansür, n=10", [28.0, 41.0, 33.0, 38.0, 34.0, 36.0, 35.0, 37.0, CENS, CENS],
+         [8, 9], [], True, True, "başarısız"),
     ]
     NEG = {"M": -1.0, "D": -1.0}
     rows = {}
-    for label, s_i, cens, slow, exp1, exp2 in scen:
+    for label, s_i, cens, slow, exp1, exp2, exp_row in scen:
         r = decide(tab(s_i, cens, slow), quality_per_sec=NEG)
         rows[label] = r
-        r1 = abandon({"S0": r}, {"S0": 0.5}, escalation_used=False)
+        assert r["row"] == exp_row, f"{label}: satır {r['row']!r} != beklenen {exp_row!r}"   # V12: satır da assertion
+        r1 = abandon({"S0": r}, {"S0": 0.5}, escalation_used=False)   # hak girdisi ZORUNLU, yalnız anahtar kelime
         r2 = abandon({"S0": r, "S1": r}, {"S0": 0.5, "S1": 0.5}, escalation_used=True)
         say(f"  {label:34s} {r['row']:>26s} {r['mean']:8.2f} {r['ci95'][1]:11.2f} {r['ub95']:8.2f} "
             f"{('EVET' if r1['abandon'] else 'hayır'):>6s} {('EVET' if r2['abandon'] else 'hayır'):>6s}")
@@ -219,8 +232,13 @@ def main() -> None:
     # başarısız seed'li HİÇBİR senaryo kesinlik satırına düşmemeli (4. denetimin bulduğu çıkmaz)
     for label, r in rows.items():
         if "yavaş" in label or "sansür" in label:
-            assert r["determinate"] and r["row"] == ("belirsiz" if "1.01×" in label else "başarısız"), \
-                f"{label}: satır {r['row']!r} — başarısız seed aralığı şişirip kesinlik ölçütünü tetikliyor"
+            assert r["determinate"], f"{label}: satır {r['row']!r} — başarısız seed aralığı şişirip kesinlik ölçütünü tetikliyor"
+    # başarısız seed'in HANGİ seed olduğu sonucu değiştirmez (s11'de ya da s55'te)
+    for first, last in (("1 sansür (s11'de) + 4 başabaş", "4 başabaş + 1 sansür"),
+                        ("1 yavaş (s11'de, 1.5×) + 4 başabaş", "4 başabaş + 1 yavaş (1.5×)")):
+        assert abs(rows[first]["ub95"] - rows[last]["ub95"]) < 1e-9 and rows[first]["row"] == rows[last]["row"], \
+            f"sonuç başarısız seed'in konumuna bağlı: {first} ub95 {rows[first]['ub95']:+.2f} vs {rows[last]['ub95']:+.2f}"
+    say("  başarısız seed s11'de ya da s55'te: AYNI satır, AYNI ub95 — OK")
     # 2x sınırında SÜREKLİLİK: 1.99x'te ulaşan ile hiç ulaşamayan aynı sonucu verir
     a_, b_ = rows["4 başabaş + 1 yavaş (1.99×)"], rows["4 başabaş + 1 sansür"]
     assert a_["row"] == b_["row"] and abs(a_["ub95"] - b_["ub95"]) < 0.5, "2x sınırında süreksizlik"
@@ -247,7 +265,7 @@ def main() -> None:
     # Oracle headroom'u HER yolda bağlayıcı, ve ölçek BAŞINA (ölçek KİMLİĞİYLE eşlenir):
     rb = decide(tab([-8.0, -8.1, -7.9, -8.05, -7.95]), quality_per_sec=NEG)
     two = {"S0": rb, "S1": rb}
-    assert abandon({"S0": rb}, {"S0": 5.0})["abandon"] is False, "oracle tek ölçekte bağlamıyor"
+    assert abandon({"S0": rb}, {"S0": 5.0}, escalation_used=False)["abandon"] is False, "oracle tek ölçekte bağlamıyor"
     assert abandon(two, {"S0": 0.5, "S1": 5.0}, escalation_used=True)["abandon"] is False, "oracle S1'de bağlamıyor"
     assert abandon(two, {"S1": 0.5, "S0": 5.0}, escalation_used=True)["abandon"] is False, "oracle S0'da bağlamıyor"
     say("  oracle headroom'u (5.0 >= 2.0) tek ölçekte ve iki ölçeğin HER BİRİNDE terk etmeyi engelliyor — OK")
@@ -268,9 +286,10 @@ def main() -> None:
         for n in (5, 10):
             x = np.random.default_rng(11).normal(mu, sdd, size=(sims2, n))
             counts = dict.fromkeys(STATES, 0)
-            zero = dict.fromkeys(range(n), 0.0)       # H = 0: X − H = çekilen fark (aynı anahtarlar)
-            for row in x:
-                counts[contribution(dict(enumerate(row.tolist())), zero)["state"]] += 1   # bilinmeyen durum -> KeyError
+            zero = {sd_: Obs(0.0) for sd_ in SEEDS[:n]}    # H = 0: X − H = çekilen fark (aynı seed'ler)
+            for row in x:                                # bağlayıcı mod: ön-kayıtlı seed'ler + AÇIK durum
+                xt = {sd_: Obs(v) for sd_, v in zip(SEEDS, row.tolist())}
+                counts[contribution(xt, zero)["state"]] += 1      # bilinmeyen durum -> KeyError
             share[(mu, n)] = {k: v / sims2 for k, v in counts.items()}
             say(f"  {mu:+10.2f}p {n:3d} " + " ".join(f"{100*share[(mu, n)][s]:16.1f}%" for s in STATES))
     c5, c10 = share[(0.0, 5)]["ölçemedik"], share[(0.0, 10)]["ölçemedik"]
@@ -299,7 +318,8 @@ def main() -> None:
             m, lo, hi, s = draw(0.0, sd, 5, 4000, seed=7)
             fast = float(trip_precision(m, lo, hi, s).mean())
             slow = reachability(
-                lambda x: decide(dict(enumerate(x)), quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz",
+                lambda x: decide({sd_: Obs(v) for sd_, v in zip(SEEDS, x)},
+                                 quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz",
                 0.0, sd, 5, sims=4000, seed=7)
             say(f"  σ={sd:.2f}: vektörize %{100*fast:.2f} | decide() yolu %{100*slow:.2f} "
                 f"| fark {abs(fast-slow)*100:.2f} puan")

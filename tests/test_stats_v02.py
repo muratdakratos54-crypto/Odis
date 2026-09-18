@@ -104,6 +104,8 @@ def test_n_star_handles_flat_curve_exactly_at_target():
 
 # --------------------------------------------------------------------------- savings / s_i
 
+FAST3 = {11: "hızlı", 22: "hızlı", 33: "hızlı"}           # `savings()` durumu ZORUNLU ister
+
 def test_savings_matches_by_seed_identity_not_position():
     """Birincil istatistik seed KİMLİĞİNE göre eşlenmeli.
 
@@ -112,23 +114,27 @@ def test_savings_matches_by_seed_identity_not_position():
     """
     f_foton = {11: 90.0, 22: 80.0, 33: 70.0}
     f_base = {11: 100.0, 33: 100.0, 22: 200.0}               # s22 sonda! baseline'ı 200
-    r = savings(f_foton, f_base)
+    r = savings(f_foton, f_base, FAST3)
     # s11: 1-90/100 = 10 | s22: 1-80/200 = 60 | s33: 1-70/100 = 30
     assert {k: o.s for k, o in r["obs"].items()} == pytest.approx({11: 10.0, 22: 60.0, 33: 30.0})
     assert list(r["obs"]) == [11, 22, 33]                    # kanonik sıra: ekleme sırasından bağımsız
     # konuma göre eşleme bu girdide s22 -> 1-80/100 = 20 verirdi; imza onu İFADE EDEMEZ
     with pytest.raises(TypeError, match="anahtarlanmış eşleme"):
-        savings([90.0, 80.0, 70.0], [100.0, 100.0, 200.0])
+        savings([90.0, 80.0, 70.0], [100.0, 100.0, 200.0], FAST3)
     with pytest.raises(TypeError, match="anahtarlanmış eşleme"):
-        savings(f_foton, [100.0, 100.0, 200.0])
+        savings(f_foton, [100.0, 100.0, 200.0], FAST3)
+    with pytest.raises(TypeError, match="anahtarlanmış eşleme"):
+        savings(f_foton, f_base, ["hızlı"] * 3)             # durum da paralel liste OLAMAZ
+    with pytest.raises(TypeError):
+        savings(f_foton, f_base)                             # durum ZORUNLU: "verilmediyse hızlı" yok
 
 
 def test_savings_rejects_mismatched_seed_sets():
     """Eksik/fazla seed SESSİZCE atlanmaz. `paired()` atlıyor; birincil istatistikte atlamak yasak."""
     with pytest.raises(ValueError, match="seed kümeleri"):
-        savings({11: 1.0, 22: 2.0}, {11: 1.0, 33: 2.0})
+        savings({11: 1.0, 22: 2.0}, {11: 1.0, 33: 2.0}, {11: "hızlı", 22: "hızlı"})
     with pytest.raises(ValueError, match="seed kümeleri"):
-        savings({11: 1.0, 22: 2.0}, {11: 1.0, 22: 2.0, 33: 3.0})       # fazla seed de sessiz değil
+        savings({11: 1.0, 22: 2.0}, {11: 1.0, 22: 2.0, 33: 3.0}, {11: "hızlı", 22: "hızlı"})   # fazla seed de sessiz değil
     with pytest.raises(ValueError, match="seed kümeleri"):
         savings({11: 1.0, 22: 2.0}, {11: 1.0, 22: 2.0}, status={11: "hızlı"})
 
@@ -143,12 +149,12 @@ def test_keyed_rejects_duplicate_seeds():
 
 def test_savings_rejects_nonpositive_denominator():
     with pytest.raises(ValueError, match="pozitif"):
-        savings({11: 1.0, 22: 2.0}, {11: 0.0, 22: 2.0})
+        savings({11: 1.0, 22: 2.0}, {11: 0.0, 22: 2.0}, {11: "hızlı", 22: "hızlı"})
 
 
 def test_savings_is_a_ratio_not_a_difference():
     """`paired()` FARK hesaplar, `s_i` ORAN. Karıştırılmasın: aynı girdide farklı sayılar."""
-    r = savings({11: 50.0}, {11: 100.0})
+    r = savings({11: 50.0}, {11: 100.0}, {11: "hızlı"})
     assert r["obs"][11].s == pytest.approx(50.0)             # %50 tasarruf, 50 puan "fark" değil
     assert r["obs"][11].status == "hızlı"
     slow = savings({11: 250.0}, {11: 100.0}, status={11: "yavaş"})
@@ -228,7 +234,7 @@ def test_decide_does_not_invent_an_uncensored_sd_from_one_seed():
     assert r["row"] == "başarısız"                      # >= 2 sansür: B8 doğrudan başarısız
     # Tek sansür + tek sansürsüz: kesinlik DEĞERLENDİRİLEMEZ, uydurulmaz
     r2 = decide(T([6.0, -150.0, -150.0, -150.0, -150.0], cens=[1, 2, 3, 4]), quality_per_sec=W_BOTH)
-    assert math.isnan(r2["sd_fast"]) and "ci95_fast" not in r2
+    assert r2["sd_fast"] is None and "ci95_fast" not in r2
     assert r2["row"] == "başarısız"
     assert not any("110" in n for n in r2["notes"])
 
@@ -599,9 +605,9 @@ def test_abandon_with_a_censored_seed_follows_the_preregistered_statistic():
     """ANLAM KARARI, açıkça kilitli: `4 × +%30 + 1 sansür`, hak kullanılmazsa TERK EDİLİR.
 
     Birincil istatistik `s̄`, hedefe ulaşamayan seed'i de içerir (EK1-B8 ikamesi): burada
-    s̄ ≈ −5.9, satır "başarısız". v01 B10 harfiyen: "başarısız"ta yükseltme hakkı kullanılabilir;
-    kullanılmazsa hipotez terk edilir. Yani sahibin önünde iki yol var — S1'e çıkmak ya da terk —
-    üçüncü bir "başarısız ama ne terk ne devam" hâli YOKTUR (o hâl bir park yörüngesiydi: bir
+    s̄ = −5.95, satır "başarısız". v01 B10: "başarısız"ta yükseltme hakkı kullanılabilir;
+    kullanılmazsa VE oracle şartı sağlanıyorsa hipotez terk edilir. Yani istatistik tarafında
+    üçüncü bir "başarısız ama ne terk ne devam" hâli yoktur (o hâl bir park yörüngesiydi: bir
     önceki uygulama sansürsüz GA'ya bakıp bu sonucu ne terk ediyor ne ilerletiyordu, üstelik
     bu şart hiçbir bağlayıcı metinde yazmıyordu).
     """
@@ -651,16 +657,16 @@ def test_abandon_oracle_is_per_scale_and_must_be_finite():
     # ölçek anahtarları pinli ve BAŞTAN ardışık: S0'sız S1 ya da tanımsız bir ölçek kabul edilmez
     for bad in ({"S1": be}, {"S0": be, "S2": be}):
         with pytest.raises(ValueError, match="BAŞTAN ardışık"):
-            abandon(bad, dict.fromkeys(bad, 0.5))
+            abandon(bad, dict.fromkeys(bad, 0.5), escalation_used=False)
 
 
 def test_abandon_refuses_non_binding_or_hand_built_results():
     """Keşifsel (strict=False) bir sonuç ya da elle kurulmuş bir sözlük vazgeçme kararını SÜREMEZ."""
     expl = decide(T([-4.0, -3.5, -4.5]), quality_per_sec=NEG, strict=False)
     with pytest.raises(ValueError, match="bağlayıcı olmayan"):
-        abandon({"S0": expl}, OK1)
+        abandon({"S0": expl}, OK1, escalation_used=False)
     with pytest.raises(ValueError, match="decide"):
-        abandon({"S0": {"row": "nötr", "ci95": [-1.0, 1.0], "n": 5}}, OK1)
+        abandon({"S0": {"row": "nötr", "ci95": [-1.0, 1.0], "n": 5}}, OK1, escalation_used=False)
 
 
 def test_seed_right_spent_makes_the_precision_row_terminal_at_n5():
@@ -748,8 +754,16 @@ def test_decide_primary_forces_one_seed_set_and_never_drops_a_censored_seed():
     """
     from src.stats import decide_primary
     s_xm = [6.0, 6.5, 5.5, 6.2, 5.8]
-    with pytest.raises(ValueError, match="seed kümeleri aynı"):
-        decide_primary(T(s_xm), T([4.0, 4.4, 3.6, 4.1]), quality_per_sec=W_BOTH)
+    with pytest.raises(ValueError, match="ön-kayıtlı seed kümesi"):
+        decide_primary(T(s_xm), T([4.0, 4.4, 3.6, 4.1]), quality_per_sec=W_BOTH)      # H'de eksik seed
+    # ÖBÜR YÖN (tur 3'te hayatta kalan mutant): birincil-1 n=5, birincil-2 n=10 — ön-kaydın adını
+    # koyduğu seçim. H'nin FAZLA seed'i de hata; iki küme de ön-kayıtlı olsa bile.
+    from src.stats import contribution
+    h10 = T([4.0, 4.4, 3.6, 4.1, 3.9, 4.2, 4.0, 3.8, 4.3, 4.1])
+    for call in (lambda: decide_primary(T(s_xm), h10, quality_per_sec=W_BOTH), lambda: contribution(T(s_xm), h10),
+                 lambda: decide_primary(h10, T(s_xm), quality_per_sec=W_BOTH), lambda: contribution(h10, T(s_xm))):
+        with pytest.raises(ValueError, match="seed kümeleri aynı"):
+            call()
     out = decide_primary(T(s_xm), T([4.0, 4.4, 3.6, 4.1, CENS], cens=[4]), quality_per_sec=W_BOTH)
     assert out["primary2"]["state"] == "ölçemedik" and "DÜŞÜRÜLMEZ" in out["primary2"]["note"]
     assert out["primary2"]["p"] == 1.0 and out["primary1"]["row"] == "başarılı"
@@ -791,15 +805,15 @@ def test_every_decision_function_rejects_positional_input():
     be = decide(T(_five(0.0, sd=0.88)), quality_per_sec=NEG)
     calls = {
         "paired": lambda: paired(X5, X5),
-        "savings": lambda: savings(X5, X5),
+        "savings": lambda: savings(X5, X5, X5),
         "decide": lambda: decide(X5, quality_per_sec=W_BOTH),
         "ub95": lambda: ub95(X5),
         "contribution": lambda: contribution(X5, X5),
         "contribution/H": lambda: contribution(T(X5), X5),
         "decide_primary": lambda: decide_primary(X5, X5, quality_per_sec=W_BOTH),
         "decide_primary/H": lambda: decide_primary(T(X5), tuple(X5), quality_per_sec=W_BOTH),
-        "abandon": lambda: abandon([be, be], {"S0": 0.5, "S1": 0.5}),
-        "abandon/oracle": lambda: abandon({"S0": be, "S1": be}, [0.5, 0.5]),
+        "abandon": lambda: abandon([be, be], {"S0": 0.5, "S1": 0.5}, escalation_used=True),
+        "abandon/oracle": lambda: abandon({"S0": be, "S1": be}, [0.5, 0.5], escalation_used=True),
     }
     for name, call in calls.items():
         try:
@@ -842,7 +856,8 @@ def test_results_do_not_depend_on_insertion_order_anywhere():
     ref_c, ref_p = contribution(x, h), paired(plain(x), plain(h))
     fb = {s: 100.0 + i for i, s in enumerate(SEEDS10[:5])}
     ff = {s: 90.0 - 3 * i for i, s in enumerate(SEEDS10[:5])}
-    ref_s = savings(ff, fb)
+    st5 = dict.fromkeys(ff, "hızlı")
+    ref_s = savings(ff, fb, st5)
     for ox, oh in (([4, 3, 2, 1, 0], [0, 1, 2, 3, 4]), ([1, 2, 3, 4, 0], [2, 0, 4, 1, 3]),
                    ([0, 1, 2, 3, 4], [1, 2, 3, 4, 0])):
         xs_, hs_ = _shuffled(x, ox), _shuffled(h, oh)
@@ -851,15 +866,15 @@ def test_results_do_not_depend_on_insertion_order_anywhere():
         assert decide(xs_, quality_per_sec=W_BOTH) == decide(x, quality_per_sec=W_BOTH)
         assert ub95(xs_) == ub95(x)
         assert paired(plain(xs_), plain(hs_)) == ref_p
-        assert savings(_shuffled(ff, ox), _shuffled(fb, oh)) == ref_s
+        assert savings(_shuffled(ff, ox), _shuffled(fb, oh), _shuffled(st5, oh)) == ref_s
     # durum da kimlikle taşınır: yavaş seed'i taşıyan kayıt sıra değişince başka seed'e GEÇMEZ
     slow = T([0.2, -0.1, 0.3, 0.0, -56.0], slow=[4])
     assert decide(_shuffled(slow, [4, 0, 1, 2, 3]), quality_per_sec=NEG) == decide(slow, quality_per_sec=NEG)
     # abandon: ölçek sonuçları ile oracle kazançları KİMLİKLE eşlenir, çıktı ölçek sırasındadır
     s0 = decide(T(_five(0.0, sd=0.88)), quality_per_sec=NEG)
     s1 = decide(T(_five(-4.0, sd=0.5)), quality_per_sec=NEG)
-    a = abandon({"S0": s0, "S1": s1}, {"S0": 1.5, "S1": 2.5})
-    b = abandon({"S1": s1, "S0": s0}, {"S1": 2.5, "S0": 1.5})
+    a = abandon({"S0": s0, "S1": s1}, {"S0": 1.5, "S1": 2.5}, escalation_used=True)
+    b = abandon({"S1": s1, "S0": s0}, {"S1": 2.5, "S0": 1.5}, escalation_used=True)
     assert a == b and a["scales"] == ["S0", "S1"] and a["ub95"] == [s0["ub95"], s1["ub95"]]
     assert "1.50, 2.50" in a["reason"]                       # gerekçede kazançlar ölçek SIRASIYLA
 
@@ -868,16 +883,29 @@ def test_resolve_n_star_applies_the_v3_procedure_mechanically():
     """V3'ün prosedürü: 1x kesiyor -> "hızlı"; kesmiyor, 2x kesiyor -> "yavaş"; o da kesmiyor -> "sansürlü"."""
     from src.stats import resolve_n_star
     budget = 4375 * STEP
-    fast = _curve([3.0, 2.95, 2.88, 2.86], first=3000)
-    never = _curve([3.0, 2.97, 2.95, 2.93], first=3000)
-    late = _curve([2.93, 2.92, 2.89, 2.87], first=4250)
+    fast = _curve([3.0, 2.95, 2.88, 2.86], first=3625)       # 1x koşu: 3625..4375, bütçede biter
+    never = _curve([3.0, 2.97, 2.95, 2.93], first=3625)
+    late = _curve([2.93, 2.92, 2.89, 2.87], first=4250)      # 2x koşu: 1x bütçeyi AŞAR, 5000'de keser
+    never2 = _curve([2.95, 2.94, 2.93, 2.92], first=8000)    # 2x koşu: 8750'ye kadar hiç kesmiyor
     assert resolve_n_star(fast, None, 2.90, budget) == (n_star(fast, 2.90), "hızlı")
     assert resolve_n_star(never, late, 2.90, budget) == (n_star(late, 2.90), "yavaş")
-    assert resolve_n_star(never, never, 2.90, budget) == (2.0 * budget, "sansürlü")
+    assert resolve_n_star(never, never2, 2.90, budget) == (2.0 * budget, "sansürlü")
     with pytest.raises(ValueError, match="2x koşu ZORUNLU"):
         resolve_n_star(never, None, 2.90, budget)            # 1x kesmiyorsa 2x eğrisi olmadan karar YOK
-    # 1x eğrisi kesiyorsa 2x eğrisine HİÇ bakılmaz (analist "daha iyi" eğriyi seçemez)
+    # 1x eğrisi kesiyorsa 2x eğrisine HİÇ bakılmaz (analist "daha iyi" eğriyi seçemez) — 2x eğrisi
+    # DAHA GEÇ kesse de, DAHA ERKEN kesse de (tur 3'te hayatta kalan mutant yalnız ikincisinde görünür)
     assert resolve_n_star(fast, late, 2.90, budget) == (n_star(fast, 2.90), "hızlı")
+    early2 = _curve([2.95, 2.85, 2.84, 2.83, 2.82, 2.81, 2.80], first=3625)     # 2x koşu, 1x'ten ERKEN kesiyor
+    assert n_star(early2, 2.90) < n_star(fast, 2.90)
+    assert resolve_n_star(fast, early2, 2.90, budget) == (n_star(fast, 2.90), "hızlı")
+    # eğriler yuvalarıyla tutarlı olmak ZORUNDA: 2x koşunun eğrisi 1x yuvasına düşerse yavaş seed
+    # "hızlı" etiketlenirdi (tur 3'te ölçüldü: N*/bütçe = 1.143, 'hızlı')
+    with pytest.raises(ValueError, match="1x bütçeyi"):
+        resolve_n_star(late, None, 2.90, budget)
+    with pytest.raises(ValueError, match="2x eğrisi"):
+        resolve_n_star(never, never, 2.90, budget)           # 2x yuvasında 1x koşunun eğrisi
+    with pytest.raises(ValueError, match="2x eğrisi"):
+        resolve_n_star(never, _curve([2.95, 2.94], first=9000), 2.90, budget)   # 2x bütçeyi de aşıyor
 
 
 def test_slow_seed_is_a_method_failure_not_variance():
@@ -911,7 +939,7 @@ def test_slow_and_censored_are_continuous_at_the_2x_boundary():
     assert slow["determinate"] is True and cens["determinate"] is True
     assert abs(slow["ub95"] - cens["ub95"]) < 0.5
     for r in (slow, cens):
-        assert abandon({"S0": r}, OK1)["abandon"] is True
+        assert abandon({"S0": r}, OK1, escalation_used=False)["abandon"] is True
 
 
 def test_slow_seed_does_not_count_toward_the_b8_censoring_rule():
@@ -982,7 +1010,7 @@ def test_the_1x_boundary_is_the_only_status_discontinuity_and_it_is_documented()
     assert outside["ub95"] == pytest.approx(3.38, abs=0.01)
     for r in (inside, outside):
         assert r["row"] not in ("güçlü başarı", "başarılı", "başarısız")
-        assert abandon({"S0": r}, OK1)["abandon"] is False
+        assert abandon({"S0": r}, OK1, escalation_used=False)["abandon"] is False
     assert abandon({"S0": inside, "S1": inside}, OK2, escalation_used=True)["abandon"] is False
     assert abandon({"S0": outside, "S1": outside}, OK2, escalation_used=True)["abandon"] is True
 
@@ -997,3 +1025,168 @@ def test_failed_seed_in_either_arm_makes_primary2_unmeasured_never_dropped():
     h_slow = {**h, 22: Obs(-70.0, "yavaş")}
     out2 = decide_primary(T(X5), h_slow, quality_per_sec=W_BOTH)
     assert out2["primary2"]["failed_seeds"] == [22] and out2["primary1"]["row"] == "başarılı"
+
+
+# =====================================================================================
+# 1x SINIRI TEŞHİSİ (sahibin kararı: süreksizliği kaldırma, GÖRÜNÜR yap) — karar kuralı DEĞİL
+# =====================================================================================
+def _ratios(vals: list[float]) -> dict:
+    return dict(zip(SEEDS10, vals))
+
+
+def test_boundary_diagnostic_reports_the_other_side_of_the_1x_boundary():
+    """Bir seed'in N*'ı 1x bütçenin ±%10 bandındaysa, kararın sınırın DİĞER tarafında ne olacağı da
+    raporlanır. Bağlayıcı karar değişmez: `actual` her zaman `decide_primary()`'nin kendisidir."""
+    from src.stats import BOUNDARY_BAND, boundary_diagnostic, decide_primary
+    assert BOUNDARY_BAND == 0.10                              # ön-kayıtta, veri görülmeden pinli
+    h, rh = T([8.0, 8.4, 7.6, 8.1, 7.9]), _ratios([0.70] * 5)
+    x = T([10.0, 10.5, 9.5, 10.2, -26.0], slow=[4])           # s55 hedefe 1.01x'te ulaştı
+    rx = _ratios([0.72, 0.71, 0.73, 0.72, 1.01])
+    d = boundary_diagnostic(x, h, rx, rh, quality_per_sec=W_BOTH)
+    ref = decide_primary(x, h, quality_per_sec=W_BOTH)
+    assert d["in_band"] == {"X": [55], "H": []} and d["band"] == 0.10
+    assert d["actual"]["row"] == ref["primary1"]["row"] == "belirsiz"
+    assert d["actual"]["state"] == ref["primary2"]["state"] == "ölçemedik"
+    assert d["counterfactual"]["row"] == "yüksek varyans / belirsiz"      # s55 "hızlı" sayılsaydı
+    assert d["changes"] is True and "TEŞHİS" in d["note"]
+    # ters yön: 0.95x'te ulaşan HIZLI seed banddadır; karşı-olgu onu "yavaş" sayar
+    x2, rx2 = T([10.0, 10.5, 9.5, 10.2, -20.0]), _ratios([0.72, 0.71, 0.73, 0.72, 0.95])
+    d2 = boundary_diagnostic(x2, h, rx2, rh, quality_per_sec=W_BOTH)
+    assert d2["in_band"]["X"] == [55] and d2["actual"]["row"] == "yüksek varyans / belirsiz"
+    assert d2["counterfactual"]["row"] == "belirsiz" and d2["changes"] is True
+    # H kolundaki band seed'i de raporlanır (birincil-2'yi etkiler)
+    h3, rh3 = T([8.0, 8.4, 7.6, 8.1, -30.0], slow=[4]), _ratios([0.7, 0.7, 0.7, 0.7, 1.05])
+    x3, rx3 = T([10.0, 10.5, 9.5, 10.2, 9.9]), _ratios([0.72] * 5)
+    d3 = boundary_diagnostic(x3, h3, rx3, rh3, quality_per_sec=W_BOTH)
+    assert d3["in_band"] == {"X": [], "H": [55]} and d3["actual"]["state"] == "ölçemedik"
+
+
+def test_boundary_diagnostic_band_edges_and_no_band_case():
+    from src.stats import boundary_diagnostic
+    h, rh = T([8.0, 8.4, 7.6, 8.1, 7.9]), _ratios([0.70] * 5)
+    x = T([10.0, 10.5, 9.5, 10.2, 9.9])
+    none = boundary_diagnostic(x, h, _ratios([0.72] * 5), rh, quality_per_sec=W_BOTH)
+    assert none["in_band"] == {"X": [], "H": []} and none["counterfactual"] is None and none["changes"] is False
+    # kenarlar DAHİL: 0.90 ve 1.10 banddadır, 0.899 ve 1.101 değildir
+    edge = boundary_diagnostic(x, h, _ratios([0.90, 0.899, 0.72, 0.72, 0.72]), rh, quality_per_sec=W_BOTH)
+    assert edge["in_band"]["X"] == [11]
+    xs = T([10.0, 10.5, -30.0, -31.0, 9.9], slow=[2, 3])
+    edge2 = boundary_diagnostic(xs, h, _ratios([0.72, 0.72, 1.10, 1.101, 0.72]), rh, quality_per_sec=W_BOTH)
+    assert edge2["in_band"]["X"] == [33]
+    # sansürlü seed banda GİREMEZ (oranı 2'dir) ve karşı-olguda durumu değişmez
+    xc = T([10.0, 10.5, 9.5, 10.2, CENS], cens=[4])
+    c = boundary_diagnostic(xc, h, _ratios([0.72, 0.72, 0.72, 0.72, 2.0]), rh, quality_per_sec=W_BOTH)
+    assert c["in_band"]["X"] == [] and c["counterfactual"] is None
+
+
+def test_boundary_diagnostic_checks_status_against_the_ratio_and_rejects_lists():
+    """Durum elle değil `resolve_n_star()` ile atanır; oranla çelişen durum mekanik olarak yakalanır."""
+    from src.stats import boundary_diagnostic
+    h, rh = T([8.0, 8.4, 7.6, 8.1, 7.9]), _ratios([0.70] * 5)
+    x = T([10.0, 10.5, 9.5, 10.2, -26.0])                     # s55 "hızlı" denmiş...
+    with pytest.raises(ValueError, match="tutarsız"):
+        boundary_diagnostic(x, h, _ratios([0.72, 0.72, 0.72, 0.72, 1.01]), rh)     # ...ama 1x'i aşmış
+    xc = T([10.0, 10.5, 9.5, 10.2, CENS], cens=[4])
+    with pytest.raises(ValueError, match="tutarsız"):
+        boundary_diagnostic(xc, h, _ratios([0.72, 0.72, 0.72, 0.72, 1.60]), rh)    # sansürlünün oranı 2'dir
+    with pytest.raises(TypeError, match="anahtarlanmış eşleme"):
+        boundary_diagnostic(T([10.0] * 5), h, [0.72] * 5, rh)
+    with pytest.raises(ValueError, match="seed kümeleri"):
+        boundary_diagnostic(T([10.0, 10.1, 9.9, 10.2, 9.8]), h, {11: 0.7}, rh)
+
+
+# =====================================================================================
+# TUR 3 DENETİMİNİN MEDIUM/LOW BULGULARI: "yanlış kullanım çalışmasın, patlasın" sertleştirmeleri
+# ve hayatta kalan iki mutantın guard'ları
+# =====================================================================================
+def test_failed_seed_position_does_not_matter_anywhere():
+    """Başarısız seed HANGİ seed olursa olsun sonuç aynıdır (durum değere KİMLİKLE bağlıdır).
+
+    Tur 3'te hayatta kalan konum-sınıfı mutant: `ub95()` içinde hızlı/sabit ayrımını "ilk n_h değer
+    hızlıdır" diye KONUMLA yapan bir mutant 93 testin hepsini ve ulaşılabilirlik taramasını
+    geçiyordu, çünkü bütün fixture'lar başarısız seed'i EN BÜYÜK seed anahtarına koyuyordu. O
+    mutantta aynı örnek, yavaş seed s11'deyken "yüksek varyans / belirsiz" (ub95 +24.6), s55'teyken
+    "başarısız" (ub95 −10.9) veriyordu.
+    """
+    from src.stats import contribution, ub95
+    fast4 = [0.2, -0.1, 0.3, 0.0]
+    for status, val in (("yavaş", -56.0), ("sansürlü", CENS)):
+        ref = None
+        for pos in range(5):
+            vals = fast4[:pos] + [val] + fast4[pos:]
+            t = {s: Obs(v, status if i == pos else "hızlı") for i, (s, v) in enumerate(zip(SEEDS10, vals))}
+            r = decide(t, quality_per_sec=NEG)
+            got = (r["row"], r["determinate"], round(r["ub95"], 9), round(ub95(t), 9), round(r["mean"], 9))
+            ref = ref or got
+            assert got == ref, f"{status} seed konum {pos}: {got} != {ref}"
+        assert ref[0] == "başarısız" and ref[2] < SUCCESS
+    # iki başarısız seed, ikisi de BAŞTA (en küçük anahtarlarda), n = 10
+    fast8 = [Obs(7.0 + 0.1 * i) for i in range(8)]
+    failed2 = [Obs(-60.0, "yavaş"), Obs(CENS, "sansürlü")]
+    a = decide(dict(zip(SEEDS10, failed2 + fast8)), quality_per_sec=NEG)
+    b = decide(dict(zip(SEEDS10, fast8 + failed2)), quality_per_sec=NEG)
+    assert (a["row"], round(a["ub95"], 9), a["n_slow"], a["n_censored"]) == (b["row"], round(b["ub95"], 9), 1, 1)
+    # birincil-2: başarısız seed'in KİMLİĞİ doğrudan `contribution()` yolunda da doğru raporlanır
+    h = _h(X5, D5)
+    h_bad = _shuffled({**h, 33: Obs(-70.0, "yavaş")}, [4, 2, 0, 3, 1])
+    assert contribution(T(X5), h_bad)["failed_seeds"] == [33]
+
+
+def test_binding_mode_needs_preregistered_seeds_and_explicit_status():
+    """strict=True: anahtarlar ÖN-KAYITLI seed'lerdir ve her seed'in durumu AÇIKÇA verilir.
+
+    Tur 3'te ölçüldü: (i) 10 seed "yetersiz kesinlik" verirken en iyi 5'i strict=True ile "başarılı"
+    veriyordu; `dict(enumerate(...))` de konumlu veriyi yeniden ifade etmenin arka kapısıydı.
+    (ii) Durumu verilmemiş (çıplak sayı) bir sansürlü seed sessizce "hızlı" sayılıyordu: aynı sayılar
+    durumla "başarısız", durumsuz "yüksek varyans / belirsiz".
+    """
+    from src.stats import DECISION_SEEDS, EXTRA_SEEDS, contribution, decide_primary
+    assert DECISION_SEEDS == (11, 22, 33, 44, 55) and EXTRA_SEEDS == (66, 77, 88, 99, 110)
+    vals = [6.0, 6.1, 5.9, 6.05, 5.95]
+    ok = {s: Obs(v) for s, v in zip(DECISION_SEEDS, vals)}
+    assert decide(ok, quality_per_sec=W_BOTH)["row"] == "başarılı"
+    for bad_keys in ((22, 44, 66, 77, 99), (0, 1, 2, 3, 4), ("11", "22", "33", "44", "55"), (11, 22, 33, 44, 66)):
+        bad = {s: Obs(v) for s, v in zip(bad_keys, vals)}
+        with pytest.raises(ValueError, match="ön-kayıtlı seed kümesi"):
+            decide(bad, quality_per_sec=W_BOTH)
+        with pytest.raises(ValueError, match="ön-kayıtlı seed kümesi"):
+            decide_primary(bad, bad, quality_per_sec=W_BOTH)
+        with pytest.raises(ValueError, match="ön-kayıtlı seed kümesi"):
+            contribution(bad, bad)
+        assert decide(bad, quality_per_sec=W_BOTH, strict=False)["row"] == "belirsiz"     # keşifsel: çalışır, başarı bloklu
+    bare = dict(zip(DECISION_SEEDS, [0.2, -0.1, 0.3, 0.0, CENS]))
+    for call in (lambda: decide(bare, quality_per_sec=NEG), lambda: decide_primary(bare, ok, quality_per_sec=NEG),
+                 lambda: decide_primary(ok, bare, quality_per_sec=NEG), lambda: contribution(ok, bare)):
+        with pytest.raises(TypeError, match="durumu AÇIKÇA"):
+            call()
+    assert decide(T([0.2, -0.1, 0.3, 0.0, CENS], cens=[4]), quality_per_sec=NEG)["row"] == "başarısız"
+
+
+def test_abandon_scalars_are_keyword_only_and_typed():
+    """`abandon(res, gains, True)` eskiden True'yu `oracle_threshold`'a bağlıyor (eşik 1.0), hakkı
+    "kullanılmadı" sayıyor ve terk kararını sessizce çeviriyordu. Artık konumlu üçüncü argüman YOK,
+    `escalation_used` ZORUNLU (varsayılanı yok: sahibin karar defterinden gelir) ve tipler denetleniyor."""
+    bad = decide(T(_five(-8.0)), quality_per_sec=NEG)
+    with pytest.raises(TypeError):
+        abandon({"S0": bad}, OK1, True)                      # konumlu
+    with pytest.raises(TypeError):
+        abandon({"S0": bad}, OK1)                            # hak girdisi verilmemiş
+    with pytest.raises(TypeError, match="escalation_used"):
+        abandon({"S0": bad}, OK1, escalation_used=1)
+    with pytest.raises(TypeError, match="oracle_threshold"):
+        abandon({"S0": bad}, OK1, escalation_used=False, oracle_threshold=True)
+    for g in ("0.5", True, None, float("inf")):
+        with pytest.raises(ValueError, match="sonlu"):
+            abandon({"S0": bad}, {"S0": g}, escalation_used=False)
+    assert abandon({"S0": bad}, OK1, escalation_used=False)["abandon"] is True
+    assert abandon({"S0": bad}, OK1, escalation_used=True)["abandon"] is False
+    # terminal satırın gerekçesi "iki ölçek gerekiyor" DEMEZ: o satırdan ölçek hakkı doğmaz
+    term = decide(T(_five(4.0, sd=2.1, n=10)), quality_per_sec=NEG)
+    r = abandon({"S0": term}, OK1, escalation_used=False)
+    assert r["abandon"] is False and "ölçülemedi" in r["reason"] and "iki ardışık ölçek sonucu gerekiyor" not in r["reason"]
+
+
+def test_wbar_output_order_is_canonical():
+    a = decide(T(_five(11.0)), quality_per_sec={"M": 1.0, "D": 2.0})
+    b = decide(T(_five(11.0)), quality_per_sec={"D": 2.0, "M": 1.0})
+    assert list(a["w_bar"]) == list(b["w_bar"]) == ["M", "D"] and a == b

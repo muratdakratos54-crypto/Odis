@@ -14,7 +14,11 @@ bağlandı; FOTON'un karar betiği bu modülü kullanmak ZORUNDA (PREREGISTRATIO
 VERİ TAŞIMA BİÇİMİ — seed başına sonuçlar **seed kimliğiyle anahtarlanmış eşleme** olarak taşınır
 (`dict[seed] -> değer` ya da `dict[seed] -> Obs`). Paralel liste KABUL EDİLMEZ: `paired()`, `savings()`,
 `decide()`, `ub95()`, `contribution()`, `decide_primary()` ve `abandon()` liste alınca `TypeError`
-verir. Gerekçe: konuma göre eşleme hatası ÜÇ ayrı fonksiyonda üç kez çıktı (`paired` v3'te, `savings`
+verir. (`paired()` tek istisnadır: o da yalnızca kimlikle eşler ama anahtar kümeleri farklıysa hata
+vermez, ortak seed'leri eşleyip düşenleri `dropped`'ta raporlar; karar yolunda KULLANILMAZ.)
+Bağlayıcı modda (`strict=True`) iki şey daha zorunludur: anahtarlar ÖN-KAYITLI seed'lerdir
+(`DECISION_SEEDS`, seed artırıldıysa + `EXTRA_SEEDS`) ve her seed'in durumu AÇIKÇA verilir (`Obs`);
+çıplak sayı "hızlı" sayılmaz, reddedilir. Gerekçe: konuma göre eşleme hatası ÜÇ ayrı fonksiyonda üç kez çıktı (`paired` v3'te, `savings`
 v02'nin ilk denetiminde, `decide_primary` dördüncü denetimde) ve her seferinde fonksiyon yamalandı.
 Sorun fonksiyonlar değildi: iki paralel liste, yanlış eşlemeyi İFADE EDEBİLEN bir veri biçimidir ve
 sansür/yavaş maskeleri de aynı biçimde üçüncü, dördüncü paralel listelerdi. Eşlemede konum diye bir
@@ -40,6 +44,8 @@ STRONG = 10.0           # puan; "güçlü başarı" eşiği
 SUCCESS = 5.0           # puan; "başarılı" eşiği
 NEUTRAL = 2.0           # puan; "nötr" bandının yarısı
 REQUIRED_N = (5, 10)    # bağlayıcı karar yalnızca 5 ya da 10 eşleştirilmiş seed'le verilir
+DECISION_SEEDS = (11, 22, 33, 44, 55)       # ön-kayıt SEED POLİTİKASI: karar seed'leri (S0 ve S1)
+EXTRA_SEEDS = (66, 77, 88, 99, 110)         # kesinlik ölçütü tetiklenirse eklenen ikinci beş (EK1-B3)
 # "güçlü başarı" için w̄'nin ölçülmüş olması GEREKEN baseline'lar. İkisi de olmadan o satır
 # erişilemez: ön-kayıt `w̄(M) > 0` VE `w̄(D) > 0` istiyor, çünkü M bu kartta kendi başına D'den
 # token başına %27.9 yavaştır ve yalnızca M'e karşı bir hız kazancı FOTON'un katkısı olmadan da
@@ -189,9 +195,25 @@ def _keyed(x, name: str) -> dict:
     return out
 
 
-def _table(x, name: str) -> dict:
-    """`dict[seed] -> Obs`, kanonik sırada. Çıplak sayı `Obs(sayı, "hızlı")` sayılır."""
+def _table(x, name: str, strict: bool = False) -> dict:
+    """`dict[seed] -> Obs`, kanonik sırada.
+
+    Keşifsel modda çıplak sayı `Obs(sayı, "hızlı")` sayılır. Bağlayıcı modda (`strict=True`) SAYILMAZ:
+    durumu verilmemiş bir seed'i sessizce "hızlı" saymak, sansürlü/yavaş bir seed'i sıradan gözleme
+    çevirir (4. denetimin HIGH'ının aynısı; tur 3'te ölçüldü: aynı FLOP'lar durumla "başarısız",
+    durumsuz "yüksek varyans / belirsiz"). Anahtarlar da ön-kayıtlı seed'ler olmak zorundadır: n
+    doğru olsa bile 10 seed'in "en iyi 5'i" ya da `dict(enumerate(...))` bağlayıcı karar üretemez.
+    """
     m = _need_mapping(x, name)
+    if strict:
+        bare = [k for k in _ordered(m) if not isinstance(m[k], Obs)]
+        if bare:
+            raise TypeError(f"{name}: strict=True iken her seed'in durumu AÇIKÇA verilmeli "
+                            f"(`Obs(s, durum)`, `savings()` çıktısı); durumsuz seed'ler: {bare}")
+        allowed = (set(DECISION_SEEDS), set(DECISION_SEEDS) | set(EXTRA_SEEDS))
+        if set(m) not in allowed:
+            raise ValueError(f"{name}: ön-kayıtlı seed kümesi gerekli (strict=True) — {DECISION_SEEDS} "
+                             f"ya da + {EXTRA_SEEDS}; verilen: {_ordered(m)}")
     return {k: (m[k] if isinstance(m[k], Obs) else Obs(m[k])) for k in _ordered(m)}
 
 
@@ -248,7 +270,7 @@ def n_star(curve: list[tuple[float, float]], target: float) -> float | None:
        Bu fonksiyonun bir önceki hâli böyle bir eğride None döndürüp seed'i SANSÜRLÜYORDU — B14'ün
        "sonraki kesişime bakılır" hükmünün tersi, ve ağır: 0.0005 nat'lık tek bir sıçrama, hedefin
        0.025 nat altında biten bir koşuyu −150 puana, dolayısıyla bütün sonucu "başarısız"a
-       çeviriyordu. B14'ün kendisi uygulanıyor artık.
+       çeviriyordu. Şimdiki uygulama B14'ün yukarıdaki SIKILAŞTIRILMIŞ hâlidir.
 
     Eğrinin SON noktası hedefin üstündeyse (hedefe ulaşılmadı ya da ulaşılıp kaybedildi) None döner.
     None "bu EĞRİ hedefi kalıcı kesmiyor" demektir, "seed sansürlü" DEĞİL: sansür kararı
@@ -276,23 +298,39 @@ def resolve_n_star(curve_1x: list[tuple[float, float]], curve_2x: list[tuple[flo
     Neden fonksiyon: hangi eğrinin okunacağını ve seed'in durumunu analist seçmesin. `Obs.status`
     buradan gelir, elle doldurulmaz.
     """
+    budget = float(budget_tokens)
+    if not curve_1x or budget <= 0:
+        raise ValueError("resolve_n_star: 1x eğrisi boş ya da bütçe pozitif değil")
+    # İki eğri de konumlu argümandır; 2x koşunun eğrisi 1x yuvasına düşerse yavaş bir seed "hızlı"
+    # etiketlenir ve 4. denetimin HIGH'ı geri gelir (tur 3'te ölçüldü: N*/bütçe = 1.143, 'hızlı').
+    # Eğrinin KENDİSİ hangi koşudan geldiğini söyler: 1x koşu bütçede biter, 2x koşu onu aşar.
+    tol = 1e-9 * budget
+    if max(t for t, _ in curve_1x) > budget + tol:
+        raise ValueError(f"resolve_n_star: 1x eğrisi 1x bütçeyi ({budget:.0f} token) aşıyor — "
+                         "2x koşunun eğrisi 1x yuvasına verilmiş olabilir")
     n1 = n_star(curve_1x, target)
     if n1 is not None:
         return n1, "hızlı"
     if curve_2x is None:
         raise ValueError("1x eğrisi hedefi kalıcı kesmiyor: 2x koşu ZORUNLU (V3 adım 2), eğrisi verilmeli")
+    top2 = max(t for t, _ in curve_2x)
+    if not (budget + tol < top2 <= 2.0 * budget + tol):
+        raise ValueError(f"resolve_n_star: 2x eğrisi (1x, 2x] bütçe aralığında bitmiyor (son nokta "
+                         f"{top2:.0f}, bütçe {budget:.0f}) — 2x koşunun eğrisi bu değil")
     n2 = n_star(curve_2x, target)
     if n2 is not None:
         return n2, "yavaş"
-    return 2.0 * float(budget_tokens), "sansürlü"
+    return 2.0 * budget, "sansürlü"
 
 
-def savings(f_foton: Mapping, f_base: Mapping, status: Mapping | None = None) -> dict:
+def savings(f_foton: Mapping, f_base: Mapping, status: Mapping) -> dict:
     """Birincil istatistik: `s_i = 100 × (1 − F_foton,i / F_base,i)`, **seed KİMLİĞİNE göre**.
 
     f_foton, f_base : `dict[seed] -> FLOP`. Anahtar kümeleri AYNI olmak zorunda; eksik/fazla seed
                       sessizce atlanmaz, hata verir.
-    status          : `dict[seed] -> durum` (FOTON kolunun, `resolve_n_star`'dan); None ise hepsi "hızlı".
+    status          : `dict[seed] -> durum` (FOTON kolunun, `resolve_n_star`'dan). ZORUNLU ve varsayılanı
+                      YOK: "verilmediyse hepsi hızlı" varsayımı, sansürlü/yavaş bir seed'i sessizce
+                      sıradan gözleme çevirirdi.
 
     Döner: {"obs": dict[seed] -> Obs, "n", "mean", "sd"} — `obs` doğrudan `decide_primary()`'ye verilir.
 
@@ -307,7 +345,7 @@ def savings(f_foton: Mapping, f_base: Mapping, status: Mapping | None = None) ->
     """
     ff, fb = _keyed(f_foton, "f_foton"), _keyed(f_base, "f_base")
     _same_seeds(ff, fb, "FOTON", "baseline")
-    stat = {s: "hızlı" for s in ff} if status is None else dict(_need_mapping(status, "status"))
+    stat = dict(_need_mapping(status, "status"))
     _same_seeds(ff, stat, "FOTON", "status")
     obs = {}
     for s in ff:
@@ -388,8 +426,8 @@ def ub95(obs: Mapping) -> float:
     return arith
 
 
-def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, oracle_threshold: float = 2.0,
-            escalation_used: bool = False) -> dict:
+def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, *, escalation_used: bool,
+            oracle_threshold: float = 2.0) -> dict:
     """VAZGEÇME KOŞULU — ön-kayıttaki "Vazgeçmenin İKİ yolu" tablosunun birebir uygulaması.
 
     scale_results : `dict[ölçek] -> decide_primary()["primary1"]` (ya da `decide()` çıktısı);
@@ -398,7 +436,11 @@ def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, oracle_thres
     oracle_gain_over_null : `dict[ölçek] -> oracle kazancının null'ın üstündeki payı` (yüzde puan),
         AYNI anahtar kümesiyle. Ölçek sonuçları ile oracle kazançları KİMLİKLE eşlenir: iki paralel
         dizi S0'ın kazancını S1'in sonucuyla eşleyebilirdi (S0 = 1.5 / S1 = 2.5 iken sonuç değişir).
-    escalation_used : ölçek yükseltme hakkı kullanıldı mı (yalnızca tek ölçek yolunu etkiler)
+    escalation_used : ölçek yükseltme hakkı kullanıldı mı (yalnızca tek ölçek yolunu etkiler).
+        ZORUNLU, yalnız anahtar kelimeyle ve varsayılanı YOK: sahibin seçimi S1'den ÖNCE loglanır
+        (`scripts/owner_decision.py`) ve buraya o defterden gelir. (Konumlu üçüncü argüman eskiden
+        `oracle_threshold`'a bağlanıyordu: `abandon(res, gains, True)` eşiği 1.0 yapıp hakkı
+        "kullanılmadı" sayıyor ve terk kararını sessizce çeviriyordu.)
 
     İKİ ÖLÇEK yolu (elde 2 ölçek sonucu varsa DAİMA bu): ikisinde de `ub95 < +5`, hiçbiri "yüksek
       varyans / belirsiz" ya da "yetersiz kesinlik" değil, ve oracle kazancı her iki ölçekte < eşik.
@@ -436,9 +478,15 @@ def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, oracle_thres
                              f"n={r.get('n')}) vazgeçme kararını süremez")
     two = len(order) >= 2
     used = order[-2:]
+    if not isinstance(escalation_used, bool):
+        raise TypeError("escalation_used bool olmalı (sahibin karar defterinden)")
+    if isinstance(oracle_threshold, bool) or not isinstance(oracle_threshold, (int, float)):
+        raise TypeError("oracle_threshold sayı olmalı")
+    for k in used:
+        g = gains_in[k]
+        if isinstance(g, bool) or not isinstance(g, (int, float)) or g != g or g in (float("inf"), float("-inf")):
+            raise ValueError(f"oracle kazancı her ölçek için sonlu bir sayı olmalı: {k} -> {g!r}")
     gains = [float(gains_in[k]) for k in used]                 # oracle ölçekle KİMLİKLE eşlenir
-    if any(g != g or g in (float("inf"), float("-inf")) for g in gains):
-        raise ValueError(f"oracle kazancı her ölçek için sonlu bir sayı olmalı: {gains}")
     oracle_ok = all(g < oracle_threshold for g in gains)
     ubs = [res[k]["ub95"] for k in used]
     base = {"ub95": ubs, "oracle_ok": oracle_ok, "single_scale": not two, "scales": used,
@@ -451,7 +499,10 @@ def abandon(scale_results: Mapping, oracle_gain_over_null: Mapping, oracle_thres
                               "'hipotez ayakta' DEĞİL, 'ölçemedik' demektir"}
     else:
         r = res[used[0]]
-        if r["row"] != "başarısız":
+        if r["row"] in ("yüksek varyans / belirsiz", "yetersiz kesinlik"):
+            why.append(f"satır '{r['row']}': ölçülemedi — bu satırdan ne tek ölçekle terk ne ölçek "
+                       "yükseltme hakkı doğar ('hipotez ayakta' DEĞİL, 'ölçemedik')")
+        elif r["row"] != "başarısız":
             why.append(f"tek ölçek yolu yalnızca 'başarısız' satırından açılır (satır: '{r['row']}'); "
                        "iki ardışık ölçek sonucu gerekiyor")
         if escalation_used:
@@ -523,15 +574,15 @@ def contribution(s_x: Mapping, s_h: Mapping, mde: float = MDE_PRIMARY2,
     Aralık Holm'un İLK adımının düzeyindedir (α = .025, yani %97.5 GA) ve MDE çıtası n'den
     bağımsız SABİTTİR (1.88 puan); ikisi de ön-kayıtta pinli.
     """
-    x, h = _table(s_x, "s_x"), _table(s_h, "s_h")
-    _same_seeds(x, h, "X", "H")
-    n = len(x)
+    n = len(_need_mapping(s_x, "s_x"))
     if n < 2:
         raise ValueError("kontrast için en az 2 seed gerekir")
     if strict and n not in REQUIRED_N:
         # `decide()`'daki aynı boşluğun kopyası: bağlayıcı giriş 3 seed'den "katkı var, büyük"
         # damgası basabiliyordu.
         raise ValueError(f"bağlayıcı birincil-2 için n {REQUIRED_N} olmalı, verilen n={n}")
+    x, h = _table(s_x, "s_x", strict), _table(s_h, "s_h", strict)
+    _same_seeds(x, h, "X", "H")                # iki YÖNDE: H'nin fazla seed'i de (n=5 / n=10) hata
     seeds = list(x)
     failed = [s for s in seeds if x[s].status != "hızlı" or h[s].status != "hızlı"]
     if failed:
@@ -587,14 +638,15 @@ def decide_primary(s_x: Mapping, s_h: Mapping,
     "sonuca göre seçilebilir" diye adını koyduğu seçim.
 
     Sıra (ön-kayıttaki "Holm iki endpoint'e NASIL uygulanır" bölümünün birebir uygulaması):
-      1. iki endpoint'in iki yanlı p değerleri (birincil-2 "ölçemedik"se p₂ = 1),
+      1. iki endpoint'in iki yanlı p değerleri (birincil-2 BAŞARISIZ SEED yüzünden "ölçemedik"se
+         p₂ = 1; GA yüzünden "ölçemedik"se p₂ hesaplanan değerdir — iki hâlde de p₂ > α/2),
       2. Holm ADIM ADIM, aile büyüklüğü PİNLİ (`PRIMARY_FAMILY`): küçük p ilk adımı geçemezse durur,
       3. birincil-1 satırı `decide()`'dan; Holm'dan geçmediyse başarı satırları "belirsiz"e düşer,
       4. birincil-2 durumu `contribution()`'dan (α/2 düzeyi). "Katkı var" `p₂ < α/2` demektir ve
          Holm'un her adımından geçer; kayan nokta bıçak sırtında geçmezse muhafazakâr yöne düşürülür.
     """
-    x, h = _table(s_x, "s_x"), _table(s_h, "s_h")
-    _same_seeds(x, h, "X", "H")
+    x, h = _table(s_x, "s_x", strict), _table(s_h, "s_h", strict)
+    _same_seeds(x, h, "X", "H")                # iki YÖNDE: H'nin fazla seed'i de (n=5 / n=10) hata
     r1 = decide(x, quality_per_sec=quality_per_sec, strict=strict,
                 seed_right_available=seed_right_available)
     p1 = _p_two_sided([o.s for o in x.values()])
@@ -618,6 +670,69 @@ def decide_primary(s_x: Mapping, s_h: Mapping,
                          "holm_passed": "birincil-1" in passed},
             "primary2": {**c2, "holm_passed": "birincil-2" in passed},
             "holm": holm}
+
+
+BOUNDARY_BAND = 0.10     # 1x bütçe sınırının ±%10'u; ön-kayıtta, veri görülmeden pinlendi (TEŞHİS bandı)
+
+
+def boundary_diagnostic(s_x: Mapping, s_h: Mapping, ratio_x: Mapping, ratio_h: Mapping,
+                        quality_per_sec: float | dict[str, float] | None = None,
+                        strict: bool = True, alpha: float = 0.05,
+                        seed_right_available: bool = True) -> dict:
+    """1x SINIRI TEŞHİSİ — karar kuralı DEĞİLDİR. Bağlayıcı karar `decide_primary()`'ninkidir.
+
+    ratio_x, ratio_h : `dict[seed] -> N* / (1x referans bütçe token'ı)`, `resolve_n_star()`'ın `N*`'ından.
+
+    Ön-kayıt tek bir durum süreksizliğini bilerek kabul ediyor: 1x bütçenin hemen içinde hedefe
+    ulaşan seed sıradan gözlemdir, hemen dışında ulaşan sabit değer sayılır. Sahibin kararı:
+    kaldırma, GÖRÜNÜR yap. Bir seed'in `N*`'ı 1x bütçenin ±%10 bandına (`BOUNDARY_BAND`) düşerse,
+    kararın sınırın DİĞER tarafında ne olacağı da raporlanır: banddaki seed'lerin durumu tersine
+    çevrilir (hızlı <-> yavaş; `s_i` AYNI kalır, değişen yalnızca muameledir), hepsi birlikte, ve
+    `decide_primary()` yeniden koşulur. Sansürlü seed banda giremez (oranı 2'dir).
+
+    Durum ile oran tutarsızsa hata verir: "hızlı" ise oran <= 1 (1x eğrisi bütçede biter),
+    "sansürlü" ise oran = 2 (ikame), "yavaş" ise 0 < oran <= 2. Yavaş seed'in oranı 1'in biraz
+    ALTINDA olabilir: durum "hangi eğri kesti"ye göre atanır ve zorunlu 2x koşu ayrı bir koşudur,
+    yeniden koşum gürültüsü içinde 1x bütçeden önce kesebilir (tur 3 denetimi, L2). O seed de
+    banddadır ve raporlanır. Bu denetim, durumun elle değil `resolve_n_star()` ile atandığının
+    mekanik kontrolüdür.
+    """
+    x, h = _table(s_x, "s_x", strict), _table(s_h, "s_h", strict)
+    rx, rh = _keyed(ratio_x, "ratio_x"), _keyed(ratio_h, "ratio_h")
+    _same_seeds(x, rx, "X", "ratio_x")
+    _same_seeds(h, rh, "H", "ratio_h")
+    for arm, tab, rat in (("X", x, rx), ("H", h, rh)):
+        for s, o in tab.items():
+            ok = (rat[s] <= 1.0 if o.status == "hızlı" else
+                  0.0 < rat[s] <= 2.0 if o.status == "yavaş" else rat[s] == 2.0)
+            if not ok:
+                raise ValueError(f"{arm} seed {s}: durum {o.status!r} ile N*/bütçe = {rat[s]:.4f} tutarsız "
+                                 "(durum `resolve_n_star()`'dan gelmeli)")
+    lo_, hi_ = 1.0 - BOUNDARY_BAND, 1.0 + BOUNDARY_BAND
+
+    def in_band(tab, rat):
+        return [s for s, o in tab.items() if o.status != "sansürlü" and lo_ <= rat[s] <= hi_]
+
+    def flipped(tab, seeds):
+        return {s: (Obs(o.s, "yavaş" if o.status == "hızlı" else "hızlı") if s in seeds else o)
+                for s, o in tab.items()}
+
+    bx, bh = in_band(x, rx), in_band(h, rh)
+    kw = dict(quality_per_sec=quality_per_sec, strict=strict, alpha=alpha,
+              seed_right_available=seed_right_available)
+    actual = decide_primary(x, h, **kw)
+    out = {"band": BOUNDARY_BAND, "in_band": {"X": bx, "H": bh},
+           "actual": {"row": actual["primary1"]["row"], "state": actual["primary2"]["state"],
+                      "ub95": actual["primary1"]["ub95"]},
+           "counterfactual": None, "changes": False,
+           "note": "TEŞHİS: bağlayıcı karar mekanik durum atamasından çıkandır (`actual`)"}
+    if bx or bh:
+        cf = decide_primary(flipped(x, set(bx)), flipped(h, set(bh)), **kw)
+        out["counterfactual"] = {"row": cf["primary1"]["row"], "state": cf["primary2"]["state"],
+                                 "ub95": cf["primary1"]["ub95"]}
+        out["changes"] = (out["counterfactual"]["row"] != out["actual"]["row"]
+                          or out["counterfactual"]["state"] != out["actual"]["state"])
+    return out
 
 
 def reachability(fires, mu: float, sigma: float, n: int, sims: int = 100_000,
@@ -677,8 +792,8 @@ def multiplicity(tests: list[tuple[str, float]], alpha: float = 0.05,
 
 # Karar tablosu satır adları — rapor bunlardan birini BİREBİR yazmak zorunda.
 #
-# "yetersiz kesinlik" TERMİNAL satırdır ve n = max(REQUIRED_N)'de kesinlik ölçütü yine tetiklenirse
-# döner. Ayrı bir ad olması şart: B3 ikinci bir seed artırma hakkı vermiyor, dolayısıyla o noktada
+# "yetersiz kesinlik" TERMİNAL satırdır: kesinlik ölçütü n = max(REQUIRED_N)'de YA DA tek seed artırma
+# hakkı bu kampanyada zaten harcanmışken (S0'da kullanıldıysa S1'de n = 5'te) tetiklenirse döner. Ayrı bir ad olması şart: B3 ikinci bir seed artırma hakkı vermiyor, dolayısıyla o noktada
 # "yüksek varyans / belirsiz" döndürmek raporu OLMAYAN bir çareye ("seed 10'a çıkar") yönlendirirdi.
 # "nötr"den ayrımı da kritik: nötr, etkinin sıfıra yakın olduğunu ÖLÇTÜĞÜMÜZ durumdur; yetersiz
 # kesinlik, ölçemediğimiz durumdur.
@@ -708,7 +823,7 @@ def _wbar(quality_per_sec) -> tuple[dict[str, float] | None, float | None]:
             # Alakasız bir anahtar `min()` üzerinden meşru bir "güçlü başarı"yı düşürüyordu:
             # {"M":+1,"D":+1,"Z":−1} -> "başarılı". Anahtar kümesi kapalı.
             raise ValueError(f"quality_per_sec anahtarları {WBAR_KEYS} olmalı, fazlası: {sorted(extra)}")
-        wmap = {k: float(v) for k, v in quality_per_sec.items()}
+        wmap = {k: float(quality_per_sec[k]) for k in WBAR_KEYS if k in quality_per_sec}   # kanonik sıra
     else:
         wmap = {"?": float(quality_per_sec)}
     # NaN/inf REDDEDİLİR: `min()` NaN'la sıra-bağımlıdır ({"M": nan, "D": 1} -> nan, {"D": 1,
@@ -752,10 +867,7 @@ def decide(obs: Mapping, quality_per_sec: float | dict[str, float] | None = None
     Döner: {"row", "mean", "sd", "sd_fast", "ci95", "ci95_fast", "ub95", "n", "n_censored",
             "n_slow", "seeds", "notes", "determinate", "strict", "seed_right_available", "w_bar"}
     """
-    tab = _table(obs, "obs")
-    seeds = list(tab)
-    vals = [o.s for o in tab.values()]
-    n = len(vals)
+    n = len(_need_mapping(obs, "obs"))
     if n < 2:
         raise ValueError("karar için en az 2 seed gerekir")
     # Kilit cümle BEŞ eşleştirilmiş seed istiyor, `decide()` ise iki seed'le "başarılı" damgası
@@ -764,6 +876,9 @@ def decide(obs: Mapping, quality_per_sec: float | dict[str, float] | None = None
     if strict and n not in REQUIRED_N:
         raise ValueError(f"bağlayıcı karar için n {REQUIRED_N} olmalı, verilen n={n}. "
                          f"Keşifsel kullanım için strict=False (başarı satırları bloklanır).")
+    tab = _table(obs, "obs", strict)          # bağlayıcı modda: ön-kayıtlı seed'ler + AÇIK durum
+    seeds = list(tab)
+    vals = [o.s for o in tab.values()]
     n_cens = sum(o.status == "sansürlü" for o in tab.values())
     n_slow = sum(o.status == "yavaş" for o in tab.values())
     wmap, wmin = _wbar(quality_per_sec)          # doğrulama HER dönüş yolundan önce
@@ -771,7 +886,7 @@ def decide(obs: Mapping, quality_per_sec: float | dict[str, float] | None = None
     sd = st.stdev(vals)
     fast = [o.s for o in tab.values() if o.status == "hızlı"]
     ub = ub95(tab)
-    res = {"mean": mean, "sd": sd, "sd_fast": st.stdev(fast) if len(fast) > 1 else float("nan"),
+    res = {"mean": mean, "sd": sd, "sd_fast": st.stdev(fast) if len(fast) > 1 else None,   # None: NaN JSON'a yazılamaz
            "n": n, "n_censored": n_cens, "n_slow": n_slow, "seeds": seeds, "ci95": [lo, hi],
            "ub95": ub, "strict": strict, "seed_right_available": seed_right_available, "w_bar": wmap}
     if len(fast) >= 2:
