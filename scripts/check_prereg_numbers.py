@@ -54,7 +54,10 @@ FORBIDDEN = {
     "26.79 dk": [],
     "22.58 dk": [],
     "%51.04": ["süre artışı"],     # süre artışı olarak meşru, tok/s olarak değil
-    "%33.79": [],                  # ilk kümenin tok/s düşüşü
+    # Bir ondalıklı biçim de yasak: belge "%33.8" yazıyordu ve iki ondalıklı deseni
+    # arayan ilk hâl onu kaçırdı — denetlediği hata sınıfının aynısı.
+    "%33.79": [], "%33.8": [],     # ilk kümenin tok/s düşüşü
+    "%51.0": ["süre artışı"], "%30.4": ["oturum", "1 |"],
     "13 test": [],                 # eski test sayımı
     "1 + 2 + 10": [],
     "MDE'si ≈ **+1.5": [],
@@ -140,10 +143,26 @@ def main() -> None:
         m = re.match(r"\s*([+-][\d.]+)%\s+(\d+)\s+([\d.]+)%", line)
         if m and block is not None:
             cells[(m.group(1), block, int(m.group(2)))] = float(m.group(3))
-    for (mu, sd, n), v in sorted(cells.items()):
-        if sd in (0.88, 3.0, 5.0) and mu in ("+5.0", "+7.0", "+10.0"):
-            token = f"%{v:.1f}"
-            check(token in text, f"güç hücresi sd={sd} n={n} μ={mu}% -> {token} metinde")
+    # V9 tablosunun BÜTÜN satırları denetlenir. İlk hâl `mu in ("+5.0","+7.0","+10.0")` ile
+    # sınırlıydı — yani tam olarak güncellenmiş satırlara bakıyordu ve `0%` / `+2%` satırlarında
+    # kalan beş eski hücreyi yapısal olarak göremiyordu. Bir denetim betiği, denetlediği hatanın
+    # bulunduğu yere bakmıyorsa denetim değildir.
+    #
+    # Ayrıca `token in text` yerine SATIRIN TAMAMI karşılaştırılıyor: bir yüzdenin belgenin
+    # herhangi bir yerinde geçmesi o hücrenin doğru olduğunu göstermez.
+    tbl = [l for l in lines if l.startswith("| 0%") or l.startswith("| +2%")
+           or l.startswith("| **+5%**") or l.startswith("| +7%") or l.startswith("| +10%")]
+    check(len(tbl) == 5, f"V9 güç tablosunun 5 satırı bulundu (bulunan: {len(tbl)})")
+    label = {"+0.0": "| 0%", "+2.0": "| +2%", "+5.0": "| **+5%**", "+7.0": "| +7%", "+10.0": "| +10%"}
+    for mu, pref in label.items():
+        row = next((l for l in tbl if l.startswith(pref)), None)
+        if row is None:
+            bad.append(f"V9 tablosunda {pref} satırı yok")
+            continue
+        got = [c.strip().strip("*") for c in row.split("|")[2:-1]]
+        want = [f"%{cells[(mu, sd, n)]:.1f}" for sd in (0.88, 3.0, 5.0) for n in (5, 10)]
+        check(got == want, f"V9 satırı {pref}: {len(want)} hücre calibration.log ile aynı"
+                           + ("" if got == want else f" (belge {got} != log {want})"))
 
     # ---- 6) çiviler ----------------------------------------------------------------------------
     print("\n## 6. Metindeki SHA-256'lar diskle uyuşuyor mu?")

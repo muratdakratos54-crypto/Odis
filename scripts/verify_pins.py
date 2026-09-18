@@ -84,7 +84,11 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 MANIFEST = "experiments/foton-v02-prereg/pins.json"
 PREREG = "PREREGISTRATION_V02.md"
 DATA_DIR = "data/foton"
-RUNS_DIR = "checkpoints/foton-v02"
+# `L*`'in kanıt zinciri İKİNCİ koşu kümesidir (maskeli ölçütle yeniden koşuldu, bkz. Sapmalar/S2).
+# Varsayılan ilk kümeyi gösterirse `--verify` tek başına "30 ÇİVİSİZ / DOĞRULAMA BAŞARISIZ" diyor
+# ve bu bir YANLIŞ ALARM: manifest doğru, bakılan dizin yanlış. Yanlış alarm veren bir doğrulayıcı,
+# insanı doğrulamaya güvenmemeye alıştırdığı için hiç olmamasından kötüdür.
+RUNS_DIR = "checkpoints/foton-v02r"
 SCHEMA = "foton-v02-pins/1"
 
 SEEDS = (11, 22, 33, 44, 55)                  # ön-kaydın 5 karar seed'i

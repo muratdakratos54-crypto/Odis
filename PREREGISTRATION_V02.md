@@ -490,9 +490,14 @@ tabloda karşılığı olmayan bir bölgeye düşüyordu; V12'nin sayısal sına
 NEGATİFE dönmesiyle yakaladı (n=10, gerçek katkı +1.0 puanda −%11.6). Dört durumun tükettiği
 `scripts/rule_reachability.py` içinde assertion olarak kilitli.
 
-Ölçülen dağılım (gerçek katkı = 0, n=5): "MDE kadar değil" %73.0, **"ölçemedik" %24.6**,
-"var" %2.4. n=10'da "ölçemedik" %0.6'ya düşüyor. Yani **"ölçemedik" en olası tek sonuç değil**
-ama dörtte bire yakın ve bu baştan kabul edilmiştir. `src/stats.decide()` birincil-2'ye
+Ölçülen dağılım (gerçek katkı = 0, n=5, **Holm'un kendi düzeyinde α=.025**): "MDE kadar değil"
+%55.9, **"ölçemedik" %42.8**, "var" %1.2. n=10'da "ölçemedik" %2.2'ye düşüyor.
+
+**DÜZELTME:** bu satırın ilk hâli %24.6 yazıyordu, ama o sayı α=.05 aralıklarıyla üretilmişti —
+oysa kuralın kendisi (ve MDE'nin türetimi) Holm'un ilk adımındaki α=.025'i söylüyor. Kuralı kendi
+düzeyinde taramamak, başka bir kuralı sınamaktır: gerçek "ölçemedik" payı **1.7 kat** daha yüksek.
+Yani n=5'te en olası tek sonuç "MDE kadar değil", ama **"ölçemedik" %42.8** ile ondan sonra
+geliyor ve bu baştan kabul edilmiştir. `src/stats.decide()` birincil-2'ye
 **uygulanmaz** (eşikleri tasarruf için kalibre edilmiştir); uygulanan `src/stats.ci95()` ve
 yukarıdaki dört durumdur.
 
@@ -631,7 +636,7 @@ Dört bağlayıcı sonuç:
    notu ancak **FLOP kazancının GA'sı tamamen sıfırın üstündeyken** verir; `s̄ = +0.46` gibi
    GA'sı sıfırı kesen bir farkta "çelişki kuralı UYGULANMAZ" notu yazılır.
 3. **`w̄ > 0` şartı bu deneyde FOTON'un LEHİNE kolaydır ve bu bir zayıflıktır — kayda geçiyor.**
-   `w̄`'nin baseline'ı M'dir, ve M bu kartta **kendi başına** D'den token başına %33.8 yavaştır
+   `w̄`'nin baseline'ı M'dir, ve M bu kartta **kendi başına** D'den token başına **%27.9** yavaştır
    (16 expert'in AdamW state'i + dispatch). FOTON kollarında ne 16 expert ne o dispatch var.
    Dolayısıyla `w̄ > 0`, FOTON'un kendi hız katkısı olmadan da sağlanabilir — bu, v01 EK1-B16'nın
    aynı kolda bulduğu sorundur ("baseline'ın v3'ün en yavaş kolu olduğunu anmıyordu"). Bu yüzden:
@@ -658,8 +663,10 @@ Dört bağlayıcı sonuç:
   < -%2, GA çoğunlukla negatif ................ başarısız
 ```
 
-Bu beş satıra bir altıncısı eşlik eder: **"yüksek varyans / belirsiz"** (aşağıdaki kesinlik ölçütü).
-Tam liste `src/stats.ROWS`'ta ve **karar tablosunda olmayan hiçbir ifade sonuç beyanı değildir.**
+Bu beş satıra İKİsi daha eşlik eder: **"yüksek varyans / belirsiz"** (kesinlik ölçütü, çaresi
+seed artırmak) ve **"yetersiz kesinlik"** (aynı ölçüt n = 10'da yine çözemezse; TERMİNAL, çaresi
+yok). Tam liste `src/stats.ROWS` — **yedi** satır — ve **karar tablosunda olmayan hiçbir ifade
+sonuç beyanı değildir.**
 
 **ÖNCELİK TABLOSU (v01 O5, buraya BİREBİR yeniden basılıyor).** Yukarıdaki beş satır tek başına
 okunduğunda örtüşüyor ve v01'de bu bir amendment gerektirmişti; v02 "çelişki hâlinde bu dosya
@@ -668,7 +675,8 @@ geçerlidir" dediği için öncelik kuralının burada yazılı olması **zorunl
 | sıra | koşul | satır |
 |---|---|---|
 | 0 | ≥ 2 FOTON seed'i `L*`'e ulaşmadı (sansür) | **başarısız** |
-| 1 | GA başarı eşiğini çözemiyor (kesinlik ölçütü, aşağıda) | **yüksek varyans / belirsiz** |
+| 1a | GA başarı eşiğini çözemiyor (kesinlik ölçütü) ve `n < 10` | **yüksek varyans / belirsiz** |
+| 1b | aynı, ama `n = 10` (azami seed) | **yetersiz kesinlik** (terminal) |
 | 2 | `s̄ ≥ 10` ve GA alt > 0 ve `w̄(M) > 0` ve `w̄(D) > 0` | **güçlü başarı** |
 | 3 | `s̄ ≥ 5` ve GA alt > 0 | **başarılı** |
 | 4 | `s̄ > 2` ve (GA sıfırı kesiyor ya da `s̄ < 5`) | **belirsiz** |
@@ -707,7 +715,8 @@ artırma hakkı vermiyor, ölçek yükseltmesi de bu durumun çaresi değil (sor
 Rapor şunu yazar: *"etki, başarı eşiğinin bu deneyin kesinliğiyle ayırt edilemeyeceği kadar yakınında;
 ne kurulmuş ne dışlanmıştır."* Bu, gerçek etki tam eşikteyken **beklenen** sonuçtur: ölçülen σ=0.88'de
 μ=+%5 iken kesinlik ölçütü n=5'te %47.7, n=10'da %47.6 tetikleniyor — eşikte belirsizlik içseldir,
-seed artırmak onu kaldırmaz. Eşiğin ÜSTÜNDE (μ=+%7, σ=3.0) ise çare çalışıyor: %90.2 → %97.9.
+seed artırmak onu kaldırmaz. Eşiğin ÜSTÜNDE (μ=+%7) ise çare çalışıyor: σ=3.0'da %91.6 → %98.2,
+σ=5.0'da %61.7 → %89.5 (V9 tablosu).
 "Nötr"den ayrımı kritik: nötr, etkinin sıfıra yakın olduğunu ölçtüğümüz durumdur; yetersiz kesinlik,
 ölçemediğimiz durumdur.
 
@@ -1190,20 +1199,24 @@ dahil**). Hücreler "başarılı + güçlü başarı" oranı:
 
 | gerçek etki | sd=0.88, n=5 | sd=0.88, n=10 | sd=3.0, n=5 | sd=3.0, n=10 | sd=5.0, n=5 | sd=5.0, n=10 |
 |---|---|---|---|---|---|---|
-| 0% | %0.0 | %0.0 | %0.0 | %0.0 | %0.6 | %0.0 |
-| +2% | %0.0 | %0.0 | %1.3 | %0.1 | %5.5 | %1.9 |
+| 0% | %0.0 | %0.0 | %0.0 | %0.0 | %0.7 | %0.1 |
+| +2% | %0.0 | %0.0 | %1.2 | %0.1 | %4.9 | %2.8 |
 | **+5%** | **%49.8** | %49.9 | %47.7 | %50.1 | %32.6 | %49.5 |
-| +7% | **%100** | %100 | %91.6 | **%98.2** | %61.7 | **%89.5** |
-| +10% | %100 | %100 | %100 | %100 | %90.6 | %99.9 |
+| +7% | **%100.0** | %100.0 | %91.6 | **%98.2** | %61.7 | **%89.5** |
+| +10% | %100.0 | %100.0 | %100.0 | %100.0 | %90.6 | %99.9 |
 
-**DÜZELTME, kayda geçiyor.** Bu tablonun ilk hâli **kaldırılmış** mutlak sd tripwire'ının (`sd > 5`)
-sayılarını taşıyordu: `scripts/calibrate_v02.py` bir kez eski kuralla koşulmuş, tablo o çıktıdan
+**DÜZELTME, İKİ KEZ, kayda geçiyor.** Bu tablonun ilk hâli **kaldırılmış** mutlak sd tripwire'ının
+(`sd > 5`) sayılarını taşıyordu: `scripts/calibrate_v02.py` bir kez eski kuralla koşulmuş, tablo o çıktıdan
 yazılmış, betik sonra kesinlik ölçütüne çevrilmiş ama tablo güncellenmemişti. Fark kötümser
 sütunlarda büyük — sd=5.0'da +%7 için %46.4 yerine **%61.7**, +%10 için %58.4 yerine **%90.6**
 (32.2 puan). Yön FOTON'un lehine, yani hata gücü **az** gösteriyordu; yine de dondurulmuş bir
-belgede kaldırılmış bir kuralın sayılarının durması kabul edilemez. Yukarıdaki değerler
-`experiments/foton-v02-prereg/calibration.log` ile hücre hücre aynıdır ve
-`rule_reachability.py --crosscheck` vektörize kuralı `decide()` yoluna karşı doğruluyor.
+belgede kaldırılmış bir kuralın sayılarının durması kabul edilemez. İlk düzeltmede yalnızca `+5/+7/+10` satırları güncellendi ve `0%` ile `+2%` satırlarında **beş
+hücre** eski kuralın sayılarıyla kaldı (`%0.6` yerine `%0.7`, `%1.9` yerine `%2.8` gibi; en büyük
+sapma 0.9 puan). İkinci denetim bunu buldu; artık **otuz hücrenin tamamı**
+`experiments/foton-v02-prereg/calibration.log` ile aynıdır ve `scripts/check_prereg_numbers.py`
+bunu satır/sütun ayrımı yapmadan **hepsi için** denetliyor (ilk hâli yalnızca güncellenen üç satıra
+bakıyordu, yani hatayı yapısal olarak göremiyordu). `rule_reachability.py --crosscheck` ayrıca
+vektörize kuralı `decide()` yoluna karşı doğruluyor (fark 0.00 puan).
 
 GA yarı-genişliği: n=5'te **1.03 puan**, n=10'da 0.61 puan (Monte Carlo ortalaması). Ölçülen sd'nin
 ima ettiği tam değer `t(4)·0.88/√5` = **1.09 puan**; tabloda 1.03 çıkıyor çünkü örnek sd'si yanlıdır

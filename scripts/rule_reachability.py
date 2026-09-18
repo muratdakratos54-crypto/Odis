@@ -33,7 +33,10 @@ import numpy as np
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT)
-from src.stats import SUCCESS, abandon, decide, reachability, t_crit  # noqa: E402
+from src.stats import (  # noqa: E402
+    MDE_PRIMARY2, PRIMARY_FAMILY, SUCCESS, abandon, contribution, decide, reachability,
+    t_crit, t_crit_alpha,
+)
 
 SIGMAS = (0.75, 1.5, 1.72, 3.0, 4.28, 5.0, 6.0)
 out: list[str] = []
@@ -44,12 +47,16 @@ def say(s: str = "") -> None:
     out.append(s)
 
 
-def draw(mu: float, sd: float, n: int, sims: int, seed: int = 0):
-    """(ortalama, GA alt, GA üst, örnek sd) — sims x n örnekten, vektörize."""
+def draw(mu: float, sd: float, n: int, sims: int, seed: int = 0, alpha: float = 0.05):
+    """(ortalama, GA alt, GA üst, örnek sd) — sims x n örnekten, vektörize.
+
+    `alpha`: GA düzeyi. Birincil-2'nin kuralı Holm'un ilk adımında (α=.025) tanımlı olduğu için
+    o bölüm .025 veriyor; karar tablosu ve vazgeçme kuralı .05'te kalıyor (tek birincil test
+    değil, aile düzeltmesi birincil-1'e Holm üzerinden uygulanıyor)."""
     x = np.random.default_rng(seed).normal(mu, sd, size=(sims, n))
     m = x.mean(axis=1)
     s = x.std(axis=1, ddof=1)
-    h = t_crit(n - 1) * s / math.sqrt(n)
+    h = (t_crit(n - 1) if alpha == 0.05 else t_crit_alpha(n - 1, alpha)) * s / math.sqrt(n)
     return m, m - h, m + h, s
 
 
@@ -153,30 +160,54 @@ def main() -> None:
     say("  ve tek bir sansürlü seed (2x bütçe ikamesiyle ~−150 puan) o GA'yı ±80 puana şişiriyordu,")
     say("  yani kural sansürlü HER senaryoda ulaşılamaz hâle geliyordu. Bu sınav onu göremiyordu")
     say("  çünkü yalnızca Gauss örnekleri çiziyordu. Artık sansür de taranıyor.")
-    say(f"  {'senaryo':44s} {'satır':>22s} {'GA üst (tam)':>13s} {'GA üst (sansürsüz)':>19s} {'terk':>6s}")
+    say("  'tek' = TEK ölçekte terk (v01 B10 yolu: yalnızca 'başarısız' satırından);")
+    say("  'iki' = iki ardışık ölçekte eşdeğerlik testiyle terk.")
+    say(f"  {'senaryo':40s} {'satır':>22s} {'GA üst tam':>11s} {'GA üst sans.':>13s} {'tek':>5s} {'iki':>5s}")
     CENS = -149.82                                    # 2x bütçe ikamesinin puan karşılığı
     scen = [
-        ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [False] * 4 + [True]),
-        ("4 x +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [False] * 4 + [True]),
-        ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [False] * 3 + [True] * 2),
-        ("sansür yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [False] * 5),
-        ("sansür yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [False] * 5),
+        # (etiket, s_i, sansür maskesi, tek ölçekte terk?, iki ölçekte terk?)
+        ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [False] * 4 + [True], True, True),
+        # Bu iki satır bir REGRESYONU kilitliyor: satır sansür ikamesi yüzünden "başarısız" ama
+        # sansürsüz seed'ler +%7 / +%30 tasarruf ediyor. HİÇBİR yolda terk EDİLMEMELİ.
+        ("4 x +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [False] * 4 + [True], False, False),
+        ("4 x +%30 + 1 sansür", [30.0, 30.1, 29.9, 30.05, CENS], [False] * 4 + [True], False, False),
+        ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [False] * 3 + [True] * 2, True, True),
+        # "nötr" satırı B10'un tek-ölçek yoluna GİRMEZ (o yol yalnızca "başarısız"tan): tek
+        # ölçekte terk edilemez, iki ölçekte eşdeğerlik testiyle edilebilir.
+        ("sansür yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [False] * 5, False, True),
+        ("sansür yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [False] * 5, True, True),
     ]
-    for label, s_i, mask in scen:
+    for label, s_i, mask, exp1, exp2 in scen:
         r = decide(s_i, quality_per_sec={"M": -1.0, "D": -1.0}, censored_mask=mask)
         unc = r.get("ci95_uncensored")
-        res = abandon([r, r], oracle_gain_over_null=0.5)
-        say(f"  {label:44s} {r['row']:>22s} {r['ci95'][1]:13.2f} "
-            f"{(f'{unc[1]:.2f}' if unc else '—'):>19s} {('EVET' if res['abandon'] else 'hayır'):>6s}")
-    say("  Beklenen: dört senaryoda da terk EDİLEBİLİR olmalı (başabaş ve negatif sonuçlar),")
-    say("  ve bunu sansürün varlığı engellememeli. Tek istisna: oracle headroom'u olan durumlar.")
+        r1 = abandon([r], oracle_gain_over_null=0.5, escalation_used=False)
+        r2 = abandon([r, r], oracle_gain_over_null=0.5, escalation_used=True)
+        say(f"  {label:40s} {r['row']:>22s} {r['ci95'][1]:11.2f} "
+            f"{(f'{unc[1]:.2f}' if unc else '—'):>13s} "
+            f"{('EVET' if r1['abandon'] else 'hayır'):>5s} {('EVET' if r2['abandon'] else 'hayır'):>5s}")
+        assert r1["abandon"] is exp1, f"{label} tek ölçek: {r1['abandon']} != {exp1} — {r1['reason'][:110]}"
+        assert r2["abandon"] is exp2, f"{label} iki ölçek: {r2['abandon']} != {exp2} — {r2['reason'][:110]}"
+    # Oracle headroom'u HER yolda bağlayıcı:
+    rb = decide([-8.0, -8.1, -7.9, -8.05, -7.95], quality_per_sec={"M": -1.0, "D": -1.0})
+    assert abandon([rb], oracle_gain_over_null=5.0)["abandon"] is False, "oracle tek ölçekte bağlamıyor"
+    assert abandon([rb, rb], oracle_gain_over_null=5.0, escalation_used=True)["abandon"] is False,         "oracle iki ölçekte bağlamıyor"
+    say("  oracle headroom'u (5.0 >= 2.0) hem tek hem iki ölçek yolunda terk etmeyi ENGELLİYOR — OK")
+    say("  BEKLENEN, assertion olarak: başabaş ve negatif senaryolar terk EDİLEBİLİR olmalı,")
+    say("  KUVVETLİ POZİTİF senaryolar ise sansür yüzünden 'başarısız' satırına düşseler bile")
+    say("  terk EDİLEMEZ olmalı. İlk hâlde bu yalnızca düzyazıydı ve tarama, +%7 senaryosunun")
+    say("  terk edildiğini YAZIP geçiyordu — defect'i gösterip yakalamayan bir sınav.")
 
     # ---- BİRİNCİL-2'nin eşdeğerlik kuralı ----------------------------------------------------
     say("\n## BİRİNCİL-2'nin (X↔H) eşdeğerlik kuralı — V12 bunu da taramak zorunda")
     say("  Kural: 'katkı yok' ancak farkın GA'sının TAMAMI MDE'nin altındaysa yazılabilir.")
     sdd = 0.88 * math.sqrt(2 * (1 - 0.07))            # kollar arası rho = +0.07
-    mde = 1.88                                        # Holm ilk adımı alpha=.025, n=5
-    say(f"  fark sd'si {sdd:.2f} puan | MDE {mde} puan")
+    mde = MDE_PRIMARY2
+    a2 = 0.05 / PRIMARY_FAMILY                        # Holm'un İLK adımı
+    say(f"  fark sd'si {sdd:.2f} puan | MDE {mde} puan | GA düzeyi α={a2} (Holm ilk adımı)")
+    say("  DÜZELTME: bu taramanın ilk hâli α=.05 aralıkları kullanıyordu, oysa kural (ve MDE'nin")
+    say("  türetimi) Holm'un ilk adımındaki α=.025'i söylüyor. Sonuç: 'ölçemedik' payı gerçek")
+    say("  katkı sıfırken n=5'te %24.6 değil %42.8 — 1.7 kat. Kuralı taramak, kuralın KENDİ")
+    say("  düzeyinde taramak demek; yoksa sınav başka bir kuralı sınıyor.")
     say("  Dört durum, BİRBİRİNİ DIŞLAYAN ve TÜKETEN. Sınav bu bölümü yazarken kendi kuralımdaki")
     say("  bir hatayı buldu: ilk hâl üç durum tanımlıyordu ve 'katkı var' (lo>0) ile 'katkı yok'")
     say("  (hi<MDE) birbirini dışlamıyordu — ikisi birden doğru olabilir ve o, mümkün olan EN")
@@ -185,7 +216,7 @@ def main() -> None:
     say(f"  {'gerçek X−H':>11s} {'n':>3s} {'var,büyük':>10s} {'var,küçük':>10s} {'yok/sıfır':>10s} {'ölçemedik':>10s}")
     for mu in (0.0, 0.5, 1.0, 1.88, 3.0):
         for n in (5, 10):
-            m, lo, hi, _ = draw(mu, sdd, n, args.sims, seed=11)
+            m, lo, hi, _ = draw(mu, sdd, n, args.sims, seed=11, alpha=a2)
             real, small = lo > 0, hi < mde
             cells = [(real & ~small).mean(), (real & small).mean(),
                      (~real & small).mean(), (~real & ~small).mean()]

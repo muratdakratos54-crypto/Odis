@@ -41,6 +41,12 @@ def _write(path, data: bytes) -> None:
     path.write_bytes(data)
 
 
+# Koşu dizini modülün kendi sabitinden gelir: kanıt zinciri hangi kümeye işaret ediyorsa
+# (`checkpoints/foton-v02r`, bkz. Sapmalar/S2) testler de orayı kursun. Sabit yazmak, varsayılan
+# değiştiğinde 13 testin birden kırılmasına yol açtı.
+RUNS = os.path.join(*vp.RUNS_DIR.split("/"))
+
+
 @pytest.fixture
 def tree(tmp_path):
     """Gerçek düzenin sahtesi: 9 korpus dosyası + 10 koşu × 3 kanıt dosyası.
@@ -52,7 +58,7 @@ def tree(tmp_path):
         _write(tmp_path / "data" / "foton" / name, f"icerik:{name}".encode())
     for arm in vp.ARMS:
         for seed in vp.SEEDS:
-            d = tmp_path / "checkpoints" / "foton-v02" / f"baseline-{arm}-s{seed}"
+            d = tmp_path / RUNS / f"baseline-{arm}-s{seed}"
             lines = [json.dumps({"type": "val", "step": s, "tokens": s * 32768,
                                  "val_loss": 3.0 + seed / 1000 + s / 1_000_000})
                      for s in (0, vp.STEP80, 4375)]
@@ -99,7 +105,7 @@ def test_manifest_covers_every_expected_file(tree):
     for arm in vp.ARMS:
         for seed in vp.SEEDS:
             for fname in vp.RUN_FILES:
-                assert f"checkpoints/foton-v02/baseline-{arm}-s{seed}/{fname}" in paths
+                assert f"{vp.RUNS_DIR}/baseline-{arm}-s{seed}/{fname}" in paths
 
 
 def test_metrics_note_carries_the_measured_value(tree):
@@ -139,20 +145,20 @@ def test_verify_fails_and_names_the_mutated_file(tree, capsys):
 def test_verify_fails_on_truncation_as_size_mismatch(tree, capsys):
     """Kırpılan dosya hem hash hem boyut olarak sapar; rapor boyutu ayrıca söyler."""
     assert _gen(tree) == 0
-    (tree / "checkpoints" / "foton-v02" / "baseline-d-s44" / "metrics.jsonl").write_bytes(b"{}")
+    (tree / RUNS / "baseline-d-s44" / "metrics.jsonl").write_bytes(b"{}")
     assert _ver(tree) == 1
     out = capsys.readouterr().out
-    assert "FAIL  checkpoints/foton-v02/baseline-d-s44/metrics.jsonl" in out
+    assert f"FAIL  {vp.RUNS_DIR}/baseline-d-s44/metrics.jsonl" in out
     assert "boyut farklı" in out
 
 
 def test_verify_fails_when_a_file_is_missing(tree, capsys):
     """Silinen dosya EKSİK olarak raporlanır — sessizce atlanmaz (manifest 39 dosya iddia ediyor)."""
     assert _gen(tree) == 0
-    os.remove(tree / "checkpoints" / "foton-v02" / "baseline-m-s33" / "metrics.jsonl")
+    os.remove(tree / RUNS / "baseline-m-s33" / "metrics.jsonl")
     assert _ver(tree) == 1
     out = capsys.readouterr().out
-    assert "EKSİK checkpoints/foton-v02/baseline-m-s33/metrics.jsonl" in out
+    assert f"EKSİK {vp.RUNS_DIR}/baseline-m-s33/metrics.jsonl" in out
     assert "dosya yok" in out
     assert "38 PASS, 0 FAIL, 1 EKSİK" in out
 
@@ -193,7 +199,7 @@ def test_generate_records_missing_files_instead_of_shrinking(tree, capsys):
 def test_verify_flags_an_unpinned_baseline_run(tree, capsys):
     """Diskte çivilenmemiş 11. koşu varsa doğrulama başarısız: kanıt zinciri sessizce büyümesin."""
     assert _gen(tree) == 0
-    extra = tree / "checkpoints" / "foton-v02" / "baseline-m-s66"
+    extra = tree / RUNS / "baseline-m-s66"
     for fname in vp.RUN_FILES:
         _write(extra / fname, b"{}")
     assert _ver(tree) == 1
@@ -245,7 +251,7 @@ def test_verify_fails_when_an_entry_is_edited_out_of_the_manifest(tree, capsys):
     türetildiği seed 11 eğrisini kanıt zincirinden çıkarmak yakalanıyor.
     """
     assert _gen(tree) == 0
-    victim = "checkpoints/foton-v02/baseline-m-s11/metrics.jsonl"
+    victim = f"{vp.RUNS_DIR}/baseline-m-s11/metrics.jsonl"
     man = _manifest(tree)
     man["files"] = [e for e in man["files"] if e["path"] != victim]
     man["counts"] = {"pinned": 38, "missing": 0, "expected": 38}     # sayaçlar da "tutarlı" yapıldı

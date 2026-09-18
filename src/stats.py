@@ -27,6 +27,11 @@ STRONG = 10.0           # puan; "güçlü başarı" eşiği
 SUCCESS = 5.0           # puan; "başarılı" eşiği
 NEUTRAL = 2.0           # puan; "nötr" bandının yarısı
 REQUIRED_N = (5, 10)    # bağlayıcı karar yalnızca 5 ya da 10 eşleştirilmiş seed'le verilir
+# "güçlü başarı" için w̄'nin ölçülmüş olması GEREKEN baseline'lar. İkisi de olmadan o satır
+# erişilemez: ön-kayıt `w̄(M) > 0` VE `w̄(D) > 0` istiyor, çünkü M bu kartta kendi başına D'den
+# token başına %27.9 yavaştır ve yalnızca M'e karşı bir hız kazancı FOTON'un katkısı olmadan da
+# sağlanabilir (v01 EK1-B16'nın aynı kolda bulduğu sorun).
+WBAR_KEYS = ("M", "D")
 CI_EPS = 1e-9           # GA sınırı sıfıra kayan nokta hassasiyetinde değerken kararı bit çevirmesin
 
 # Mutlak sd tripwire'ı (v01: sd > 5 puan) KULLANIMDAN KALDIRILDI. Neden, ölçümle:
@@ -211,11 +216,12 @@ def indeterminate(mean: float, lo: float, hi: float) -> bool:
 
 
 def abandon(scale_results: list[dict], oracle_gain_over_null: float,
-            oracle_threshold: float = 2.0) -> dict:
+            oracle_threshold: float = 2.0, escalation_used: bool = False) -> dict:
     """VAZGEÇME KOŞULU — SAĞLAM biçim. İki ardışık ölçekte başarı eşiği DIŞLANMIŞ olmalı.
 
     scale_results : ölçek başına `decide()` çıktısı, ölçek sırasına göre
     oracle_gain_over_null : oracle routing kazancının null'ın ÜSTÜNDEKİ payı (yüzde puan)
+    escalation_used : ölçek yükseltme hakkı kullanıldı mı (v01 B10'un tek-ölçek yolunun ön-koşulu)
 
     Neden eski biçim atıldı. v02'nin ilk hâli v01'den şunu devralmıştı: `s̄ <= 0` **ve**
     `GA üst sınırı < +%2`. Bu, bir NOKTA TAHMİNİ ile bir ARALIK SINIRINI "ve" ile bağlıyor ve
@@ -251,17 +257,42 @@ def abandon(scale_results: list[dict], oracle_gain_over_null: float,
         """
         return r.get("ci95_uncensored", r["ci95"])[1]
 
-    # B10: "başarısız" satırı TEK ölçekle vazgeçmeye yeterlidir (oracle şartı yine uygulanır).
-    # Bu, ≥2 sansürlü seed durumunu da kapsar: o durum mümkün olan en güçlü olumsuz sonuçtur ve
-    # eşdeğerlik testine sokmak anlamsız olurdu (GA ikame yüzünden zaten patlar).
+    # B10: "başarısız" satırı TEK ölçekle vazgeçmeye yeter — AMA ÜÇ şartla, ve bu şartların
+    # eksikliği bir regresyon üretmişti (aşağıda ölçümüyle).
+    #
+    # (i) yükseltme hakkı KULLANILMAMIŞ olmalı. v01 B10 birebir şöyle: "Yükseltme hakkı
+    #     kullanılmazsa VE S0'da satır 'başarısız' ise hipotez tek ölçekle terk edilir."
+    #     İlk uygulamada bu ön-koşul yoktu ve fonksiyonun böyle bir parametresi bile yoktu.
+    # (ii) eşdeğerlik testi SANSÜRSÜZ alt örnekte de geçmeli. Ölçülen regresyon: tek bir sansürlü
+    #     seed, −149.82 ikamesi yüzünden tam örnek ortalamasını ≈−25'e çekip satırı diğer dört
+    #     seed'den BAĞIMSIZ olarak "başarısız" yapıyor. Sonuç: `4 × +%30 + 1 sansür` tek ölçekte
+    #     terk ediliyordu, sansürsüz GA üst sınırı **+30.15** iken. Yani tam olarak düzeltmek için
+    #     eklenen eşdeğerlik testi bu yolda hiç sorulmuyordu.
+    # (iii) oracle şartı — ilk hâlde zaten vardı ve korunuyor.
     if scale_results and scale_results[-1]["row"] == "başarısız":
-        if oracle_ok:
-            return {"abandon": True, "reason": "son ölçekte satır 'başarısız' (v01 EK1-B10: tek "
-                    f"ölçekle terk edilebilir) ve oracle kazancı null'ın {oracle_gain_over_null:.2f} "
-                    f"puan üstünde < {oracle_threshold}", "oracle_ok": True, "single_scale": True}
-        return {"abandon": False, "oracle_ok": False, "single_scale": True,
-                "reason": f"satır 'başarısız' ama oracle kazancı null'ın {oracle_gain_over_null:.2f} "
-                          f"puan üstünde >= {oracle_threshold}: mükemmel yönlendirmede hâlâ kazanç var"}
+        last = scale_results[-1]
+        hi_u = upper(last)
+        why = []
+        if escalation_used:
+            why.append("yükseltme hakkı KULLANILDI: v01 B10 tek ölçekle terk etmeyi yalnızca hak "
+                       "kullanılmadığında veriyor; iki ölçek kuralı uygulanır")
+        if hi_u >= SUCCESS:
+            why.append(f"satır 'başarısız' ama sansürsüz GA üst sınırı {hi_u:+.2f} >= {SUCCESS}: "
+                       "sansürsüz seed'lerde etki hâlâ eşik kadar büyük olabilir (satır sansür "
+                       "ikamesinden geliyor, ölçülen etkiden değil)")
+        if not oracle_ok:
+            why.append(f"oracle kazancı null'ın {oracle_gain_over_null:.2f} puan üstünde "
+                       f">= {oracle_threshold}: mükemmel yönlendirmede hâlâ kazanç var")
+        if not why:
+            return {"abandon": True, "reason": "son ölçekte satır 'başarısız', yükseltme hakkı "
+                    f"kullanılmadı, sansürsüz GA üst sınırı {hi_u:+.2f} < {SUCCESS} ve oracle "
+                    f"kazancı null'ın {oracle_gain_over_null:.2f} puan üstünde < {oracle_threshold} "
+                    "(v01 EK1-B10: tek ölçekle terk edilebilir)",
+                    "oracle_ok": True, "single_scale": True, "ci_upper": [hi_u]}
+        if not escalation_used and len(scale_results) < 2:
+            return {"abandon": False, "oracle_ok": oracle_ok, "single_scale": True,
+                    "ci_upper": [hi_u], "reason": "; ".join(why)}
+        # Hak kullanıldıysa ya da elimizde iki ölçek varsa aşağıdaki iki-ölçek kuralına düş.
 
     if len(scale_results) < 2:
         return {"abandon": False, "reason": "iki ardışık ölçek sonucu gerekiyor",
@@ -287,6 +318,61 @@ def abandon(scale_results: list[dict], oracle_gain_over_null: float,
                    f">= {oracle_threshold}: mükemmel yönlendirmede hâlâ kazanç var")
     return {"abandon": False, "reason": "; ".join(why),
             "ci_upper": [upper(r) for r in last2], "oracle_ok": oracle_ok}
+
+
+def t_crit_alpha(df: int, alpha: float) -> float:
+    """İki yanlı `alpha` için t kritik değeri — Holm'un düzeltilmiş düzeylerinde GA kurmak için.
+
+    `t_crit()` yalnızca α = .05'i biliyor. Birincil-2'nin MDE'si Holm'un İLK adımında
+    (aile büyüklüğü 2 -> α/2 = .025) tanımlı ve o düzeyde t(4) = 3.4954, α=.05'in 2.7764'ü değil.
+    İlk hâl MDE'yi .05'te türetiyordu ve +1.5 puandaki gücü %56.2 gösteriyordu; gerçek değer
+    %38.8, MDE ise 1.49 değil **1.88** puan.
+    """
+    lo, hi = 1e-6, 100.0
+    for _ in range(200):                     # ikiye bölme: t_sf monoton azalan
+        mid = (lo + hi) / 2
+        if t_sf(mid, df) * 2 > alpha:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+# Birincil-2 (X↔H) için MDE ve aile büyüklüğü — ön-kayıtta pinli.
+PRIMARY_FAMILY = 2       # birincil-1 (X↔M) + birincil-2 (X↔H); Holm bu büyüklükte uygulanır
+MDE_PRIMARY2 = 1.88      # puan; n=5, sd(fark) 1.20, Holm ilk adımı α=.025 (bkz. ön-kayıt)
+
+
+def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
+                 alpha: float = 0.05 / PRIMARY_FAMILY) -> dict:
+    """Birincil-2'nin DÖRT durumlu puanlaması. Karar tablosu birincil-2'ye UYGULANMAZ.
+
+    diffs : seed başına `s_i(X) − s_i(H)` (yüzde puan)
+
+    Neden ayrı: karar tablosunun eşikleri (+%2/+%5/+%10) TASARRUF için kalibre edildi ve
+    birincil-2 bir FARK kontrastıdır. `decide()`'a verilseydi +1.88 puanlık gerçek bir
+    heterojenlik katkısı "nötr" satırına düşerdi (çünkü 1.88 < 2), yani deneyin asıl sorusunun
+    olumlu cevabı "etki yok" diye etiketlenirdi.
+
+    Dört durum BİRBİRİNİ DIŞLAR ve TÜKETİR. İlk hâl üç durum tanımlıyordu ve "katkı var"
+    (`lo > 0`) ile "katkı yok" (`hi < MDE`) birbirini dışlamıyordu — ikisi birden doğru olabilir
+    ve o hâl mümkün olan EN bilgilendirici sonuçtur: katkı gerçek ama MDE'nin altında.
+    """
+    if len(diffs) < 2:
+        raise ValueError("kontrast için en az 2 seed gerekir")
+    n = len(diffs)
+    m, sd = st.mean(diffs), st.stdev(diffs)
+    h = t_crit_alpha(n - 1, alpha) * sd / math.sqrt(n)
+    lo, hi = m - h, m + h
+    real, small = lo > CI_EPS, hi < mde        # CI_EPS: `decide()` ile aynı tolerans
+    state = ("katkı var, büyük" if real and not small else
+             "katkı var, küçük" if real and small else
+             "katkı MDE kadar değil" if small else
+             "ölçemedik")
+    return {"state": state, "mean": m, "sd": sd, "n": n, "ci": [lo, hi],
+            "alpha": alpha, "mde": mde,
+            "note": ("yeterince güçlü ölçemedik — 'heterojenlik çürütüldü' DEĞİL"
+                     if state == "ölçemedik" else "")}
 
 
 def reachability(fires, mu: float, sigma: float, n: int, sims: int = 100_000,
@@ -364,14 +450,19 @@ def _wbar(quality_per_sec) -> tuple[dict[str, float] | None, float | None]:
     bulduğu sorun). Tek bir skaler bu şartı İFADE EDEMEZ: ölçüldü, `decide(s̄=11, w=+1.0)`
     "güçlü başarı" döndürüyordu ve bu, ön-kaydın "başarılı" dediği duruma denk geliyordu.
 
-    Skaler geçmek hâlâ mümkün (tarama, tek baseline'lı keşifsel kullanım) ama o zaman notlarda
-    hangi baseline olduğunun bilinmediği yazılır.
+    Skaler geçmek hâlâ mümkün (tarama, tek baseline'lı keşifsel kullanım) ama o zaman
+    "güçlü başarı" satırı **erişilemez** ve notlarda gerekçesi yazılır.
     """
     if quality_per_sec is None:
         return None, None
     if isinstance(quality_per_sec, dict):
         if not quality_per_sec:
             raise ValueError("quality_per_sec boş eşleme olamaz")
+        extra = set(quality_per_sec) - set(WBAR_KEYS)
+        if extra:
+            # Alakasız bir anahtar `min()` üzerinden meşru bir "güçlü başarı"yı düşürüyordu:
+            # {"M":+1,"D":+1,"Z":−1} -> "başarılı". Anahtar kümesi kapalı.
+            raise ValueError(f"quality_per_sec anahtarları {WBAR_KEYS} olmalı, fazlası: {sorted(extra)}")
         return dict(quality_per_sec), min(quality_per_sec.values())
     return {"?": float(quality_per_sec)}, float(quality_per_sec)
 
@@ -408,6 +499,9 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
     if len(mask) != n:
         raise ValueError("censored_mask, savings ile aynı uzunlukta olmalı")
     n_cens = sum(mask)
+    # Doğrulama sansürlü erken dönüşten ÖNCE: aksi hâlde `quality_per_sec={}` normal
+    # yolda ValueError verirken `n_cens >= 2` yolunda sessizce kabul ediliyordu.
+    wmap, wmin = _wbar(quality_per_sec)
     mean, lo, hi = ci95(savings)
     sd = st.stdev(savings)
     # EK 1 B8: sansürlü seed s_i ~ -150 puan verip sd'yi şişirir ve "hedefe ulaşamıyor" sonucunu
@@ -416,7 +510,7 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
     sd_unc = st.stdev(unc) if len(unc) > 1 else float("nan")
     notes: list[str] = []
     res = {"mean": mean, "sd": sd, "sd_uncensored": sd_unc, "n": n, "n_censored": n_cens,
-           "ci95": [lo, hi], "notes": notes}
+           "ci95": [lo, hi], "notes": notes, "w_bar": wmap}
     # Sansürsüz alt örneğin GA'sı AYRI tutulur: `abandon()`'ın eşdeğerlik testi buna bakar, çünkü
     # tek bir sansürlü seed (~−150 puan ikame) tam örnek GA'sını ±80 puana şişirip kuralı
     # ulaşılamaz yapıyordu. `decide()`'ın kesinlik ölçütü aynı sebeple zaten sansürsüzlere bakıyor.
@@ -440,7 +534,6 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
         # eden bir yalan, ve tam olarak B8'in engellemek için yazıldığı yanlış okuma.
         indet = True
         detail = f"yalnızca {len(unc)} sansürsüz seed: kesinlik DEĞERLENDİRİLEMEZ"
-    wmap, wmin = _wbar(quality_per_sec)
     res["w_bar"] = wmap
 
     if indet:
@@ -457,13 +550,14 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
                      "seed 10'a çıkar (EK 1 B3: {66,77,88,99,110})")
         return {**res, "row": "yüksek varyans / belirsiz", "determinate": False}
 
+    # "güçlü başarı" kapısı: w̄ HER İKİ baseline için de ölçülmüş VE ikisi de pozitif olmalı.
+    # İlk düzeltme yalnızca `min()`'e bakıyordu ve eksik anahtarı görmüyordu: `{"M": +1.0}`
+    # (D hiç ölçülmemiş) "güçlü başarı" döndürüyor, üstelik skaler yolun uyarısını da
+    # atlıyordu — yani blocker geri gelmişti, sessiz hâliyle.
+    w_complete = wmap is not None and set(WBAR_KEYS) <= set(wmap)
     crosses_zero = lo - CI_EPS <= 0 <= hi + CI_EPS
-    if mean >= STRONG and lo > CI_EPS and wmin is not None and wmin > 0:
+    if mean >= STRONG and lo > CI_EPS and wmin is not None and wmin > 0 and w_complete:
         row = "güçlü başarı"
-        if wmap is not None and len(wmap) == 1 and "?" in wmap:
-            notes.append("w̄ tek skaler olarak verildi: hangi baseline'a karşı olduğu BİLİNMİYOR. "
-                         "Ön-kayıt 'güçlü başarı' için w̄(M) > 0 VE w̄(D) > 0 istiyor; bu satır "
-                         "ancak ikisi de verilirse bağlayıcıdır.")
     elif mean >= SUCCESS and lo > CI_EPS:
         row = "başarılı"
     elif mean > NEUTRAL and (crosses_zero or mean < SUCCESS):
@@ -483,20 +577,33 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
                      "'güçlü başarı' satırı erişilemez ve çelişki kuralı uygulanamadı")
         if row == "güçlü başarı":                          # savunma: buraya düşülemez ama sabitlensin
             row = "başarılı"
-    # EK 1 B16: çelişki etiketi. Eskiden yalnızca `mean > 0` yetiyordu, yani s̄ = +0.01 puanlık bir
-    # gürültüye "mimari başarı" damgası vurulabiliyordu. Artık FLOP kazancının kendisi de
-    # İSTATİSTİKSEL olmak zorunda: GA'nın tamamı sıfırın üstünde.
-    elif wmin <= 0:
-        neg = sorted(k for k, v in wmap.items() if v <= 0)
-        which = f" (negatif olan: {', '.join(neg)})" if neg != ["?"] else ""
-        if lo > CI_EPS:
-            notes.append("FLOP kazancı var (GA tamamen > 0), duvar saati kaybı var -> "
-                         f"çelişki kuralı: mimari başarı / sistem başarısızlığı{which}")
-        elif mean > 0:
-            notes.append(f"s̄ pozitif ({mean:.2f}) ama GA sıfırı kesiyor ve w̄ <= 0: çelişki kuralı "
-                         "UYGULANMAZ (FLOP kazancı istatistiksel olarak kurulmadı)")
-        if row == "güçlü başarı":       # wmin<=0 iken buraya düşülemez; kural kodda da sabit
-            row = "başarılı"
+    else:
+        # İKİ not BAĞIMSIZ: "w̄ eksik ölçüldü" ile "w̄ negatif" aynı anda doğru olabilir. İlk hâl
+        # bunları `elif` ile zincirlemişti ve skaler w̄ = −3.0 verildiğinde eksiklik notu yazılıp
+        # B16'nın çelişki etiketi ATLANIYORDU — yani iki ayrı kural birbirini susturuyordu.
+        if not w_complete and mean >= STRONG and lo > CI_EPS:
+            missing = [k for k in WBAR_KEYS if k not in wmap]
+            how = ("tek skaler olarak verildi: hangi baseline'a karşı olduğu BİLİNMİYOR"
+                   if "?" in wmap else f"yalnızca {sorted(wmap)} için verildi")
+            notes.append(f"w̄ {how}; eksik: {missing or list(WBAR_KEYS)}. Ön-kayıt 'güçlü başarı' "
+                         f"için w̄({WBAR_KEYS[0]}) > 0 VE w̄({WBAR_KEYS[1]}) > 0 istiyor, bu yüzden "
+                         "o satır ERİŞİLEMEZ. Gerekçe: yalnızca M'e karşı hız kazancı, M bu kartta "
+                         "kendi başına D'den %27.9 yavaş olduğu için FOTON'un katkısı OLMADAN da "
+                         "sağlanabilir (v01 EK1-B16).")
+        # EK 1 B16: çelişki etiketi. Eskiden yalnızca `mean > 0` yetiyordu, yani s̄ = +0.01 puanlık
+        # bir gürültüye "mimari başarı" damgası vurulabiliyordu. Artık FLOP kazancının kendisi de
+        # İSTATİSTİKSEL olmak zorunda: GA'nın tamamı sıfırın üstünde.
+        if wmin <= 0:
+            neg = sorted(k for k, v in wmap.items() if v <= 0)
+            which = f" (negatif olan: {', '.join(neg)})" if neg != ["?"] else ""
+            if lo > CI_EPS:
+                notes.append("FLOP kazancı var (GA tamamen > 0), duvar saati kaybı var -> "
+                             f"çelişki kuralı: mimari başarı / sistem başarısızlığı{which}")
+            elif mean > 0:
+                notes.append(f"s̄ pozitif ({mean:.2f}) ama GA sıfırı kesiyor ve w̄ <= 0: çelişki "
+                             "kuralı UYGULANMAZ (FLOP kazancı istatistiksel olarak kurulmadı)")
+            if row == "güçlü başarı":   # wmin<=0 iken buraya düşülemez; kural kodda da sabit
+                row = "başarılı"
 
     if n_cens == 1:
         # B8(i) açıklaması her sansürlü durumda verilir — eskiden yalnızca başarı bloklanmadığında.

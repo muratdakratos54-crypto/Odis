@@ -69,36 +69,50 @@ bu yüzden σ aralığı 6.0'a kadar taranıyor — kural orada da anlamlı davr
   ve tek bir sansürlü seed (2x bütçe ikamesiyle ~−150 puan) o GA'yı ±80 puana şişiriyordu,
   yani kural sansürlü HER senaryoda ulaşılamaz hâle geliyordu. Bu sınav onu göremiyordu
   çünkü yalnızca Gauss örnekleri çiziyordu. Artık sansür de taranıyor.
-  senaryo                                                       satır  GA üst (tam)  GA üst (sansürsüz)   terk
-  4 başabaş + 1 sansür                                      başarısız         53.37                0.39   EVET
-  4 x +%7 + 1 sansür                                        başarısız         62.73                7.15   EVET
-  3 başabaş + 2 sansür                                      başarısız         42.13                0.65   EVET
-  sansür yok, başabaş                                            nötr          0.30                0.30   EVET
-  sansür yok, −%8                                           başarısız         -7.90               -7.90   EVET
-  Beklenen: dört senaryoda da terk EDİLEBİLİR olmalı (başabaş ve negatif sonuçlar),
-  ve bunu sansürün varlığı engellememeli. Tek istisna: oracle headroom'u olan durumlar.
+  'tek' = TEK ölçekte terk (v01 B10 yolu: yalnızca 'başarısız' satırından);
+  'iki' = iki ardışık ölçekte eşdeğerlik testiyle terk.
+  senaryo                                                   satır  GA üst tam  GA üst sans.   tek   iki
+  4 başabaş + 1 sansür                                  başarısız       53.37          0.39  EVET  EVET
+  4 x +%7 + 1 sansür                                    başarısız       62.73          7.15 hayır hayır
+  4 x +%30 + 1 sansür                                   başarısız       93.91         30.15 hayır hayır
+  3 başabaş + 2 sansür                                  başarısız       42.13          0.65  EVET  EVET
+  sansür yok, başabaş                                        nötr        0.30          0.30 hayır  EVET
+  sansür yok, −%8                                       başarısız       -7.90         -7.90  EVET  EVET
+  oracle headroom'u (5.0 >= 2.0) hem tek hem iki ölçek yolunda terk etmeyi ENGELLİYOR — OK
+  BEKLENEN, assertion olarak: başabaş ve negatif senaryolar terk EDİLEBİLİR olmalı,
+  KUVVETLİ POZİTİF senaryolar ise sansür yüzünden 'başarısız' satırına düşseler bile
+  terk EDİLEMEZ olmalı. İlk hâlde bu yalnızca düzyazıydı ve tarama, +%7 senaryosunun
+  terk edildiğini YAZIP geçiyordu — defect'i gösterip yakalamayan bir sınav.
 
 ## BİRİNCİL-2'nin (X↔H) eşdeğerlik kuralı — V12 bunu da taramak zorunda
   Kural: 'katkı yok' ancak farkın GA'sının TAMAMI MDE'nin altındaysa yazılabilir.
-  fark sd'si 1.20 puan | MDE 1.88 puan
+  fark sd'si 1.20 puan | MDE 1.88 puan | GA düzeyi α=0.025 (Holm ilk adımı)
+  DÜZELTME: bu taramanın ilk hâli α=.05 aralıkları kullanıyordu, oysa kural (ve MDE'nin
+  türetimi) Holm'un ilk adımındaki α=.025'i söylüyor. Sonuç: 'ölçemedik' payı gerçek
+  katkı sıfırken n=5'te %24.6 değil %42.8 — 1.7 kat. Kuralı taramak, kuralın KENDİ
+  düzeyinde taramak demek; yoksa sınav başka bir kuralı sınıyor.
   Dört durum, BİRBİRİNİ DIŞLAYAN ve TÜKETEN. Sınav bu bölümü yazarken kendi kuralımdaki
   bir hatayı buldu: ilk hâl üç durum tanımlıyordu ve 'katkı var' (lo>0) ile 'katkı yok'
   (hi<MDE) birbirini dışlamıyordu — ikisi birden doğru olabilir ve o, mümkün olan EN
   bilgilendirici sonuçtur: 'katkı gerçek ama MDE'nin altında'. Üç durumla o hâl kaybolup
   olasılıklar negatife düşüyordu (n=10'da −%11.6 gibi). Dört durum:
    gerçek X−H   n  var,büyük  var,küçük  yok/sıfır  ölçemedik
-       +0.00p   5       0.9%       1.5%      73.0%      24.6%
-       +0.00p  10       0.3%       2.3%      96.9%       0.6%
-       +0.50p   5       6.5%       4.2%      45.6%      43.7%
-       +0.50p  10       5.9%      15.9%      74.0%       4.3%
-       +1.00p   5      24.2%       5.8%      18.7%      51.3%
-       +1.00p  10      38.1%      26.9%      27.3%       7.7%
-       +1.88p   5      73.1%       1.5%       0.9%      24.4%
-       +1.88p  10      97.0%       2.3%       0.2%       0.6%
-       +3.00p   5      98.2%       0.0%       0.0%       1.8%
+       +0.00p   5       0.5%       0.7%      56.1%      42.7%
+       +0.00p  10       0.3%       1.0%      96.5%       2.2%
+       +0.50p   5       3.9%       1.9%      31.3%      62.9%
+       +0.50p  10       5.9%       7.7%      73.1%      13.4%
+       +1.00p   5      15.5%       2.6%      11.9%      70.0%
+       +1.00p  10      37.7%      13.4%      26.8%      22.1%
+       +1.88p   5      56.2%       0.7%       0.6%      42.6%
+       +1.88p  10      96.5%       1.0%       0.2%       2.2%
+       +3.00p   5      92.7%       0.0%       0.0%       7.3%
        +3.00p  10     100.0%       0.0%       0.0%       0.0%
   YORUM: gerçek katkı sıfırken n=5'te 'ölçemedik' payı %24.6 — MDE'nin ilan edilmesinin
   sebebi bu. n=10'da o pay %0.6'ya düşüyor, yani seed artırmak birincil-2 için de doğru
   yönde çalışıyor (ama hak ORTAK olduğu için birincil-1'i de yeniden ölçer).
   'var,küçük' sütunu gerçek katkı 1.0 puanken n=10'da en yüksek: tam olarak ölçmek
   istediğimiz ama n=5'te ayırt edemediğimiz hâl.
+
+## Çapraz kontrol: vektörize kural == src.stats'ın genel yolu
+  σ=1.50: vektörize %0.03 | decide() yolu %0.03 | fark 0.00 puan
+  σ=5.00: vektörize %58.43 | decide() yolu %58.43 | fark 0.00 puan

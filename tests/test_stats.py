@@ -20,6 +20,12 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from src.stats import (T975, decide, multiplicity, paired, t_crit, t_sf)  # noqa: E402
 
+# "Duvar saati her iki baseline'a karşı da pozitif" hâli. Ön-kayıt "güçlü başarı"yı `w̄(M) > 0`
+# VE `w̄(D) > 0` şartına bağlıyor, bu yüzden testler skaler değil EŞLEME geçiyor. Skaler geçmek
+# artık o satırı ERİŞİLEMEZ kılıyor (bkz. test_scalar_wbar_cannot_reach_strong_success): tek
+# skalerin hangi baseline'a ait olduğu bilinmediği için ikisinin de pozitif olduğu kurulamaz.
+W_BOTH = {"M": 1.0, "D": 1.0}
+
 
 # --- t dağılımı -------------------------------------------------------------------------------------------
 
@@ -112,12 +118,12 @@ def _tight(mean: float, n: int = 5) -> list[float]:
 
 
 def test_decide_rows():
-    assert decide(_tight(12.0), quality_per_sec=1.0)["row"] == "güçlü başarı"
-    assert decide(_tight(7.0), quality_per_sec=1.0)["row"] == "başarılı"
-    assert decide(_tight(3.0), quality_per_sec=1.0)["row"] == "belirsiz"
-    assert decide(_tight(0.0), quality_per_sec=1.0)["row"] == "nötr"
-    assert decide(_tight(-5.0), quality_per_sec=1.0)["row"] == "başarısız"
-    assert decide([-10, 0, 10, 2, 3], quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz"
+    assert decide(_tight(12.0), quality_per_sec=W_BOTH)["row"] == "güçlü başarı"
+    assert decide(_tight(7.0), quality_per_sec=W_BOTH)["row"] == "başarılı"
+    assert decide(_tight(3.0), quality_per_sec=W_BOTH)["row"] == "belirsiz"
+    assert decide(_tight(0.0), quality_per_sec=W_BOTH)["row"] == "nötr"
+    assert decide(_tight(-5.0), quality_per_sec=W_BOTH)["row"] == "başarısız"
+    assert decide([-10, 0, 10, 2, 3], quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
 
 
 def test_decide_strong_needs_positive_quality_per_sec():
@@ -153,25 +159,25 @@ def test_decide_wide_ci_is_a_precision_problem_not_a_scale_problem():
     (σ = 6'da %59.7 -> %71.5, yani çare kuralı SIKIŞTIRIYORDU).
     """
     xs = [5.0 + d for d in (-6.0, -3.0, 0.0, 3.0, 6.0)]      # ortalama 5, sd 4.74
-    r = decide(xs, quality_per_sec=1.0)
+    r = decide(xs, quality_per_sec=W_BOTH)
     assert r["mean"] == pytest.approx(5.0) and r["sd"] == pytest.approx(4.743, abs=1e-3)
     assert r["ci95"][0] <= 0 < 5.0 <= r["ci95"][1]
     assert r["row"] == "yüksek varyans / belirsiz" and r["determinate"] is False
     # Daralt: aynı ortalama, dar aralık -> artık belirli ve 'başarılı'
-    assert decide(_tight(5.0), quality_per_sec=1.0)["row"] == "başarılı"
+    assert decide(_tight(5.0), quality_per_sec=W_BOTH)["row"] == "başarılı"
 
 
 def test_decide_boundaries_are_inclusive_as_written():
-    assert decide(_tight(5.0), quality_per_sec=1.0)["row"] == "başarılı"       # >= %5
-    assert decide(_tight(10.0), quality_per_sec=1.0)["row"] == "güçlü başarı"  # >= %10
-    assert decide(_tight(2.0), quality_per_sec=1.0)["row"] == "nötr"           # -2..+2 bandı kapalı
-    assert decide(_tight(-2.0), quality_per_sec=1.0)["row"] == "nötr"
-    assert decide(_tight(2.001), quality_per_sec=1.0)["row"] == "belirsiz"
+    assert decide(_tight(5.0), quality_per_sec=W_BOTH)["row"] == "başarılı"       # >= %5
+    assert decide(_tight(10.0), quality_per_sec=W_BOTH)["row"] == "güçlü başarı"  # >= %10
+    assert decide(_tight(2.0), quality_per_sec=W_BOTH)["row"] == "nötr"           # -2..+2 bandı kapalı
+    assert decide(_tight(-2.0), quality_per_sec=W_BOTH)["row"] == "nötr"
+    assert decide(_tight(2.001), quality_per_sec=W_BOTH)["row"] == "belirsiz"
 
 
 def test_decide_one_censored_seed_blocks_success():
     xs = _tight(12.0)
-    r = decide(xs, quality_per_sec=1.0, censored_mask=[False, False, False, False, True])
+    r = decide(xs, quality_per_sec=W_BOTH, censored_mask=[False, False, False, False, True])
     assert r["row"] == "belirsiz" and r["n_censored"] == 1
     assert any("sansürlü" in n and "LEHİNE" not in n for n in r["notes"])
 
@@ -179,7 +185,7 @@ def test_decide_one_censored_seed_blocks_success():
 def test_decide_two_censored_seeds_fail_outright():
     """EK 1 B8: >= 2 sansürlü seed -> doğrudan 'başarısız', tripwire'a bile bakılmaz."""
     xs = [8.0, 9.0, 8.5, -150.0, -150.0]
-    r = decide(xs, quality_per_sec=1.0, censored_mask=[False, False, False, True, True])
+    r = decide(xs, quality_per_sec=W_BOTH, censored_mask=[False, False, False, True, True])
     assert r["row"] == "başarısız" and r["n_censored"] == 2
     assert r["sd"] > 5.0                                     # ham sd tripwire'ı aşıyor ama satır 0 DEĞİL
 
@@ -191,14 +197,14 @@ def test_decide_tripwire_uses_uncensored_sd_only():
     tek bir sansür ortalamayı -25'e çeker ve sonuç zaten 'başarısız' olur. Kritik olan şudur: sonuç
     'varyans yüksek, daha çok seed lazım' DEĞİL, 'FOTON hedefe ulaşamıyor' demeli."""
     xs = [6.0, 6.1, 5.9, 6.05, -150.0]
-    r = decide(xs, quality_per_sec=1.0, censored_mask=[False] * 4 + [True])
+    r = decide(xs, quality_per_sec=W_BOTH, censored_mask=[False] * 4 + [True])
     assert r["sd"] > 5.0 and r["sd_uncensored"] < 0.2        # ham sd büyük, sansürsüz sd küçük
     assert r["row"] != "yüksek varyans / belirsiz"           # B8'in engellediği yanlış okuma
     assert r["row"] == "başarısız" and r["n_censored"] == 1
     # Sansür olmadan aynı büyüklükte yayılım GERÇEKTEN tripwire üretir (mekanizma çalışıyor).
-    assert decide([-10, 0, 10, 2, 3], quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz"
+    assert decide([-10, 0, 10, 2, 3], quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
     # Ve tek sansür, ortalama ezilmese bile başarıyı engeller (kemer + askı).
-    r2 = decide([12.0, 12.1, 11.9, 12.05, 12.0], quality_per_sec=1.0,
+    r2 = decide([12.0, 12.1, 11.9, 12.05, 12.0], quality_per_sec=W_BOTH,
                 censored_mask=[False] * 4 + [True])
     assert r2["row"] == "belirsiz"
 
@@ -211,7 +217,7 @@ def test_decide_rejects_bad_mask_length():
 def test_decide_row_names_are_from_the_frozen_list():
     from src.stats import ROWS
     for mean in (-8, -2, 0, 3, 6, 12):
-        assert decide(_tight(float(mean)), quality_per_sec=1.0)["row"] in ROWS
+        assert decide(_tight(float(mean)), quality_per_sec=W_BOTH)["row"] in ROWS
 
 
 def test_decide_needs_at_least_two_seeds():

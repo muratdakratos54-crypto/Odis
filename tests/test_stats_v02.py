@@ -43,6 +43,12 @@ from src.stats import (  # noqa: E402
     t_crit,
 )
 
+# "Duvar saati her iki baseline'a karşı da pozitif" hâli. Ön-kayıt "güçlü başarı"yı `w̄(M) > 0`
+# VE `w̄(D) > 0` şartına bağlıyor, bu yüzden testler skaler değil EŞLEME geçiyor. Skaler geçmek
+# artık o satırı ERİŞİLEMEZ kılıyor (bkz. test_scalar_wbar_cannot_reach_strong_success): tek
+# skalerin hangi baseline'a ait olduğu bilinmediği için ikisinin de pozitif olduğu kurulamaz.
+W_BOTH = {"M": 1.0, "D": 1.0}
+
 STEP = 32768
 
 
@@ -158,7 +164,7 @@ def test_precision_tripwire_remedy_loosens_the_rule():
     engeller.
     """
     def fires(n):
-        return lambda s: decide(s, quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz"
+        return lambda s: decide(s, quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
     p5 = reachability(fires(5), mu=0.0, sigma=5.0, n=5, sims=3000, seed=1)
     p10 = reachability(fires(10), mu=0.0, sigma=5.0, n=10, sims=3000, seed=1)
     assert p5 > p10, f"çare kuralı sıkıştırıyor: n=5 %{100*p5:.1f} -> n=10 %{100*p10:.1f}"
@@ -166,7 +172,7 @@ def test_precision_tripwire_remedy_loosens_the_rule():
 
 def test_precision_tripwire_silent_at_measured_noise():
     """Ölçülen sd(s_i) = 0.75 puanda tripwire tetiklenmemeli; yoksa her koşu 10 seed'e giderdi."""
-    p = reachability(lambda s: decide(s, quality_per_sec=1.0)["row"] == "yüksek varyans / belirsiz",
+    p = reachability(lambda s: decide(s, quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz",
                      mu=6.0, sigma=0.75, n=5, sims=3000, seed=2)
     assert p < 0.02, f"ölçülen gürültüde tripwire %{100*p:.1f} tetikleniyor"
 
@@ -176,17 +182,17 @@ def test_precision_tripwire_silent_at_measured_noise():
 def test_decide_requires_preregistered_seed_count():
     """Kilit cümle BEŞ seed istiyor; `decide()` iki seed'le "başarılı" damgası basıyordu."""
     with pytest.raises(ValueError, match="bağlayıcı karar"):
-        decide([6.0, 6.1], quality_per_sec=1.0)
+        decide([6.0, 6.1], quality_per_sec=W_BOTH)
     with pytest.raises(ValueError, match="bağlayıcı karar"):
-        decide([6.0, 6.1, 6.05], quality_per_sec=1.0)
+        decide([6.0, 6.1, 6.05], quality_per_sec=W_BOTH)
     for n in (5, 10):
         xs = [6.0 + 0.01 * i for i in range(n)]
-        assert decide(xs, quality_per_sec=1.0)["row"] == "başarılı"
+        assert decide(xs, quality_per_sec=W_BOTH)["row"] == "başarılı"
 
 
 def test_decide_strict_false_blocks_success_rows():
     """Keşifsel kullanım mümkün ama başarı İLAN EDEMEZ."""
-    r = decide([6.0, 6.1, 6.05], quality_per_sec=1.0, strict=False)
+    r = decide([6.0, 6.1, 6.05], quality_per_sec=W_BOTH, strict=False)
     assert r["row"] == "belirsiz"
     assert any("strict=False" in n for n in r["notes"])
 
@@ -199,10 +205,10 @@ def test_decide_does_not_invent_an_uncensored_sd_from_one_seed():
     ("hedefe ulaşamıyor" yerine "varyans yüksek, daha çok seed lazım").
     """
     xs = [6.0, 6.1, 6.05, -150.0, -150.0]
-    r = decide(xs, quality_per_sec=1.0, censored_mask=[False] * 3 + [True] * 2)
+    r = decide(xs, quality_per_sec=W_BOTH, censored_mask=[False] * 3 + [True] * 2)
     assert r["row"] == "başarısız"                      # >= 2 sansür: B8 doğrudan başarısız
     # Tek sansür + tek sansürsüz: kesinlik DEĞERLENDİRİLEMEZ, uydurulmaz
-    r2 = decide([6.0, -150.0, -150.0, -150.0, -150.0], quality_per_sec=1.0,
+    r2 = decide([6.0, -150.0, -150.0, -150.0, -150.0], quality_per_sec=W_BOTH,
                 censored_mask=[False] + [True] * 4)
     assert r2["row"] == "başarısız"
     assert not any("110" in n for n in r2["notes"])
@@ -213,7 +219,7 @@ def test_decide_one_uncensored_seed_cannot_claim_precision():
     # 1 sansür (B8 sınırı içinde) ama diğer 4'ü de... hayır: sansürsüz >= 2 olması için
     # en fazla 3 sansür gerekir ve B8 zaten >=2'de başarısız veriyor. Bu yüzden tek sansürsüz
     # durumu ancak >=2 sansürle oluşur ve B8 önce devreye girer — kilitlenen şey o sıralama.
-    r = decide([7.0, -150.0, -150.0, -150.0, -150.0], quality_per_sec=1.0,
+    r = decide([7.0, -150.0, -150.0, -150.0, -150.0], quality_per_sec=W_BOTH,
                censored_mask=[False] + [True] * 4)
     assert r["row"] == "başarısız" and r["n_censored"] == 4
     assert any("B8" in n for n in r["notes"])
@@ -246,7 +252,7 @@ def test_decide_reports_missing_wall_clock_metric():
     r = decide(_five(12.0), quality_per_sec=None)
     assert r["row"] == "başarılı"                        # 'güçlü başarı' erişilemez
     assert any("VERİLMEDİ" in n for n in r["notes"])
-    assert decide(_five(12.0), quality_per_sec=1.0)["row"] == "güçlü başarı"
+    assert decide(_five(12.0), quality_per_sec=W_BOTH)["row"] == "güçlü başarı"
 
 
 def test_decide_ci_lower_bound_exactly_zero_is_not_success():
@@ -260,7 +266,7 @@ def test_decide_ci_lower_bound_exactly_zero_is_not_success():
     xs = [mean + sd * z for z in _zscores(n)]
     m, lo, hi = ci95(xs)
     assert m == pytest.approx(mean) and abs(lo) < 1e-9
-    assert decide(xs, quality_per_sec=1.0)["row"] != "başarılı"
+    assert decide(xs, quality_per_sec=W_BOTH)["row"] != "başarılı"
 
 
 def test_decide_censored_mask_is_foton_only_by_contract():
@@ -271,8 +277,8 @@ def test_decide_censored_mask_is_foton_only_by_contract():
     gösterir ki sözleşme kodda değil belgede korunduğu unutulmasın.
     """
     xs = _five(7.0)
-    assert decide(xs, quality_per_sec=1.0)["row"] == "başarılı"
-    wrong = decide(xs, quality_per_sec=1.0, censored_mask=[True] * 5)
+    assert decide(xs, quality_per_sec=W_BOTH)["row"] == "başarılı"
+    wrong = decide(xs, quality_per_sec=W_BOTH, censored_mask=[True] * 5)
     assert wrong["row"] == "başarısız"                   # maske yanlış doldurulursa olan bu
 
 
@@ -398,25 +404,44 @@ def test_helpers_produce_the_requested_moments():
 # ------------------------------------------------- ikinci denetimin bulduklari
 
 def test_strong_success_needs_both_baselines():
-    """"güçlü başarı" için `w̄(M) > 0` VE `w̄(D) > 0` gerekir; tek skaler bunu İFADE EDEMEZ.
+    """"güçlü başarı" için `w̄(M) > 0` VE `w̄(D) > 0` gerekir; eksik ölçüm o satırı ERİŞİLEMEZ kılar.
 
     Ön-kayıt bu şartı şu gerekçeyle koyuyor: M bu kartta kendi başına D'den token başına %27.9
     yavaştır (16 expert'in AdamW state'i + dispatch), FOTON kollarında ise ne o expert'ler ne o
     dispatch var. Dolayısıyla yalnızca M'e karşı `w̄ > 0`, FOTON'un kendi hız katkısı OLMADAN da
     sağlanabilir — v01 EK1-B16'nın aynı kolda bulduğu sorun.
 
-    Denetim ölçtü: `decide(s̄=11, quality_per_sec=1.0)` tek skalerle "güçlü başarı" döndürüyordu,
-    yani ön-kaydın "başarılı" dediği durum koda "güçlü başarı" olarak giriyordu.
+    İki aşamalı bir hata kilitleniyor:
+      1. İlk hâl tek skaler alıyordu ve `decide(s̄=11, quality_per_sec=1.0)` "güçlü başarı"
+         döndürüyordu — ön-kaydın "başarılı" dediği durum.
+      2. İlk DÜZELTME eşleme kabul etti ama anahtar doğrulaması yapmadı: `{"M": 1.0}` (D hiç
+         ölçülmemiş) hem satırı veriyor hem HİÇ not yazmıyordu, çünkü uyarı yalnızca skaler
+         yolun "?" anahtarında tetikleniyordu. Blocker sessiz hâliyle geri gelmişti.
     """
     xs = _five(11.0)
     assert decide(xs, quality_per_sec={"M": 1.0, "D": 1.0})["row"] == "güçlü başarı"
-    # D'ye karşı kaybediyorsa satır DÜŞER
-    r = decide(xs, quality_per_sec={"M": 1.0, "D": -5.0})
-    assert r["row"] == "başarılı"
-    assert any("çelişki kuralı" in n and "D" in n for n in r["notes"])
-    # Tek skaler geçmek mümkün ama hangi baseline olduğunun bilinmediği YAZILIR
+    # Bir baseline'a karşı kaybediyorsa satır DÜŞER; şart simetrik
+    for w, neg in (({"M": 1.0, "D": -5.0}, "D"), ({"M": -5.0, "D": 1.0}, "M")):
+        r = decide(xs, quality_per_sec=w)
+        assert r["row"] == "başarılı", w
+        assert any("çelişki kuralı" in n and neg in n for n in r["notes"]), r["notes"]
+    # EKSİK ölçüm: tek baselinelik eşleme satırı vermez VE eksikliği yazar
+    for w, eksik in (({"M": 1.0}, "D"), ({"D": 1.0}, "M")):
+        r = decide(xs, quality_per_sec=w)
+        assert r["row"] == "başarılı", f"{w} 'güçlü başarı' vermemeli"
+        assert any("ERİŞİLEMEZ" in n and eksik in n for n in r["notes"]), r["notes"]
+    # Tek skaler: satır erişilemez ve hangi baseline olduğunun bilinmediği yazılır
     r2 = decide(xs, quality_per_sec=1.0)
+    assert r2["row"] == "başarılı"
     assert any("BİLİNMİYOR" in n for n in r2["notes"])
+    # Alakasız anahtar `min()` üzerinden meşru bir sonucu düşürmesin: reddedilir
+    with pytest.raises(ValueError, match="anahtarları"):
+        decide(xs, quality_per_sec={"M": 1.0, "D": 1.0, "Z": -1.0})
+    # İki not BAĞIMSIZ olmalı: eksik ölçüm + negatif w̄ aynı anda yazılabilmeli.
+    # İlk hâl bunları `elif` ile zincirlemişti ve skaler −3.0'da B16'nın etiketi atlanıyordu.
+    r3 = decide(xs, quality_per_sec=-3.0)
+    assert any("BİLİNMİYOR" in n for n in r3["notes"])
+    assert any("mimari başarı / sistem başarısızlığı" in n for n in r3["notes"])
 
 
 def test_precision_criterion_has_a_terminal_row_at_max_n():
