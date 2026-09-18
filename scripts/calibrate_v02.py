@@ -29,9 +29,10 @@ from dataclasses import replace  # noqa: E402
 
 from src.config import PRESETS  # noqa: E402
 from src.flops import train_flops_per_token  # noqa: E402
-from src.stats import decide, n_star, paired, t_crit  # noqa: E402
+from src.stats import SUCCESS, decide, n_star, paired, t_crit  # noqa: E402
 
 STEP, STEPS, P80 = 32768, 4375, 3500
+RUNS, PREFIX = "checkpoints/foton-v02r", "r-"
 SEEDS = [11, 22, 33, 44, 55]
 ARMS = {"m": "foton-m", "d": "foton-d"}
 out: list[str] = []
@@ -43,7 +44,7 @@ def say(s: str = "") -> None:
 
 
 def load(arm: str, seed: int) -> dict:
-    p = f"checkpoints/foton-v02/baseline-{arm}-s{seed}/metrics.jsonl"
+    p = f"{RUNS}/{PREFIX}{arm}-s{seed}/metrics.jsonl"
     rows = [json.loads(l) for l in open(p, encoding="utf-8")]
     val = sorted((x["step"] * STEP, x["val_loss"]) for x in rows if x["type"] == "val")
     tr = [x for x in rows if x["type"] == "train"][2:]
@@ -135,12 +136,22 @@ def main() -> None:
     rng = np.random.default_rng(0)
 
     def power(mu, sd, n, sims):
+        """Ön-kayıttaki bileşik kuralın vektörize hâli — `src/stats.decide()` ile AYNI mantık.
+
+        Tripwire artık KESİNLİK ölçütü (`src/stats.indeterminate`), mutlak `sd > 5` DEĞİL. Eski
+        mutlak eşik n ile ölçeklenmediği için tek çaresi (10 seed) kendisini daha olası yapıyordu;
+        bu betiğin ilk hâli o eski kuralı hesaplıyordu ve ön-kayıtla tutarsızdı.
+        `scripts/rule_reachability.py --crosscheck` bu vektörize hâli `decide()` yoluna karşı
+        doğruluyor (fark 0.00 puan).
+        """
         x = rng.normal(mu, sd, size=(sims, n))
         m = x.mean(axis=1); s = x.std(axis=1, ddof=1)
         hw = t_crit(n - 1) * s / math.sqrt(n)
-        trip = s > 5.0
-        ok = (~trip) & (m >= 5.0) & (m - hw > 0)
-        und = (~trip) & (m > 2.0) & ~ok
+        lo, hi = m - hw, m + hw
+        determinate = ((lo > 0) & (m >= SUCCESS)) | (hi < SUCCESS)
+        trip = ~determinate
+        ok = determinate & (m >= SUCCESS) & (lo > 0)
+        und = determinate & (m > 2.0) & ~ok
         return ok.mean(), und.mean(), trip.mean(), hw.mean()
 
     cands = []

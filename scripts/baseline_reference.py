@@ -39,12 +39,13 @@ from src.flops import train_flops_per_token  # noqa: E402
 from src.stats import n_star, paired  # noqa: E402
 
 STEP, STEPS = 32768, 4375
+RUNS, PREFIX = "checkpoints/foton-v02r", "r-"
 SEEDS = [11, 22, 33, 44, 55]
 ARMS = {"m": "foton-m", "d": "foton-d"}
 
 
 def load(arm: str, seed: int) -> dict:
-    p = f"checkpoints/foton-v02/baseline-{arm}-s{seed}/metrics.jsonl"
+    p = f"{RUNS}/{PREFIX}{arm}-s{seed}/metrics.jsonl"
     rows = [json.loads(line) for line in open(p, encoding="utf-8")]
     val = sorted((x["step"] * STEP, x["val_loss"]) for x in rows if x["type"] == "val")
     # kümülatif eğitim süresi: (token, saniye) — train satırları her log aralığında

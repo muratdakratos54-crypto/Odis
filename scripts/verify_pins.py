@@ -95,7 +95,10 @@ STEP80 = 3500                                 # referans bütçenin %80'i (4375 
 # Drift denetiminin bildirmeyeceği, kasıtlı olarak çivilenmeyen dosyalar (gerekçeleri docstring'de).
 CORPUS_EXCLUDE = frozenset({"build.log"})
 RUN_EXCLUDE = frozenset({"best.pt", "last.pt", "train.log", "DONE"})
-RUN_DIR_RE = re.compile(r"^baseline-[a-z]+-s\d+$")
+# Koşu klasörü adı: `baseline-<kol>-s<seed>` (ilk küme) ya da `r-<kol>-s<seed>` (maskeli ölçütle
+# yeniden koşulan ikinci küme — bkz. Sapmalar/S2). İkisi de tanınmak zorunda, yoksa doğrulama
+# kapsamı sessizce boşalır.
+RUN_DIR_RE = re.compile(r"^(?:baseline|r)-[a-z]+-s\d+$")
 # Ayırıcı `\s+` DEĞİL `[ \t]+`: `\s` satır sonunu da yerdi, yani tek başına duran 64 hex'lik bir
 # satır (ör. bir provenance src_sha256'sı — onlar da 64 hex) bir SONRAKİ satırın ilk kelimesiyle
 # eşleşip uydurma bir çivi üretirdi. O uydurma yol manifestte bulunmayacağı için `--verify`
@@ -137,7 +140,28 @@ def _run_note(fname: str, arm: str, seed: int) -> str:
             "eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı")
 
 
-def expected_pins(data_dir: str = DATA_DIR, runs_dir: str = RUNS_DIR) -> list[tuple[str, str]]:
+def run_prefix(root: str, runs_dir: str) -> str:
+    """Koşu klasörlerinin öneki, DİSKTEN çıkarılır: `baseline` ya da `r`.
+
+    Neden sabit değil: `L*` maskeli ölçütle yeniden koşulan ikinci kümeden türetildi
+    (Sapmalar/S2) ve o kümenin klasörleri `r-<kol>-s<seed>`, ilk kümenin `baseline-...`.
+    Öneki modül sabiti yapmak, yanlış kümeye bakıldığında `expected_pins()`'i BOŞ döndürür ve
+    doğrulama "0 çivi, hepsi geçti" diye sessizce başarılı olur — kapsamın var olma sebebini
+    yok eden tam o sessizlik. Diskte hangi önek varsa o kullanılır; ikisi de varsa `r` kazanır
+    (kanıt zinciri ikinci kümedir) ve bu durum `--verify` çıktısında yazılır.
+    """
+    d = abspath(root, runs_dir)
+    if not os.path.isdir(d):
+        return "r"
+    names = set(os.listdir(d))
+    for pref in ("r", "baseline"):
+        if any(n.startswith(f"{pref}-") for n in names):
+            return pref
+    return "r"
+
+
+def expected_pins(data_dir: str = DATA_DIR, runs_dir: str = RUNS_DIR,
+                  prefix: str = "r") -> list[tuple[str, str]]:
     """Çivilenmesi GEREKEN (yol, kanıt notu) listesi; yollar depo köküne göre ve daima '/' ile.
 
     Liste KODDA sabit, glob değil: eksik bir koşu "9 dosya çiviledim" diye sessizce geçmesin,
@@ -147,7 +171,7 @@ def expected_pins(data_dir: str = DATA_DIR, runs_dir: str = RUNS_DIR) -> list[tu
     pins = [(f"{data_dir}/{name}", note) for name, note in CORPUS.items()]
     for arm in ARMS:
         for seed in SEEDS:
-            run = f"{runs_dir}/baseline-{arm}-s{seed}"
+            run = f"{runs_dir}/{prefix}-{arm}-s{seed}"
             for fname in RUN_FILES:
                 pins.append((f"{run}/{fname}", _run_note(fname, arm, seed)))
     return pins
@@ -206,7 +230,7 @@ def git_head(root: str) -> str | None:
 def build_manifest(root: str, data_dir: str, runs_dir: str) -> dict:
     """Diskteki dosyalardan manifest kurar. Eksik dosyalar `missing` listesine yazılır, atlanmaz."""
     files, missing = [], []
-    for rel, note in expected_pins(data_dir, runs_dir):
+    for rel, note in expected_pins(data_dir, runs_dir, run_prefix(root, runs_dir)):
         ap = abspath(root, rel)
         if not os.path.isfile(ap):
             missing.append(rel)
@@ -376,7 +400,8 @@ def do_verify(root: str = ROOT, manifest: str = MANIFEST, data_dir: str = DATA_D
     # exit 0 alıyordu. Manifestten elle satır düşürmek (+ dosyayı silmek) de aynı boşluktan
     # geçiyordu; ikisini de kapatan tek denetim bu, çünkü `expected_pins()` kümeyi KODDA ilan ediyor
     # ve manifestin kendi `missing`/`counts` alanlarına güvenmiyor — o alanları da düzenleyebilirsiniz.
-    uncovered = [rel for rel, _ in expected_pins(data_dir, runs_dir) if rel not in pinned]
+    uncovered = [rel for rel, _ in expected_pins(data_dir, runs_dir, run_prefix(root, runs_dir))
+                 if rel not in pinned]
     if uncovered:
         print(f"  KAPSAM DIŞI: çivilenmesi gereken {len(uncovered)} dosya manifestte HİÇ YOK "
               "(bu bir hash kırılması değil, kanıt kümesinin eksik olması):")

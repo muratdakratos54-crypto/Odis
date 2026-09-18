@@ -1,0 +1,12 @@
+{
+ "ckpt": "checkpoints/foton-v02/baseline-m-s22/best.pt",
+ "step": 4375,
+ "recorded_val": 2.860016185045242,
+ "per_domain": {
+  "code": 2.9413800835609436,
+  "math": 2.3708977162837983,
+  "nl": 3.2618254870176315
+ },
+ "equal_weight_mean": 2.858034428954124,
+ "windows_per_domain": 1280
+}

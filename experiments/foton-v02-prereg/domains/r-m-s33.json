@@ -1,0 +1,13 @@
+{
+ "ckpt": "checkpoints/foton-v02r/r-m-s33/last.pt",
+ "step": 4375,
+ "recorded_val": 2.7818151652812957,
+ "per_domain": {
+  "code": 2.8448235541582108,
+  "math": 2.2850971683859824,
+  "nl": 3.219421458244324
+ },
+ "equal_weight_mean": 2.783114060262839,
+ "windows_per_domain": 1280,
+ "prefix_skip": 64
+}

@@ -1,0 +1,12 @@
+{
+ "ckpt": "checkpoints/foton-v02/baseline-m-s33/best.pt",
+ "step": 4375,
+ "recorded_val": 2.854422631859779,
+ "per_domain": {
+  "code": 2.9347063660621644,
+  "math": 2.3640284493565558,
+  "nl": 3.260063663125038
+ },
+ "equal_weight_mean": 2.8529328261812528,
+ "windows_per_domain": 1280
+}

@@ -83,7 +83,12 @@ def test_manifest_covers_every_expected_file(tree):
     assert man["missing"] == []
     paths = [e["path"] for e in man["files"]]
     assert len(paths) == len(set(paths)) == 39
-    assert paths == [p for p, _ in vp.expected_pins()], "beklenen küme ile manifest sırası ayrıştı"
+    # Önek diskten çıkarılıyor (koşu kümesi `baseline-` ya da `r-` olabilir; bkz. vp.run_prefix),
+    # bu yüzden beklenen küme de bu ağacın önekiyle kurulmalı. Sabit bir önek varsaymak, yanlış
+    # kümeye bakıldığında testin sessizce geçmesine yol açardı.
+    pref = vp.run_prefix(str(tree), vp.RUNS_DIR)
+    assert pref == "baseline", f"bu ağacın öneki `baseline` olmalıydı, çıkarılan: {pref}"
+    assert paths == [p for p, _ in vp.expected_pins(prefix=pref)],         "beklenen küme ile manifest sırası ayrıştı"
     for e in man["files"]:
         assert "\\" not in e["path"], "yol ayırıcısı platforma bağlı olmamalı"
         assert e["bytes"] > 0 and len(e["sha256"]) == 64

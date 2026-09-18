@@ -1,0 +1,383 @@
+{
+ "licensing": {
+  "caselaw": {
+   "docs_scanned": 30454,
+   "bytes": 524419944,
+   "tier_a_share": 1.0,
+   "classes": {
+    "PD / CC0": {
+     "docs": 30454,
+     "bytes": 524419944,
+     "share": 1.0
+    }
+   },
+   "top_raw_licenses": {
+    "Public Domain": {
+     "docs": 30454,
+     "share": 1.0
+    }
+   },
+   "domain": "nl",
+   "repo": "caselaw_access_project_filtered"
+  },
+  "hansard": {
+   "docs_scanned": 9209,
+   "bytes": 533779619,
+   "tier_a_share": 1.0,
+   "classes": {
+    "OPL / OGL": {
+     "docs": 9209,
+     "bytes": 533779619,
+     "share": 1.0
+    }
+   },
+   "top_raw_licenses": {
+    "Open Parliament Licence - https://www.parliament.uk/site-information/c": {
+     "docs": 9209,
+     "share": 1.0
+    }
+   },
+   "domain": "nl",
+   "repo": "uk_hansard_filtered"
+  },
+  "stackv2_edu": {
+   "docs_scanned": 178481,
+   "bytes": 584238590,
+   "tier_a_share": 0.9936034420458258,
+   "classes": {
+    "permissive (SPDX)": {
+     "docs": 177477,
+     "bytes": 580501474,
+     "share": 0.9936034420458258
+    },
+    "RED: lisans yok": {
+     "docs": 1004,
+     "bytes": 3737116,
+     "share": 0.006396557954174167
+    }
+   },
+   "top_raw_licenses": {
+    "MIT": {
+     "docs": 124196,
+     "share": 0.6592061421345002
+    },
+    "Apache-2.0": {
+     "docs": 33483,
+     "share": 0.21136444102400015
+    },
+    "BSD-3-Clause": {
+     "docs": 5260,
+     "share": 0.031165057070263024
+    },
+    "CC0-1.0": {
+     "docs": 2449,
+     "share": 0.01602303606819262
+    },
+    "BSD-2-Clause": {
+     "docs": 2114,
+     "share": 0.011713897570511389
+    },
+    "Unlicense": {
+     "docs": 2355,
+     "share": 0.010904094849332018
+    },
+    "MIT,Apache-2.0": {
+     "docs": 1373,
+     "share": 0.009032287648099383
+    },
+    "Apache-2.0,MIT": {
+     "docs": 1146,
+     "share": 0.008416470743570704
+    },
+    "(yok)": {
+     "docs": 1004,
+     "share": 0.006396557954174167
+    },
+    "ISC": {
+     "docs": 1066,
+     "share": 0.005141586077016926
+    }
+   },
+   "domain": "code",
+   "repo": "stackv2_edu_filtered"
+  },
+  "arxiv": {
+   "docs_scanned": 14282,
+   "bytes": 780349141,
+   "tier_a_share": 0.9144963997596045,
+   "classes": {
+    "CC BY": {
+     "docs": 10621,
+     "bytes": 578533372,
+     "share": 0.7413775983127532
+    },
+    "PD / CC0": {
+     "docs": 2717,
+     "bytes": 135093108,
+     "share": 0.17311880144685135
+    },
+    "RED: BY-SA (share-alike)": {
+     "docs": 944,
+     "bytes": 66722661,
+     "share": 0.08550360024039547
+    }
+   },
+   "top_raw_licenses": {
+    "Creative Commons - Attribution - https://creativecommons.org/licenses/": {
+     "docs": 10621,
+     "share": 0.7413775983127532
+    },
+    "Public Domain": {
+     "docs": 1818,
+     "share": 0.11209455281504564
+    },
+    "Creative Commons - Attribution Share-Alike - https://creativecommons.o": {
+     "docs": 944,
+     "share": 0.08550360024039547
+    },
+    "Creative Commons Zero - Public Domain - https://creativecommons.org/pu": {
+     "docs": 899,
+     "share": 0.061024248631805694
+    }
+   },
+   "domain": "math",
+   "repo": "arxiv_papers_filtered"
+  }
+ },
+ "domains": {
+  "nl": {
+   "train_tokens": 100000000,
+   "val_tokens": 2000000,
+   "bytes_per_token": 4.264,
+   "sources": [
+    "caselaw.txt",
+    "hansard.txt"
+   ]
+  },
+  "code": {
+   "train_tokens": 100000000,
+   "val_tokens": 2000000,
+   "bytes_per_token": 3.272,
+   "sources": [
+    "stackv2_edu.txt"
+   ]
+  },
+  "math": {
+   "train_tokens": 100000000,
+   "val_tokens": 2000000,
+   "bytes_per_token": 3.033,
+   "sources": [
+    "arxiv.txt"
+   ]
+  }
+ },
+ "verification": {
+  "vocab_size": 32768,
+  "vocab_matches_meta": true,
+  "ranges": {
+   "nl_train": {
+    "tokens": 100000000,
+    "min": 12,
+    "max": 32767,
+    "in_range": true
+   },
+   "nl_val": {
+    "tokens": 2000000,
+    "min": 13,
+    "max": 32767,
+    "in_range": true
+   },
+   "code_train": {
+    "tokens": 100000000,
+    "min": 4,
+    "max": 32767,
+    "in_range": true
+   },
+   "code_val": {
+    "tokens": 2000000,
+    "min": 12,
+    "max": 32767,
+    "in_range": true
+   },
+   "math_train": {
+    "tokens": 100000000,
+    "min": 4,
+    "max": 32767,
+    "in_range": true
+   },
+   "math_val": {
+    "tokens": 2000000,
+    "min": 13,
+    "max": 32767,
+    "in_range": true
+   }
+  },
+  "all_in_range": true,
+  "domain_homogeneous_by_construction": true,
+  "domain_files": [
+   "code_train.bin",
+   "code_val.bin",
+   "math_train.bin",
+   "math_val.bin",
+   "nl_train.bin",
+   "nl_val.bin"
+  ],
+  "roundtrip": {
+   "nl": {
+    "chars": 199889,
+    "tokens": 50803,
+    "lossless": true,
+    "bytes_per_token": 3.963,
+    "sample": "    No. 72-1889.\n    United States Court of Appeals, Ninth Circuit.\n    Feb. 12, 1973.\n    \n      Claude 0. Allen, Oakland, Cal., for appellant.\n    J"
+   },
+   "code": {
+    "chars": 199901,
+    "tokens": 68324,
+    "lossless": true,
+    "bytes_per_token": 2.933,
+    "sample": "\nThis folder contains the web project directly served by nginx.\n\n## Sample\nThis is just a demo example to show how nginx serves html, css and javascri"
+   },
+   "math": {
+    "chars": 199968,
+    "tokens": 58140,
+    "lossless": true,
+    "bytes_per_token": 3.449,
+    "sample": "on a  \nSemantic Network Substrate111Rodriguez, M.A., “General-Purpose Computing on a\nSemantic Network Substrate,” Emergent Web Intelligence: Advanced "
+   }
+  },
+  "top_pieces_per_domain": {
+   "nl": [
+    [
+     ".",
+     109004
+    ],
+    [
+     "_the",
+     89559
+    ],
+    [
+     ",",
+     86858
+    ],
+    [
+     "_",
+     63037
+    ],
+    [
+     "_of",
+     50268
+    ],
+    [
+     "1",
+     41638
+    ],
+    [
+     "<0x0A>",
+     41465
+    ],
+    [
+     "_to",
+     33884
+    ],
+    [
+     "2",
+     29847
+    ],
+    [
+     "9",
+     26381
+    ]
+   ],
+   "code": [
+    [
+     "<0x0A>",
+     161544
+    ],
+    [
+     ".",
+     75745
+    ],
+    [
+     "-",
+     46472
+    ],
+    [
+     "/",
+     44199
+    ],
+    [
+     "0",
+     32161
+    ],
+    [
+     "_the",
+     31144
+    ],
+    [
+     "1",
+     28126
+    ],
+    [
+     ",",
+     26836
+    ],
+    [
+     "2",
+     23671
+    ],
+    [
+     "_to",
+     19087
+    ]
+   ],
+   "math": [
+    [
+     "<0x0A>",
+     113313
+    ],
+    [
+     ".",
+     56832
+    ],
+    [
+     "1",
+     51314
+    ],
+    [
+     "2",
+     43016
+    ],
+    [
+     "_{",
+     42262
+    ],
+    [
+     "_the",
+     41287
+    ],
+    [
+     ",",
+     40292
+    ],
+    [
+     "0",
+     37598
+    ],
+    [
+     "_",
+     28602
+    ],
+    [
+     "\\",
+     27268
+    ]
+   ]
+  },
+  "top200_jaccard": {
+   "code~math": 0.316,
+   "code~nl": 0.254,
+   "math~nl": 0.208
+  }
+ },
+ "tier": "A-only"
+}

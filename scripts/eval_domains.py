@@ -23,8 +23,14 @@ from src.checkpoint import load_model  # noqa: E402
 from src.data_multi import MultiDomainDataset, multi_domain_paths  # noqa: E402
 
 
-def eval_per_domain(model, ds: MultiDomainDataset, batch_size: int, iters: int, device: str) -> dict:
-    """Alan başına ortalama CE. Her alan için AYNI sayıda pencere ve aynı seed."""
+def eval_per_domain(model, ds: MultiDomainDataset, batch_size: int, iters: int, device: str,
+                    prefix_skip: int = 0) -> dict:
+    """Alan başına ortalama CE. Her alan için AYNI sayıda pencere ve aynı seed.
+
+    `prefix_skip` birincil ölçütle AYNI olmak zorunda (`TrainConfig.loss_prefix_skip`): ilk
+    `k` pozisyon loss'a girmez. Yoksa alan başına sayılar ile karar ölçütü farklı nicelikler olur
+    ve "kol hangi alanda kazandı" yorumu birincil sonucun ölçüldüğü ölçütten kopar.
+    """
     model.eval()
     out = {}
     ctx = torch.autocast(device, dtype=torch.bfloat16) if device == "cuda" else torch.autocast("cpu", enabled=False)
@@ -34,6 +40,9 @@ def eval_per_domain(model, ds: MultiDomainDataset, batch_size: int, iters: int, 
             tot = 0.0
             for _ in range(iters):
                 x, y = ds.get_domain_batch(dom, batch_size, g)
+                if prefix_skip > 0:
+                    y = y.clone()
+                    y[:, :prefix_skip] = -1              # model.py: ignore_index=-1
                 with ctx:
                     _, _, info = model(x, y)
                 tot += info["ce"].item()
@@ -50,21 +59,24 @@ def main() -> None:
     p.add_argument("--batch_size", type=int, default=16)
     p.add_argument("--eval_iters", type=int, default=80, help="batch_size x eval_iters = 1280 (ön-kayıt)")
     p.add_argument("--out", default="")
+    p.add_argument("--prefix_skip", type=int, default=64,
+                   help="birincil olcutle ayni olmali (TrainConfig.loss_prefix_skip)")
     args = p.parse_args()
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     model, ckpt = load_model(args.ckpt, device=device)
     ds = MultiDomainDataset(multi_domain_paths(args.data, "val"), model.cfg.max_seq_len, device)
-    per = eval_per_domain(model, ds, args.batch_size, args.eval_iters, device)
+    per = eval_per_domain(model, ds, args.batch_size, args.eval_iters, device, args.prefix_skip)
     mixed = sum(per.values()) / len(per)     # eşit alan ağırlığı = korpusun kendi oranı
     print(f"{args.ckpt} (adım {ckpt.get('step')}, kayıtlı val {ckpt.get('val_loss'):.6f})")
-    print(f"  pencere/alan = {args.batch_size * args.eval_iters}")
+    print(f"  pencere/alan = {args.batch_size * args.eval_iters} | prefix_skip = {args.prefix_skip}")
     for dom, v in sorted(per.items()):
         print(f"  {dom:6s} {v:.6f}  (ppl {torch.tensor(v).exp().item():8.3f})")
     print(f"  {'eşit ağırlıklı ortalama':22s} {mixed:.6f}")
     res = {"ckpt": args.ckpt, "step": ckpt.get("step"), "recorded_val": ckpt.get("val_loss"),
            "per_domain": per, "equal_weight_mean": mixed,
-           "windows_per_domain": args.batch_size * args.eval_iters}
+           "windows_per_domain": args.batch_size * args.eval_iters,
+           "prefix_skip": args.prefix_skip}
     if args.out:
         os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
         with open(args.out, "w", encoding="utf-8") as f:

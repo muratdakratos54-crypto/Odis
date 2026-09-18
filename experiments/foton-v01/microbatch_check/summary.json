@@ -1,0 +1,38 @@
+{
+ "soru": "mikro-batch 32xaccum2 ile 16xaccum4 (adim basina token 32.768 SABIT) ayni sonucu veriyor mu?",
+ "kurulum": {
+  "preset": "moe-auxfree",
+  "seed": 1337,
+  "adim": 100,
+  "eval_iters": {
+   "mb32": 40,
+   "mb16": 80
+  },
+  "not": "eval_iters carpimi 1280 sabit tutuldu (PREREGISTRATION EK1-B1)"
+ },
+ "train_loss": {
+  "max_abs_diff_mb16_vs_mb32": 0.001966857910155717,
+  "rerun_envelope_mb32_vs_mb32": 0.003167724609375089,
+  "ratio": 0.6209055876684078
+ },
+ "val_loss": {
+  "max_abs_diff_mb16_vs_mb32": 0.004378417134285328,
+  "rerun_envelope": 0.0069367110729219306,
+  "ratio": 0.6311949695262457
+ },
+ "hiz_vram": {
+  "mb32a": {
+   "tok_per_sec_median": 66701.12746258208,
+   "peak_mem_gb": 8.54135552
+  },
+  "mb16a": {
+   "tok_per_sec_median": 58080.78192394557,
+   "peak_mem_gb": 4.988468736
+  },
+  "mb32b": {
+   "tok_per_sec_median": 70676.8701316359,
+   "peak_mem_gb": 8.54135552
+  }
+ },
+ "sonuc": "ESDEGER: iki fark da ayni kodun kendi tekrar zarfinin altinda (0.62x ve 0.63x)"
+}

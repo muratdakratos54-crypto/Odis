@@ -1,0 +1,33 @@
+{
+ "lstar": 2.8358,
+ "definition": "en iyi baseline (foton-m) referans butcenin %80'inde (adim 3500) ulastigi ortalama MASKELI val loss (pozisyon 64..511)",
+ "loss_prefix_skip": 64,
+ "at80_per_seed": {
+  "11": 2.8347740679979325,
+  "22": 2.834116443991661,
+  "33": 2.8335196018218993,
+  "44": 2.835795450210571,
+  "55": 2.8408706814050673
+ },
+ "at80_mean": 2.8358152490854263,
+ "at80_sd": 0.0029494822043882665,
+ "final_per_seed": {
+  "11": 2.7825184881687166,
+  "22": 2.7824917465448378,
+  "33": 2.7818151652812957,
+  "44": 2.7830938667058946,
+  "55": 2.7870083123445513
+ },
+ "final_mean": 2.783385515809059,
+ "budget_tokens": 143360000,
+ "p80_step": 3500,
+ "eval_interval": 250,
+ "runs": "checkpoints/foton-v02r (r-m-s*)",
+ "git_head": "28757aae4a2c6154d2f51873b5e3cc62aa4c574f",
+ "unmasked_at80_mean": 2.9068262374401095,
+ "superseded": {
+  "file": "lstar_unmasked.json",
+  "lstar": 2.9082,
+  "why": "raporlanan olcut pozisyon 64..511'e sinirlandi (router nedenselligi); maskesiz L* 2.9068'e kaydi (-0.0014, tekrar zarfi icinde)"
+ }
+}

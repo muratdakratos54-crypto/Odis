@@ -1,0 +1,250 @@
+{
+ "schema": "foton-v02-pins/1",
+ "generated_at_utc": "2026-09-18T02:36:05Z",
+ "generated_git_head": "28757aae4a2c6154d2f51873b5e3cc62aa4c574f",
+ "generated_on": "Windows-11-10.0.26200-SP0 / python 3.13.14",
+ "claim": "Bu manifest, listelenen dosyaların ÜRETİLDİĞİ ANDAKİ baytlarına göre bütünlük kanıtlar. Dosyaların herhangi bir FOTON koşusundan ÖNCE var olduğunu KANITLAMAZ; güvenilen bir zaman damgası yoktur. Dosyalar git'te değil (.gitignore: data/*, checkpoints/*), bu yüzden commit'lenen kanıt manifestin KENDİSİDİR ve doğrulama dosyaları ayrıca almayı gerektirir.",
+ "verify_with": "python scripts/verify_pins.py --verify",
+ "counts": {
+  "pinned": 39,
+  "missing": 0,
+  "expected": 39
+ },
+ "missing": [],
+ "files": [
+  {
+   "path": "data/foton/meta.json",
+   "bytes": 1500,
+   "sha256": "b0f6570240ac87a5593706303a5e0ddfbe71529fa2764e497a7ff2e7e8f7249c",
+   "note": "korpus kimliği: alan başına token sayıları, vocab_size 32768, Tier A beyanı — L*'in ölçüldüğü val pencerelerinin TANIMI bu dosyada"
+  },
+  {
+   "path": "data/foton/tokenizer.model",
+   "bytes": 539007,
+   "sha256": "0f85409c0b57c64a343963fbde0f18d80469893ccb0e3f7d73548652119de8af",
+   "note": "32768 parçalı SentencePiece modeli; .bin'lerdeki id'lerin bir anlamı yalnızca bu dosyayla var, yani val loss'un birimi buna bağlı"
+  },
+  {
+   "path": "data/foton/tokenizer.vocab",
+   "bytes": 525961,
+   "sha256": "65205939a1545bf6eb2f7d79ba271c45b430aa1f3ad460391719a50997405cea",
+   "note": "parça↔id tablosunun insan okunur kopyası; denetimde ÇİVİSİZ olduğu bulundu. Aynı eğitimden çıkar ama ayrı çivilenir: tokenizer kimliği tek dosyaya bağlı kalmasın"
+  },
+  {
+   "path": "data/foton/nl_train.bin",
+   "bytes": 200000000,
+   "sha256": "0165ed7c88c537ef7a550fbc7a3da704e6083a21644b578358a0d7d01ba9ebdd",
+   "note": "NL alanı eğitim akışı (100M token, uint16); F_base'in paydası bu akıştan ölçüldü"
+  },
+  {
+   "path": "data/foton/nl_val.bin",
+   "bytes": 4000000,
+   "sha256": "1f4310a45eae1c1d93df972be9430d016fb85ae705717330e6448be3ad6d2886",
+   "note": "NL alanı val akışı (2M token); L*'in üçte biri bu dosyadan gelen pencerelerden"
+  },
+  {
+   "path": "data/foton/code_train.bin",
+   "bytes": 200000000,
+   "sha256": "6abe883ccb5a3235453a2bee4d7a6b063dc9f24d43513c792af72d5dad0193e0",
+   "note": "kod alanı eğitim akışı (100M token, uint16)"
+  },
+  {
+   "path": "data/foton/code_val.bin",
+   "bytes": 4000000,
+   "sha256": "0c86245449d4a6763068f68fe0c9a9699cf5724a87103c620508ba8872ce24cf",
+   "note": "kod alanı val akışı (2M token); alanlar arası 0.9 nat farkın bir ucu burada"
+  },
+  {
+   "path": "data/foton/math_train.bin",
+   "bytes": 200000000,
+   "sha256": "1aa49553b9d6c4db6e158d94735b2f0d37bf9f7f95fc06a8e89ac3877f179c3d",
+   "note": "matematik alanı eğitim akışı (100M token, uint16)"
+  },
+  {
+   "path": "data/foton/math_val.bin",
+   "bytes": 4000000,
+   "sha256": "e2fce664e2df6380308b3ac77a1c1d66fe8273efc492c732bd82c0e28de9feb8",
+   "note": "matematik alanı val akışı (2M token); alan başına val loss'un en düşük kolu"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s11/metrics.jsonl",
+   "bytes": 498907,
+   "sha256": "e93a3da170548dfd2befe097d6f3638f773af0e863a685bfac06cfb9c71bb591",
+   "note": "L*'in türetildiği val eğrisi (foton-m, seed 11): hedef, adım 3500 (referans bütçenin %80'i) val_loss'undan doğrudan okunuyor, interpolasyon yok [adım 3500 val_loss = 2.834774]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s11/config.json",
+   "bytes": 1265,
+   "sha256": "83bca7b428d1dbc51825227ceba27c6bf6e4c56a8c8c6cc3618c33d6d1d648f8",
+   "note": "eğriyi üreten tam config (foton-m, seed 11): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s11/provenance.json",
+   "bytes": 504,
+   "sha256": "2aa91108a6518ff3153f075b8d7483fa3abd19f0c04167f3ba4064286a548c05",
+   "note": "koşunun kod ve donanım kimliği (foton-m, seed 11): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s22/metrics.jsonl",
+   "bytes": 498432,
+   "sha256": "c7554429b5c5c09e9433c55123fee9bf220f282a159e5b16b7b119b5ea79d90c",
+   "note": "L*'in türetildiği val eğrisi (foton-m, seed 22): hedef, adım 3500 (referans bütçenin %80'i) val_loss'undan doğrudan okunuyor, interpolasyon yok [adım 3500 val_loss = 2.834116]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s22/config.json",
+   "bytes": 1265,
+   "sha256": "5a44f6ca4dc35b135c0c1057eb0679b9edeb51b779d0c322c54c6163afab90af",
+   "note": "eğriyi üreten tam config (foton-m, seed 22): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s22/provenance.json",
+   "bytes": 504,
+   "sha256": "0294b774c5ec11f488194472efbda85c42571b3f6f1ca1a4371176962e7e5c64",
+   "note": "koşunun kod ve donanım kimliği (foton-m, seed 22): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s33/metrics.jsonl",
+   "bytes": 498241,
+   "sha256": "b7fe88d868815b18b1affc35cb4a540b562e3de64792455147d0e2dce8f058f9",
+   "note": "L*'in türetildiği val eğrisi (foton-m, seed 33): hedef, adım 3500 (referans bütçenin %80'i) val_loss'undan doğrudan okunuyor, interpolasyon yok [adım 3500 val_loss = 2.833520]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s33/config.json",
+   "bytes": 1265,
+   "sha256": "605720525eac069a37b12025faa0d6a495eadcfcb5cca08bfaa559e82adf9059",
+   "note": "eğriyi üreten tam config (foton-m, seed 33): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s33/provenance.json",
+   "bytes": 504,
+   "sha256": "4fb3f164a3e7af2a5251345fe2a3fd5974f29e1dfb9d7aa8ba679b13b87dc001",
+   "note": "koşunun kod ve donanım kimliği (foton-m, seed 33): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s44/metrics.jsonl",
+   "bytes": 498429,
+   "sha256": "77d6b5ff48c9da65c19f766e285d18132f7d47325d36fd27a442f9c4c41d4102",
+   "note": "L*'in türetildiği val eğrisi (foton-m, seed 44): hedef, adım 3500 (referans bütçenin %80'i) val_loss'undan doğrudan okunuyor, interpolasyon yok [adım 3500 val_loss = 2.835795]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s44/config.json",
+   "bytes": 1265,
+   "sha256": "91f89e3ae1307911bebd6fd438b736cd36a527d9baf10575b672e17cee93cc3c",
+   "note": "eğriyi üreten tam config (foton-m, seed 44): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s44/provenance.json",
+   "bytes": 504,
+   "sha256": "f8e4dd0af7090766c6108dc0c6330dbb00eecaf20a05784292e86110114e405e",
+   "note": "koşunun kod ve donanım kimliği (foton-m, seed 44): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s55/metrics.jsonl",
+   "bytes": 498690,
+   "sha256": "1e44259f19b1bf8488677bca8c248466c9e71899f645723d69f7e51c1648663e",
+   "note": "L*'in türetildiği val eğrisi (foton-m, seed 55): hedef, adım 3500 (referans bütçenin %80'i) val_loss'undan doğrudan okunuyor, interpolasyon yok [adım 3500 val_loss = 2.840871]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s55/config.json",
+   "bytes": 1265,
+   "sha256": "9938e722b4cdd359a9c33974165438c894783fe95b237061766ee8c3cbd730db",
+   "note": "eğriyi üreten tam config (foton-m, seed 55): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-m-s55/provenance.json",
+   "bytes": 504,
+   "sha256": "ab7f1cce41beb9c5ca1ce854b8047bb47f99d848e2afbbfbf69e8cd277d1ade1",
+   "note": "koşunun kod ve donanım kimliği (foton-m, seed 55): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s11/metrics.jsonl",
+   "bytes": 54768,
+   "sha256": "676ccc2e024a193e53704cf4777ff120cbb1dc8e232e36fabe21bcd48ddd8503",
+   "note": "L_aux'un türetildiği val eğrisi (foton-d, seed 11) ve D'nin tam bütçede L*'e ULAŞMADIĞININ kaydı — sansür iddiası bu dosyaya dayanıyor [adım 3500 val_loss = 2.888172]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s11/config.json",
+   "bytes": 1263,
+   "sha256": "b86396168fb1ec075f7f72a0003ef2b871b722998975b080b901f976f02b3e21",
+   "note": "eğriyi üreten tam config (foton-d, seed 11): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s11/provenance.json",
+   "bytes": 504,
+   "sha256": "001f8adec3894f898b4d81d4b4ae7b2724b09deea97a55f73d642caf1779b59a",
+   "note": "koşunun kod ve donanım kimliği (foton-d, seed 11): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s22/metrics.jsonl",
+   "bytes": 54765,
+   "sha256": "3c8298b426bee102f7da11997d1dc8643d127b782878c5cddd1deb6cf3cffbf7",
+   "note": "L_aux'un türetildiği val eğrisi (foton-d, seed 22) ve D'nin tam bütçede L*'e ULAŞMADIĞININ kaydı — sansür iddiası bu dosyaya dayanıyor [adım 3500 val_loss = 2.892657]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s22/config.json",
+   "bytes": 1263,
+   "sha256": "c09637682f23c2ea1642933ac8323474c7dd2e21ac190cfc7c053bceb2349f11",
+   "note": "eğriyi üreten tam config (foton-d, seed 22): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s22/provenance.json",
+   "bytes": 504,
+   "sha256": "a8fcb8e44d9970be3890057540df014a2a6f6d01b49af9e291255bd15a50de63",
+   "note": "koşunun kod ve donanım kimliği (foton-d, seed 22): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s33/metrics.jsonl",
+   "bytes": 54801,
+   "sha256": "3600006c5c5528b462dc8e6ebe1f50be38f4b028e2a60e6d2517dc64b457586b",
+   "note": "L_aux'un türetildiği val eğrisi (foton-d, seed 33) ve D'nin tam bütçede L*'e ULAŞMADIĞININ kaydı — sansür iddiası bu dosyaya dayanıyor [adım 3500 val_loss = 2.895165]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s33/config.json",
+   "bytes": 1263,
+   "sha256": "55f1c937974a32313b4b6aa00adbcb4ff8a431ca16ea96fec636b96ff9c90cbf",
+   "note": "eğriyi üreten tam config (foton-d, seed 33): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s33/provenance.json",
+   "bytes": 504,
+   "sha256": "ced2f374353170ad990fb2e2334eec810b01d8efb476e04b0f5abfe6da004a98",
+   "note": "koşunun kod ve donanım kimliği (foton-d, seed 33): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s44/metrics.jsonl",
+   "bytes": 54747,
+   "sha256": "32e720c090441eeaee6a27e86bcce3997e7d7d384d44997e2353db33a94b5542",
+   "note": "L_aux'un türetildiği val eğrisi (foton-d, seed 44) ve D'nin tam bütçede L*'e ULAŞMADIĞININ kaydı — sansür iddiası bu dosyaya dayanıyor [adım 3500 val_loss = 2.893817]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s44/config.json",
+   "bytes": 1263,
+   "sha256": "8c12dc36b9d1e1e9f08c85bb9fca667b24ea6fd2f32b0b8d66440f4515912683",
+   "note": "eğriyi üreten tam config (foton-d, seed 44): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s44/provenance.json",
+   "bytes": 504,
+   "sha256": "6e7248951816c6386aa09e437e042f28a1f9b8b149906b89d2ced70027c59720",
+   "note": "koşunun kod ve donanım kimliği (foton-d, seed 44): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s55/metrics.jsonl",
+   "bytes": 54765,
+   "sha256": "48cc1deeadea820e8b321ffe8cd1bfebb5290dc20a64f4ed36393ad57d4ddd5d",
+   "note": "L_aux'un türetildiği val eğrisi (foton-d, seed 55) ve D'nin tam bütçede L*'e ULAŞMADIĞININ kaydı — sansür iddiası bu dosyaya dayanıyor [adım 3500 val_loss = 2.894897]"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s55/config.json",
+   "bytes": 1263,
+   "sha256": "c2c0b955c497cc9c9f4faf6a9576aa28df1895d99e8426dc4d5675695516bbe8",
+   "note": "eğriyi üreten tam config (foton-d, seed 55): eval_interval 250 ve batch_size × eval_iters = 1280 buradan doğrulanır; L* ölçülen PENCERE KÜMESİNE bağlı"
+  },
+  {
+   "path": "checkpoints/foton-v02r/r-d-s55/provenance.json",
+   "bytes": 504,
+   "sha256": "f18ee8855d310ea9e9150907f8485f233495f13887f362c6c04c3498de3100c2",
+   "note": "koşunun kod ve donanım kimliği (foton-d, seed 55): src_sha256 + git_head — eğrinin hangi kodla üretildiği yalnızca bu dosyada yazılı"
+  }
+ ]
+}

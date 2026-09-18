@@ -1,0 +1,12 @@
+2026-09-17 03:45:37 kuyruk: experiments/foton-v02-prereg/queues/baseline_d.json | kod 5400fb4eb913 | git 1a592a2926 (+10 değişiklik) | 3.13.14 2.14.0+cu130 13.0 | NVIDIA GeForce RTX 4070 SUPER, 616.64
+2026-09-17 03:45:38 [1/5] baseline-d-s11: başladı: --preset foton-d --seed 11 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\foton-v02 --run_name baseline-d-s11
+2026-09-17 04:12:42 [1/5] baseline-d-s11: bitti kod=0 (27.1 dk)
+2026-09-17 04:12:44 [2/5] baseline-d-s22: başladı: --preset foton-d --seed 22 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\foton-v02 --run_name baseline-d-s22
+2026-09-17 04:39:45 [2/5] baseline-d-s22: bitti kod=0 (27.0 dk)
+2026-09-17 04:39:47 [3/5] baseline-d-s33: başladı: --preset foton-d --seed 33 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\foton-v02 --run_name baseline-d-s33
+2026-09-17 05:06:48 [3/5] baseline-d-s33: bitti kod=0 (27.0 dk)
+2026-09-17 05:06:50 [4/5] baseline-d-s44: başladı: --preset foton-d --seed 44 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\foton-v02 --run_name baseline-d-s44
+2026-09-17 05:33:49 [4/5] baseline-d-s44: bitti kod=0 (27.0 dk)
+2026-09-17 05:33:50 [5/5] baseline-d-s55: başladı: --preset foton-d --seed 55 --out_dir C:\Users\murat\Desktop\foton gama v1\checkpoints\foton-v02 --run_name baseline-d-s55
+2026-09-17 06:00:52 [5/5] baseline-d-s55: bitti kod=0 (27.0 dk)
+2026-09-17 06:00:52 kuyruk tamamlandı

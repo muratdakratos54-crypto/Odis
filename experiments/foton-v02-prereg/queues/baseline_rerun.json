@@ -1,0 +1,140 @@
+{
+ "out_dir": "checkpoints/foton-v02r",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "r-d-s11",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "11"
+   ],
+   "_block": "s11",
+   "_arm": "d"
+  },
+  {
+   "name": "r-m-s11",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "11"
+   ],
+   "_block": "s11",
+   "_arm": "m"
+  },
+  {
+   "name": "r-m-s22",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "22"
+   ],
+   "_block": "s22",
+   "_arm": "m"
+  },
+  {
+   "name": "r-d-s22",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "22"
+   ],
+   "_block": "s22",
+   "_arm": "d"
+  },
+  {
+   "name": "r-d-s33",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "33"
+   ],
+   "_block": "s33",
+   "_arm": "d"
+  },
+  {
+   "name": "r-m-s33",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "33"
+   ],
+   "_block": "s33",
+   "_arm": "m"
+  },
+  {
+   "name": "r-m-s44",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "44"
+   ],
+   "_block": "s44",
+   "_arm": "m"
+  },
+  {
+   "name": "r-d-s44",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "44"
+   ],
+   "_block": "s44",
+   "_arm": "d"
+  },
+  {
+   "name": "r-d-s55",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "55"
+   ],
+   "_block": "s55",
+   "_arm": "d"
+  },
+  {
+   "name": "r-m-s55",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "55"
+   ],
+   "_block": "s55",
+   "_arm": "m"
+  }
+ ],
+ "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
+ "_blocks": [
+  [
+   "r-d-s11",
+   "r-m-s11"
+  ],
+  [
+   "r-m-s22",
+   "r-d-s22"
+  ],
+  [
+   "r-d-s33",
+   "r-m-s33"
+  ],
+  [
+   "r-m-s44",
+   "r-d-s44"
+  ],
+  [
+   "r-d-s55",
+   "r-m-s55"
+  ]
+ ]
+}

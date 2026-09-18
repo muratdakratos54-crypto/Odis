@@ -1,0 +1,52 @@
+{
+ "out_dir": "checkpoints/foton-v02",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "baseline-m-s11",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "11"
+   ]
+  },
+  {
+   "name": "baseline-m-s22",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "22"
+   ]
+  },
+  {
+   "name": "baseline-m-s33",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "33"
+   ]
+  },
+  {
+   "name": "baseline-m-s44",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "44"
+   ]
+  },
+  {
+   "name": "baseline-m-s55",
+   "args": [
+    "--preset",
+    "foton-m",
+    "--seed",
+    "55"
+   ]
+  }
+ ]
+}

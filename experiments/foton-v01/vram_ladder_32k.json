@@ -1,0 +1,98 @@
+[
+ {
+  "size": "512x8",
+  "arch": "dense",
+  "peak_gb": 5.768363008,
+  "sec_per_micro_step": 0.10365116000175476,
+  "params": 42476032,
+  "tok_per_sec": 79034.33014991162,
+  "foton_extra_gb": 0.205520896,
+  "foton_total_gb": 5.973883904,
+  "fits": true,
+  "flops_per_token": 267411456
+ },
+ {
+  "size": "512x8",
+  "arch": "moe",
+  "peak_gb": 7.12174848,
+  "sec_per_micro_step": 0.18616688000038267,
+  "params": 91734528,
+  "tok_per_sec": 44003.53059568469,
+  "foton_extra_gb": 0.205520896,
+  "foton_total_gb": 7.327269376,
+  "fits": true,
+  "flops_per_token": 267755520
+ },
+ {
+  "size": "640x10",
+  "arch": "dense",
+  "peak_gb": 7.271408128,
+  "sec_per_micro_step": 0.15549426000216043,
+  "params": 71160960,
+  "tok_per_sec": 52683.616744992265,
+  "foton_extra_gb": 0.3211264,
+  "foton_total_gb": 7.592534528,
+  "fits": true,
+  "flops_per_token": 446584320
+ },
+ {
+  "size": "640x10",
+  "arch": "moe",
+  "peak_gb": 9.754464768,
+  "sec_per_micro_step": 0.2689595200004987,
+  "params": 170094720,
+  "tok_per_sec": 30458.115035246978,
+  "foton_extra_gb": 0.3211264,
+  "foton_total_gb": 10.075591168,
+  "fits": false,
+  "flops_per_token": 447137280
+ },
+ {
+  "size": "768x12",
+  "arch": "dense",
+  "peak_gb": 9.169385472,
+  "sec_per_micro_step": 0.22425839999923483,
+  "params": 111889152,
+  "tok_per_sec": 36529.28942696439,
+  "foton_extra_gb": 0.462422016,
+  "foton_total_gb": 9.631807488,
+  "fits": true,
+  "flops_per_token": 699586560
+ },
+ {
+  "size": "768x12",
+  "arch": "moe",
+  "peak_gb": 13.125894144,
+  "sec_per_micro_step": 2.0568641000019854,
+  "params": 285985536,
+  "tok_per_sec": 3982.7619141158098,
+  "foton_extra_gb": 0.462422016,
+  "foton_total_gb": 13.58831616,
+  "fits": false,
+  "flops_per_token": 700397568
+ },
+ {
+  "size": "896x14",
+  "arch": "dense",
+  "peak_gb": 11.430526464,
+  "sec_per_micro_step": 0.5048107600014191,
+  "params": 167069056,
+  "tok_per_sec": 16227.863288763834,
+  "foton_extra_gb": 0.629407744,
+  "foton_total_gb": 12.059934208,
+  "fits": false,
+  "flops_per_token": 1040868864
+ },
+ {
+  "size": "896x14",
+  "arch": "moe",
+  "peak_gb": 17.498888192,
+  "sec_per_micro_step": 13.096349700004794,
+  "params": 447086976,
+  "tok_per_sec": 625.517811272022,
+  "foton_extra_gb": 0.629407744,
+  "foton_total_gb": 18.128295936,
+  "fits": false,
+  "flops_per_token": 1041987072
+ }
+]
