@@ -25,6 +25,7 @@ from src.checkpoint import save_atomic
 from src.config import TrainConfig, build_configs
 from src.data import TokenDataset, dataset_paths
 from src.data_multi import MultiDomainDataset, multi_domain_paths
+from src.flops import forward_flops_per_token, train_flops_per_token
 from src.model import GPT
 from src.moe import load_balance_metrics, load_sparkline, update_expert_biases
 from src.tokenizer import load_tokenizer
@@ -63,9 +64,46 @@ def lr_at(tokens_seen: int, tokens_per_step: int, warmup_tokens: int, max_tokens
     return cfg.min_lr + 0.5 * (1.0 + math.cos(math.pi * progress)) * (cfg.lr - cfg.min_lr)
 
 
+# Oracle NULL'ının permütasyon tohumu. Sabit: null eğrisi her eval noktasında, her koşuda ve her kolda AYNI
+# permütasyonla kurulur (tek bir çekim; eğri gürültüsü eval noktaları arasında ortak kalsın diye).
+ORACLE_NULL_SEED = 54321
+_PERMS3 = torch.tensor([[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]])
+
+
+def oracle_stats(ce_tok: torch.Tensor, choice: torch.Tensor, k: int, perm_idx: torch.Tensor) -> dict[str, torch.Tensor]:
+    """Bir batch'in oracle nicelikleri. `ce_tok` [3, B, T]: modül m ZORLANMIŞKEN pozisyon başına CE.
+
+    * `oracle`  (v01 EK1-B12, O8): dizi başına, ÖLÇÜT pozisyonları (k..T-1) üzerindeki token-ortalamalı saf
+      CE'si en küçük olan modül seçilir. Seçim ölçütle AYNI pozisyonlarda yapılır; ancak o zaman "oracle eğrisi
+      FOTON'un kendi eğrisinin üstünde olamaz" (ön-kayıt, oracle bölümü) doğrudur: router'ın seçtiği modül de
+      adaylar arasındadır.
+    * `null`    (v01 EK1-B11: "aynı oracle prosedürü, modül çıktıları birbirine permüte edilerek — seçimin
+      bilgi taşımadığı durumda"). Okuma: her dizide, her POZİSYONDA üç modülün token kayıpları kendi aralarında
+      rastgele permüte edilir; böylece üç "sözde-modül" değiş-tokuş edilebilir olur (hangisinin bu dizi için
+      gerçekten iyi olduğu bilgisi silinir) ama en küçüğünü seçmenin GÜRÜLTÜDEN kazandırdığı pay kalır. Aynı
+      oracle prosedürü (dizi başına en küçük ortalama) sözde-modüllere uygulanır. B11'in gerekçesi tam bu:
+      "modüller istatistiksel olarak aynı olsa bile seçim eğriyi aşağı çeker". Metnin en düz okuması (modül
+      ETİKETLERİNİ dizi içinde permüte etmek) minimumu değiştirmez (null = oracle, kazanç hep 0); kayıpları
+      DİZİLER arasında karıştırmak ise alanlar arası ~0.9 nat'lık farkı seçime sokar (null << oracle). İkisi de
+      vazgeçme koşulunun oracle bacağını anlamsız kılar. Bu okuma tartışmalı olabileceği için HAM veri de
+      diske yazılır (`eval_raw/`): başka her okuma koşulardan sonra yeniden hesaplanabilir.
+    * `routed`  : router'ın seçtiği modülün dizi-ortalaması — `val_loss`'un İKİNCİ yoldan hesabı (tutarlılık).
+    """
+    seq = ce_tok[:, :, k:].mean(dim=-1)                                   # [3, B]
+    pseudo = ce_tok.gather(0, _PERMS3.to(ce_tok.device)[perm_idx].permute(2, 0, 1))   # [3, B, T]
+    return {"seq_masked": seq, "seq_full": ce_tok.mean(dim=-1),
+            "oracle": seq.min(dim=0).values, "null": pseudo[:, :, k:].mean(dim=-1).min(dim=0).values,
+            "routed": seq.gather(0, choice[None, :])[0]}
+
+
 @torch.no_grad()
-def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> dict[str, float]:
-    """Val loss. `{"full": ..., "primary": ...}` döner.
+def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> dict:
+    """Val loss. `{"full": ..., "primary": ...}` döner; FOTON kollarında ayrıca oracle nicelikleri.
+
+    FOTON (`model.cfg.foton`): `oracle`, `oracle_null`, `routed_check` (skaler) ve `raw` (dizi başına ham
+    ölçüm: üç modülün pozisyon başına CE'si float16, dizi ortalamaları float32, router seçimi / olasılıkları /
+    logit'leri, alan kimliği). `val_loss`'un KENDİSİ dört kolda da aynı koddan gelir (`model(x, y)`); oracle
+    geçişi ek bir ölçümdür ve karar metriğine dokunmaz.
 
     `full` = bütün pozisyonlar. `primary` = `cfg.loss_prefix_skip` kadar ilk pozisyon ATLANMIŞ hâli;
     karar bu ikincisine göre verilir (bkz. `TrainConfig.loss_prefix_skip`: dizi düzeyi router'ın
@@ -84,6 +122,34 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> di
     # loss'u kaydırıp `L*`'i bölüşüme bağlı hale getiriyordu (ön-kayıt V1-ii). Dondurulmuş
     # akış referans bölüşümün sırasını birebir tekrar oynatır, yani `L*` değişmez.
     k = cfg.loss_prefix_skip
+    foton = bool(getattr(model, "cfg", None) and model.cfg.foton)
+    null_gen = torch.Generator().manual_seed(ORACLE_NULL_SEED)
+    fo = {"oracle": 0.0, "null": 0.0, "routed": 0.0}
+    raw: dict[str, list] = {n: [] for n in ("ce_tok", "seq_masked", "seq_full", "choice", "probs", "logits", "domain")}
+
+    def oracle_pass(x: torch.Tensor, y: torch.Tensor) -> None:
+        """Aynı batch üç modülün üçünden: oracle / null / ham döküm. `both()`'tan SONRA çağrılır ki onun
+        logit tensörü serbest kalmış olsun (eval tepe belleği baseline'larınkini aşmasın)."""
+        with autocast_ctx:
+            ev = model.foton_eval_all(x, y)
+        perm_idx = torch.randint(len(_PERMS3), tuple(y.shape), generator=null_gen).to(y.device)
+        st = oracle_stats(ev["ce_tok"], ev["choice"], k, perm_idx)
+        for n in fo:
+            fo[n] += st[n].mean().item()
+        raw["ce_tok"].append(ev["ce_tok"].permute(1, 0, 2).to(torch.float16).cpu())      # [B, 3, T]
+        raw["seq_masked"].append(st["seq_masked"].T.float().cpu())
+        raw["seq_full"].append(st["seq_full"].T.float().cpu())
+        for n in ("choice", "probs", "logits"):
+            raw[n].append(ev[n].cpu())
+        dom = getattr(ds, "last_domain_ids", None)
+        raw["domain"].append(dom.cpu() if dom is not None else torch.full((y.shape[0],), -1))
+
+    def finish(tf: float, tp: float, nb: int) -> dict:
+        out = {"full": tf / nb, "primary": tp / nb}
+        if foton:
+            out.update(oracle=fo["oracle"] / nb, oracle_null=fo["null"] / nb, routed_check=fo["routed"] / nb,
+                       raw={n: torch.cat(v).numpy() for n, v in raw.items()})
+        return out
 
     def both(x: torch.Tensor, y: torch.Tensor) -> tuple[float, float]:
         """Aynı batch'te tam ve maskeli CE — TEK forward'dan.
@@ -108,22 +174,87 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> di
         batches = [pairs[i : i + cfg.batch_size] for i in range(0, total_windows, cfg.batch_size)]
         tf = tp = 0.0
         for chunk in batches:
-            f, p = both(*ds.windows(chunk))
+            x, y = ds.windows(chunk)
+            f, p = both(x, y)
             tf += f
             tp += p
+            if foton:
+                oracle_pass(x, y)
         model.train()
-        return {"full": tf / len(batches), "primary": tp / len(batches)}
+        return finish(tf, tp, len(batches))
 
     g = torch.Generator().manual_seed(12345)
     tf = tp = 0.0
     for _ in range(cfg.eval_iters):
         # Toplam loss değil, saf cross-entropy: MoE'nin aux/z ceza terimleri model kalitesini
         # ölçmez; dense ile MoE'yi adil karşılaştırmak için yalnızca CE'ye bakıyoruz.
-        f, p = both(*ds.get_batch(cfg.batch_size, g))
+        x, y = ds.get_batch(cfg.batch_size, g)
+        f, p = both(x, y)
         tf += f
         tp += p
+        if foton:
+            oracle_pass(x, y)
     model.train()
-    return {"full": tf / cfg.eval_iters, "primary": tp / cfg.eval_iters}
+    return finish(tf, tp, cfg.eval_iters)
+
+
+class RouterLog:
+    """FOTON router'ının log aralığı boyunca biriken istatistikleri (ön-kayıt V6) — GPU'da, `.item()`'sız.
+
+    Alan adları ön-kayıtta pinli. Tanımlar (metnin açık bıraktıkları burada sabitlenir ve HAM sayımlar da
+    loglanır ki başka her okuma sonradan hesaplanabilsin):
+      router_entropy_marginal : H(modül) / log M, aralıktaki dizi seçimlerinin marjinal dağılımından
+      router_entropy_per_seq  : dizi başına softmax entropisinin ortalaması / log M
+      router_margin           : top-1 ile top-2 LOGIT farkının ortalaması
+      router_load_cv          : üç modülün yük paylarının değişim katsayısı (POPÜLASYON std; tam çökme = sqrt(2))
+      router_dead             : ideal payın (1/M) %10'undan azını alan modül sayısı (`src/moe.py` ile AYNI eşik)
+      router_switch_rate      : ardışık iki log aralığında p(modül | alan) dağılımları arasındaki toplam
+                                değişim uzaklığının (TV) alanlar üzerinden ortalaması; ilk aralıkta None.
+                                (Eğitim pencereleri tekrar etmediği için "aynı dizinin modül değiştirmesi"
+                                tanımsızdır; ölçülebilen, aynı ALANIN dizilerinin dağılımındaki kaymadır.)
+      router_counts / router_domain_counts : ham sayımlar (modül; alan x modül)
+    """
+
+    def __init__(self, n_modules: int, n_domains: int, device: str):
+        self.M, self.D = n_modules, max(1, n_domains)
+        self.counts = torch.zeros(self.D, self.M, device=device)
+        self.ent = torch.zeros((), device=device)
+        self.margin = torch.zeros((), device=device)
+        self.prev: torch.Tensor | None = None
+
+    def add(self, info: dict, domain_ids: torch.Tensor | None) -> None:
+        choice, probs, logits = info["foton_choice"], info["foton_probs"], info["foton_logits"]
+        dom = domain_ids if domain_ids is not None and self.D > 1 else torch.zeros_like(choice)
+        self.counts += torch.zeros_like(self.counts).index_put_((dom, choice), torch.ones_like(choice, dtype=self.counts.dtype),
+                                                                accumulate=True)
+        self.ent += -(probs * torch.log(probs.clamp_min(1e-20))).sum(dim=-1).sum()
+        top2 = logits.topk(2, dim=-1).values
+        self.margin += (top2[:, 0] - top2[:, 1]).sum()
+
+    def flush(self) -> dict:
+        c = self.counts.double().cpu()
+        n = c.sum().item()
+        share = (c.sum(dim=0) / n)
+        nz = share[share > 0]
+        dist = c / c.sum(dim=1, keepdim=True).clamp_min(1)
+        switch = None
+        if self.prev is not None:
+            seen = (c.sum(dim=1) > 0) & (self.prev.sum(dim=1) > 0)
+            if bool(seen.any()):
+                switch = float((0.5 * (dist - self.prev).abs().sum(dim=1))[seen].mean())
+        out = {"router_entropy_marginal": float(-(nz * nz.log()).sum() / math.log(self.M)),
+               "router_entropy_per_seq": self.ent.item() / n / math.log(self.M),
+               "router_margin": self.margin.item() / n,
+               "router_load_cv": float(share.std(unbiased=False) / share.mean()),
+               "router_dead": int((share < 0.1 / self.M).sum()),
+               "router_switch_rate": switch,
+               "router_counts": [int(v) for v in c.sum(dim=0).tolist()],
+               "router_domain_counts": [[int(v) for v in row] for row in c.tolist()]}
+        self.prev = dist
+        self.counts.zero_()
+        self.ent.zero_()
+        self.margin.zero_()
+        return out
 
 
 def main() -> None:
@@ -181,8 +312,13 @@ def main() -> None:
     warmup_tokens, max_tokens = token_budget(tcfg, tokens_per_step)
     # Bütçe tam adıma yukarı yuvarlanır: son adım bütçeyi en fazla (token/adım - 1) token aşar
     max_steps = math.ceil(max_tokens / tokens_per_step)
+    # budget_mult: ZORUNLU 2x koşu. LR ufku `max_steps`'te (1x) kalır — `lr_at` ilerlemeyi 1.0'da kırptığı için
+    # cosine 1x'te min_lr'a iner ve koşu 2x'e kadar min_lr'da sürer (v01 EK1-B9).
+    if tcfg.budget_mult < 1:
+        sys.exit("budget_mult >= 1 olmalı")
+    run_steps = max_steps * tcfg.budget_mult
     # stop_step: schedule bütçeye göre kalır ama eğitim bu adımda durur (ör. gerçek schedule'ın ilk 100 adımı)
-    end_step = min(max_steps, tcfg.stop_step) if tcfg.stop_step > 0 else max_steps
+    end_step = min(run_steps, tcfg.stop_step) if tcfg.stop_step > 0 else run_steps
 
     if resuming:
         # CPU'ya yükle: load_state_dict ağırlıkları zaten GPU'daki parametrelere kopyalar,
@@ -251,6 +387,26 @@ def main() -> None:
         metrics.write(json.dumps(record, ensure_ascii=False) + "\n")
         metrics.flush()
 
+    # ANALİTİK aktif FLOP her koşunun kendi kaydına girer (profiler'a güvenilmez: SDPA'yı maskeden bağımsız
+    # T x T sayar, gruplu matris çarpımını 0 sayar). FOTON kollarında SAYILMIŞ bağlantılar da yazılır.
+    fwd = forward_flops_per_token(mcfg)
+    meta = {"type": "meta", "step": 0, "arm": mcfg.foton or ("m" if mcfg.n_experts > 0 else "d"),
+            "flops_train_per_token": train_flops_per_token(mcfg), "flops_forward_per_token": fwd,
+            "params_total": model.num_params(), "params_active": model.num_params(active_only=True),
+            "tokens_per_step": tokens_per_step, "max_steps": max_steps, "budget_mult": tcfg.budget_mult,
+            "end_step": end_step, "loss_prefix_skip": tcfg.loss_prefix_skip,
+            "torch": torch.__version__, "gpu": torch.cuda.get_device_name(0) if device == "cuda" else "cpu"}
+    if mcfg.foton:
+        meta["foton_connections_counted"] = model.foton_connection_counts()
+        meta["foton_layout"] = [mcfg.foton_pre, mcfg.foton_routed, mcfg.foton_post]
+        meta["foton_prefix_k"], meta["foton_reg"] = mcfg.foton_prefix_k, [mcfg.foton_reg, mcfg.foton_reg_coef]
+    print(f"analitik aktif FLOP: eğitim {meta['flops_train_per_token']:,} / token"
+          + (f" | sayılmış bağlantı {meta['foton_connections_counted']}" if mcfg.foton else ""))
+    if step == 0:
+        log(meta)
+    router_log = RouterLog(len(model.foton_modules), len(getattr(train_ds, "names", [])), device) if mcfg.foton else None
+    eval_raw_dir = os.path.join(run_dir, "eval_raw")
+
     def sync() -> None:
         # CUDA çağrıları asenkron: saati okumadan önce kuyruğun bitmesini bekle, yoksa bir aralığın GPU işi
         # sonrakine (ya da eval süresine) yazılır
@@ -277,10 +433,22 @@ def main() -> None:
             # KARAR metriği `primary` (prefix maskeli); `full` provenance kontrolü için loglanır.
             val_loss, val_full = ev["primary"], ev["full"]
             tag = "" if tcfg.loss_prefix_skip <= 0 else f" [maskesiz {val_full:.4f}]"
+            val_rec = {"type": "val", "step": step, "tokens": step * tokens_per_step, "val_loss": val_loss,
+                       "val_loss_full": val_full, "loss_prefix_skip": tcfg.loss_prefix_skip}
+            if "oracle" in ev:
+                # Oracle eğrileri eğitim SIRASINDA loglanır: yalnızca last.pt / best.pt saklandığı için
+                # eğri sonradan üretilemez (ön-kayıt, "Oracle şartı"). Ham döküm her okumayı yeniden
+                # hesaplanabilir kılar.
+                val_rec.update(val_loss_oracle=ev["oracle"], val_loss_oracle_null=ev["oracle_null"],
+                               val_loss_routed_check=ev["routed_check"])
+                tag += f" [oracle {ev['oracle']:.4f} | null {ev['oracle_null']:.4f}]"
+                if abs(ev["routed_check"] - val_loss) > 1e-3:
+                    print(f"[UYARI] val_loss iki yoldan uyuşmuyor: {val_loss:.6f} vs {ev['routed_check']:.6f}")
+                os.makedirs(eval_raw_dir, exist_ok=True)
+                import numpy as np
+                np.savez_compressed(os.path.join(eval_raw_dir, f"step_{step:05d}.npz"), step=step, **ev["raw"])
             print(f"[eval] adım {step}: val_loss {val_loss:.4f} (ppl {math.exp(val_loss):.2f}){tag}")
-            log({"type": "val", "step": step, "tokens": step * tokens_per_step, "val_loss": val_loss,
-                 "val_loss_full": val_full, "loss_prefix_skip": tcfg.loss_prefix_skip,
-                 "train_time": train_time_now, "time": time.perf_counter() - t_start})
+            log({**val_rec, "train_time": train_time_now, "time": time.perf_counter() - t_start})
             if last_load is not None:
                 # Expert kullanım tablosu: her satır bir MoE katmanı, her karakter bir expert.
                 # '▄' ideal pay; '█' ~1.9x+ aşırı yüklü; boşluk = ideal payın %10'undan az (ölü).
@@ -338,6 +506,11 @@ def main() -> None:
                     accum[k] += info[k] / tcfg.grad_accum
             if "counts" in info:
                 load_accum = info["counts"].clone() if load_accum is None else load_accum + info["counts"]
+            if router_log is not None:
+                router_log.add(info, getattr(train_ds, "last_domain_ids", None))
+                if "foton_reg" in info:
+                    accum.setdefault("foton_reg", torch.zeros((), device=device))
+                    accum["foton_reg"] += info["foton_reg"] / tcfg.grad_accum
         # Gradyan kırpma: nadir "kötü batch"lerde oluşan dev gradyanların modeli bozmasını engeller.
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), tcfg.grad_clip)
         optimizer.step()
@@ -372,6 +545,14 @@ def main() -> None:
                     record["bias_range"] = bias_range
                     line += f" | bias aralığı {bias_range:.3f}"
                 load_accum = None
+            if router_log is not None:
+                rl = router_log.flush()
+                record.update(rl)
+                if "foton_reg" in avg:
+                    record["foton_reg"] = avg["foton_reg"]
+                line += (f"\n           router: marjinal H {rl['router_entropy_marginal']:.3f} | dizi-başı H "
+                         f"{rl['router_entropy_per_seq']:.3f} | marj {rl['router_margin']:.3f} | yük {rl['router_counts']} "
+                         f"| ölü {rl['router_dead']}")
             print(line)
             log(record)
             for v in accum.values():

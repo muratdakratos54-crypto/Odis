@@ -47,6 +47,23 @@ class ModelConfig:
     # Expert hesabının yolu (bkz. src/moe.py): "grouped" = gruplu matris çarpımı, "loop" = expert başına
     # ayrı çağrı (v1). Matematik ve parametreler aynı; yalnızca hız ve kayan nokta yuvarlaması farklı olabilir.
     moe_impl: str = "grouped"
+    # --- FOTON v0.2 (PREREGISTRATION_V02.md "MİMARİ"; tag foton-v02-prereg'de DONMUŞ) ---
+    # "" = kapalı (D ve M kolları: bu alanların HİÇBİRİ model yolunu etkilemez, init sırası dahil).
+    # "h" = homojen (üç modül de A deseni, farklı ağırlık) | "x" = heterojen (A, B, C).
+    # Desen parametreleri burada DEĞİL `src/attn_patterns.py`'de donmuştur (A: yerel W=150;
+    # B: dilated r=2 W=256; C: yarım yerel W=256 + yarım strided s=4 W=256) ve config'ten ezilemez:
+    # ön-kaydın O-X1 bölümünde kalan ESKİ tasarım (256 / 256 / 128+128 -> 192.25 / 128.50 / 88.31
+    # bağlantı, yani reddedilen compute confound'un kendisi) koda bir bayrakla sızamasın.
+    foton: str = ""
+    foton_prefix_k: int = 64     # router yalnızca ilk k token'ın gizli durumunu görür (nedensel prefix)
+    foton_pre: int = 3           # router'dan ÖNCEki paylaşılan tam-nedensel blok sayısı
+    foton_routed: int = 2        # modül başına katman sayısı
+    foton_post: int = 3          # modülden SONRAki paylaşılan tam-nedensel blok sayısı
+    # V7 router regularizasyon ablasyonu (yalnızca tarama tier'ı; karar koşusu kazananı kullanır):
+    # "none" | "entropy" (dizi başına softmax entropisi BONUSU: loss -= coef * H) |
+    # "lb" (Switch tarzı load-balancing aux, mikro-batch başına: loss += coef * N * sum_m f_m * P_m)
+    foton_reg: str = "none"
+    foton_reg_coef: float = 0.01
 
 
 @dataclass
@@ -67,6 +84,12 @@ class TrainConfig:
     # karşılaştırırken bütçe token olarak verilir; warmup her modelde aynı token sayısında biter.
     max_tokens: int = 0
     stop_step: int = 0          # >0: bu adımda dur, schedule yine bütçeye göre (kısa doğrulama koşuları için)
+    # ZORUNLU 2x koşu (ön-kayıt V3 adım 2; v01 EK1-B9): bir FOTON seed'inin 1x eğrisi L*'i kalıcı kesmezse
+    # aynı seed 2x bütçeyle SIFIRDAN yeniden koşulur. LR schedule REFERANS bütçe (max_steps) üzerinden
+    # tanımlı kalır: cosine 1x'te min_lr'a iner, sonra 2x'e kadar min_lr'da SABİT kalır. Bu yüzden 2x koşu
+    # `max_steps`'i büyüterek yapılamaz (cosine 8750 adıma yayılırdı: 143M token'da LR 1e-4 yerine ~5.5e-4,
+    # yani BAŞKA bir eğitim; ayrıca V2'nin "max_steps dört kolda aynı" maddesini bozardı). 1 = normal koşu.
+    budget_mult: int = 1
     # --- optimizer ---
     lr: float = 1e-3            # küçük modeller büyük LR'ı tolere eder (GPT-3 tablosu: ~6e-4 @125M)
     min_lr: float = 1e-4        # cosine decay sonu = lr/10 (Chinchilla tarzı)
@@ -159,6 +182,27 @@ PRESETS: dict[str, tuple[ModelConfig, TrainConfig]] = {
         TrainConfig(run_name="foton-m", data_dir="data/foton", batch_size=16, grad_accum=4,
                     max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
                     loss_prefix_skip=64),
+    ),
+    # --- FOTON kolları. TrainConfig `foton-d`/`foton-m` ile BİREBİR aynı (ön-kayıt V2'nin kapalı listesi);
+    # tek fark run_name. ModelConfig'te tek fark `foton` alanı: boyutlar D ile aynı (d=512, 8 katman, 8 head,
+    # ffn 1408), MoE yok. `tests/test_foton_frozen.py` bu eşitliği kilitler.
+    "foton-h": (
+        ModelConfig(foton="h"),
+        TrainConfig(run_name="foton-h", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-x": (
+        ModelConfig(foton="x"),
+        TrainConfig(run_name="foton-x", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "tiny-foton": (
+        ModelConfig(max_seq_len=128, d_model=128, n_layer=4, n_head=4, ffn_hidden=352,
+                    foton="x", foton_prefix_k=16, foton_pre=1, foton_routed=2, foton_post=1),
+        TrainConfig(run_name="tiny-foton", batch_size=16, grad_accum=1, max_steps=60, warmup_steps=10,
+                    eval_interval=30, eval_iters=5, log_interval=10, sample_tokens=0, loss_prefix_skip=16),
     ),
     "tiny-moe": (
         ModelConfig(max_seq_len=128, d_model=128, n_layer=2, n_head=4, ffn_hidden=352,

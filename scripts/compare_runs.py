@@ -1,4 +1,16 @@
-"""v2 ölçümleri: dispatch hız benchmark'ı + dense / moe / moe-noaux için dört karşılaştırma (3 seed).
+"""KARANTİNA — v2 DÖNEMİ BETİĞİ, FOTON HATTINDA KULLANILAMAZ. FOTON dizinlerine yöneltilirse hata verip çıkar.
+
+Bu betik kendi `paired(a: list, b: list)` fonksiyonunu taşır ve iki listeyi `zip()` ile KONUMA göre
+eşler. Konuma göre eşleme hatası bu depoda üç kez doğdu (`src/stats.paired` v3'te, `savings` ve
+`decide_primary` FOTON v0.2 ön-kaydının denetimlerinde) ve her seferinde yanlış seed'leri sessizce
+eşledi. FOTON'un karar yolu artık yalnızca seed kimliğiyle anahtarlı eşleme kabul eden `src/stats.py`'yi
+kullanır (PREREGISTRATION_V02.md V4, "VERİ TAŞIMA KURALI"). Bu dosya yalnızca v2 sonuçlarının
+(`checkpoints/v2`, `experiments/v2-grouped-dispatch`) yeniden üretilebilmesi için duruyor; burada
+koşu adları sabit bir desenle ve sıralı seed listesiyle okunduğu için konum eşlemesi o veri üzerinde
+doğru sonuç veriyordu. Dördüncü doğum yeri olmasın diye `refuse_foton()` her girdi yolunu ve
+yüklenen her `config.json`'u denetler.
+
+v2 ölçümleri: dispatch hız benchmark'ı + dense / moe / moe-noaux için dört karşılaştırma (3 seed).
 
     .venv\\Scripts\\python scripts/compare_runs.py --runs checkpoints/v2 --speed checkpoints/v2-speed \\
         --out experiments/v2-grouped-dispatch/summary.json --plot docs/v2_comparisons.png
@@ -37,7 +49,31 @@ from src.model import GPT  # noqa: E402
 T975_DF2 = 4.302653
 
 
+def refuse_foton(path: str, config: dict | None = None) -> None:
+    """FOTON verisine yöneltilirse ÇIK. Yol adı ya da koşunun kendi config'i FOTON'u gösteriyorsa durur.
+
+    Yalnızca yol adına bakmak yetmez (dizin yeniden adlandırılabilir); config'in üç işareti de
+    denetlenir: FOTON korpusu, prefix maskeli ölçüt, FOTON kolu.
+    """
+    why = []
+    if "foton" in os.path.normpath(path).lower():
+        why.append(f"yol FOTON'u gösteriyor: {path}")
+    if config is not None:
+        tr, mo = config.get("train", {}), config.get("model", {})
+        if "foton" in str(tr.get("data_dir", "")).lower():
+            why.append(f"data_dir = {tr.get('data_dir')!r}")
+        if tr.get("loss_prefix_skip", 0):
+            why.append(f"loss_prefix_skip = {tr.get('loss_prefix_skip')} (FOTON ölçütü)")
+        if mo.get("foton"):
+            why.append(f"model.foton = {mo.get('foton')!r}")
+    if why:
+        sys.exit("KARANTİNA: scripts/compare_runs.py FOTON verisinde KULLANILAMAZ (" + "; ".join(why) + "). "
+                 "Bu betik iki listeyi zip() ile KONUMA göre eşler. FOTON analizi için src/stats.py "
+                 "(savings -> decide_primary -> abandon) kullanılır.")
+
+
 def load(run_dir: str) -> dict:
+    refuse_foton(run_dir)
     rec = {"train": [], "val": [], "end": None}
     with open(os.path.join(run_dir, "metrics.jsonl"), encoding="utf-8") as f:
         for line in f:
@@ -48,6 +84,7 @@ def load(run_dir: str) -> dict:
                 rec["end"] = r
     with open(os.path.join(run_dir, "config.json"), encoding="utf-8") as f:
         rec["config"] = json.load(f)
+    refuse_foton(run_dir, rec["config"])
     return rec
 
 
@@ -120,6 +157,8 @@ def main() -> None:
     p.add_argument("--plot", default="docs/v2_comparisons.png")
     p.add_argument("--budget", action="store_true", help="yalnızca eşit süre bütçesini hesapla ve yazdır")
     args = p.parse_args()
+    for path in (args.runs, args.speed, args.out, args.plot):
+        refuse_foton(path)
     summary = {}
     if os.path.isdir(args.speed) and not args.budget:
         summary["speed"] = speed_section(args.speed)
