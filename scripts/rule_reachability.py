@@ -35,7 +35,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT)
 from src.stats import (  # noqa: E402
     MDE_PRIMARY2, PRIMARY_FAMILY, SUCCESS, abandon, contribution, decide, reachability,
-    t_crit, t_crit_alpha,
+    t_crit, t_crit_alpha, ub95,
 )
 
 SIGMAS = (0.88, 1.5, 1.72, 3.0, 4.28, 5.0, 6.0)      # 0.88 = ÖLÇÜLEN sd(s_i), ikinci küme
@@ -127,8 +127,11 @@ def main() -> None:
 
     table("VAZGEÇME: tek ölçekte tetiklenme (başabaş FOTON terk edilebiliyor mu?)",
           {"sağlam": abandon_robust, "eski": abandon_old}, mu=0.0, sims=args.sims)
-    say("  YORUM: eski biçim σ >= 1.72'de ÖLÜ (tam başabaş bir FOTON asla terk edilemez). Sağlam")
-    say("  biçim σ = 3.0'da tek ölçekte %79, iki ardışık ölçekte %63 — eski biçimde iki ölçek %3.9'du.")
+    _r3 = float(abandon_robust(*draw(0.0, 3.0, 5, args.sims)).mean())
+    _o3 = float(abandon_old(*draw(0.0, 3.0, 5, args.sims)).mean())
+    say("  YORUM (HESAPLANAN değerlerden): eski biçim σ >= 1.72'de ÖLÜ (başabaş bir FOTON terk edilemez).")
+    say(f"  Sağlam biçim σ = 3.0'da tek ölçekte %{100*_r3:.0f}, iki ardışık ölçekte %{100*_r3*_r3:.0f} — "
+        f"eski biçimde iki ölçek %{100*_o3*_o3:.1f}'di.")
     say("  Sağlam biçim σ büyüdükçe de zorlaşır, AMA iki fark var: (i) n artırmak yardım eder,")
     say("  (ii) tetiklenmediğinde sonuç 'hipotez ayakta' değil 'yetersiz kesinlik' olarak yazılır.")
 
@@ -154,79 +157,102 @@ def main() -> None:
     say("  YORUM: tam eşikte güç ~%50 ve seed sayısıyla DÜZELMEZ — bağlayıcı olan nokta tahmini")
     say("  şartıdır (v01 O9'un yapısal sonucu, v02'de de geçerli). Eşik gevşetilmiyor.")
 
-    # ---- SANSÜRLÜ senaryo: sınavın Gauss-dışı kör noktası ------------------------------------
-    say("\n## SANSÜRLÜ senaryo — sınavın Gauss varsayımının kör noktası")
-    say("  İkinci denetim şunu buldu: `abandon()` eşdeğerlik testini TAM örnek GA'sına uyguluyordu")
-    say("  ve tek bir sansürlü seed (2x bütçe ikamesiyle ~−150 puan) o GA'yı ±80 puana şişiriyordu,")
-    say("  yani kural sansürlü HER senaryoda ulaşılamaz hâle geliyordu. Bu sınav onu göremiyordu")
-    say("  çünkü yalnızca Gauss örnekleri çiziyordu. Artık sansür de taranıyor.")
-    say("  'tek' = TEK ölçekte terk (v01 B10 yolu: yalnızca 'başarısız' satırından);")
-    say("  'iki' = iki ardışık ölçekte eşdeğerlik testiyle terk.")
-    say(f"  {'senaryo':40s} {'satır':>22s} {'GA üst tam':>11s} {'GA üst sans.':>13s} {'tek':>5s} {'iki':>5s}")
+    # ---- SANSÜRLÜ senaryolar: sınavın Gauss-dışı kör noktası ---------------------------------
+    say("\n## SANSÜRLÜ senaryolar — vazgeçmenin İKİ yolu, beklentiler ASSERTION olarak")
+    say("  Vazgeçme kuralı `s̄`'nin SANSÜRE DUYARLI üst sınırına bakar (`src.stats.ub95`):")
+    say("  ÜS = (n_u × sansürsüz GA üst + Σ ikame) / n. Sansürlü ikame bir gözlem değil tek yanlı")
+    say("  bir sınırdır; onu düz t-aralığına sokmak aralığı [−113, +53]'e şişirip kuralı sansürlü")
+    say("  HER senaryoda ulaşılamaz yapıyordu (2. denetim). Yalnızca sansürsüz ALT örneğe bakmak ise")
+    say("  3/5 sansürde (2 seed, t(1) = 12.7) EN NET başarısızlığı terk edilemez kılıyordu (3. denetim).")
+    say("  'tek' = tek ölçek yolu (v01 B10: satır 'başarısız' + hak kullanılmamış);")
+    say("  'iki' = iki ardışık ölçek yolu. Oracle kazancı her senaryoda 0.5 (< 2).")
+    say(f"  {'senaryo':34s} {'satır':>10s} {'s̄':>8s} {'düz GA üst':>11s} {'ub95':>8s} {'tek':>6s} {'iki':>6s}")
     CENS = -149.82                                    # 2x bütçe ikamesinin puan karşılığı
     scen = [
         # (etiket, s_i, sansür maskesi, tek ölçekte terk?, iki ölçekte terk?)
         ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [False] * 4 + [True], True, True),
-        # Bu iki satır bir REGRESYONU kilitliyor: satır sansür ikamesi yüzünden "başarısız" ama
-        # sansürsüz seed'ler +%7 / +%30 tasarruf ediyor. HİÇBİR yolda terk EDİLMEMELİ.
-        ("4 x +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [False] * 4 + [True], False, False),
-        ("4 x +%30 + 1 sansür", [30.0, 30.1, 29.9, 30.05, CENS], [False] * 4 + [True], False, False),
+        # s̄ hedefe ulaşamayan seed'i İÇERİR: 4 × +%7 + 1 sansür -> s̄ ≈ −24, satır "başarısız".
+        # v01 B10: hak kullanılmazsa terk. (Sahibin diğer yolu S1'e çıkmaktır; üçüncü bir
+        # "ne terk ne devam" hâli yoktur.)
+        ("4 × +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [False] * 4 + [True], True, True),
+        ("4 × +%30 + 1 sansür", [30.0, 30.1, 29.9, 30.05, CENS], [False] * 4 + [True], True, True),
         ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [False] * 3 + [True] * 2, True, True),
-        # "nötr" satırı B10'un tek-ölçek yoluna GİRMEZ (o yol yalnızca "başarısız"tan): tek
-        # ölçekte terk edilemez, iki ölçekte eşdeğerlik testiyle edilebilir.
+        # 3. denetimin bulduğu delik: 2 sansürsüz seed'in aralığı t(1) = 12.7 ile patlıyor.
+        ("2 geniş + 3 sansür", [0.5, -0.5, CENS, CENS, CENS], [False] * 2 + [True] * 3, True, True),
+        # "nötr" satırı tek ölçek yoluna GİRMEZ (o yol yalnızca "başarısız"tan açılır).
         ("sansür yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [False] * 5, False, True),
         ("sansür yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [False] * 5, True, True),
+        # etki eşiğin üstünde kurulmuş: hiçbir yolda terk edilemez
+        ("sansür yok, +%7", [7.0, 7.1, 6.9, 7.05, 6.95], [False] * 5, False, False),
     ]
+    NEG = {"M": -1.0, "D": -1.0}
+    prev_ub = None
     for label, s_i, mask, exp1, exp2 in scen:
-        r = decide(s_i, quality_per_sec={"M": -1.0, "D": -1.0}, censored_mask=mask)
-        unc = r.get("ci95_uncensored")
-        r1 = abandon([r], oracle_gain_over_null=0.5, escalation_used=False)
-        r2 = abandon([r, r], oracle_gain_over_null=0.5, escalation_used=True)
-        say(f"  {label:40s} {r['row']:>22s} {r['ci95'][1]:11.2f} "
-            f"{(f'{unc[1]:.2f}' if unc else '—'):>13s} "
-            f"{('EVET' if r1['abandon'] else 'hayır'):>5s} {('EVET' if r2['abandon'] else 'hayır'):>5s}")
+        r = decide(s_i, quality_per_sec=NEG, censored_mask=mask)
+        r1 = abandon([r], 0.5, escalation_used=False)
+        r2 = abandon([r, r], [0.5, 0.5], escalation_used=True)
+        say(f"  {label:34s} {r['row']:>10s} {r['mean']:8.2f} {r['ci95'][1]:11.2f} {r['ub95']:8.2f} "
+            f"{('EVET' if r1['abandon'] else 'hayır'):>6s} {('EVET' if r2['abandon'] else 'hayır'):>6s}")
         assert r1["abandon"] is exp1, f"{label} tek ölçek: {r1['abandon']} != {exp1} — {r1['reason'][:110]}"
         assert r2["abandon"] is exp2, f"{label} iki ölçek: {r2['abandon']} != {exp2} — {r2['reason'][:110]}"
-    # Oracle headroom'u HER yolda bağlayıcı:
-    rb = decide([-8.0, -8.1, -7.9, -8.05, -7.95], quality_per_sec={"M": -1.0, "D": -1.0})
-    assert abandon([rb], oracle_gain_over_null=5.0)["abandon"] is False, "oracle tek ölçekte bağlamıyor"
-    assert abandon([rb, rb], oracle_gain_over_null=5.0, escalation_used=True)["abandon"] is False,         "oracle iki ölçekte bağlamıyor"
-    say("  oracle headroom'u (5.0 >= 2.0) hem tek hem iki ölçek yolunda terk etmeyi ENGELLİYOR — OK")
-    say("  BEKLENEN, assertion olarak: başabaş ve negatif senaryolar terk EDİLEBİLİR olmalı,")
-    say("  KUVVETLİ POZİTİF senaryolar ise sansür yüzünden 'başarısız' satırına düşseler bile")
-    say("  terk EDİLEMEZ olmalı. İlk hâlde bu yalnızca düzyazıydı ve tarama, +%7 senaryosunun")
-    say("  terk edildiğini YAZIP geçiyordu — defect'i gösterip yakalamayan bir sınav.")
+    # ub95 sansür sayısında MONOTON olmalı (eski kural değildi: k=3 < k=2 < k=4)
+    base5 = [0.2, -0.1, 0.3, 0.0, 0.1]
+    ubs = [ub95(base5[:5 - k] + [CENS] * k, [False] * (5 - k) + [True] * k) for k in range(5)]
+    assert all(a > b for a, b in zip(ubs, ubs[1:])), f"ub95 sansürde monoton değil: {ubs}"
+    say("  ub95, sansürlü seed sayısı k = 0..4 için: " + ", ".join(f"{u:+.1f}" for u in ubs) + "  (monoton — OK)")
+    # [S0 başarılı, S1 başarısız] TERK EDİLMEZ (3. denetimin bulduğu regresyon)
+    s0 = decide([6.5, 7.0, 7.5, 6.8, 7.2], quality_per_sec=NEG)
+    s1 = decide([-4.0, -3.5, -4.5, -3.8, -4.2], quality_per_sec=NEG)
+    for flag in (False, True):
+        assert abandon([s0, s1], [0.5, 0.5], escalation_used=flag)["abandon"] is False, \
+            "iki ölçek kuralı yalnızca SON ölçeğe bakıyor"
+    say("  [S0 'başarılı', S1 'başarısız'] -> terk YOK (iki ölçek kuralı her iki ölçeğe bakıyor) — OK")
+    # Oracle headroom'u HER yolda bağlayıcı, ve ölçek BAŞINA:
+    rb = decide([-8.0, -8.1, -7.9, -8.05, -7.95], quality_per_sec=NEG)
+    assert abandon([rb], 5.0)["abandon"] is False, "oracle tek ölçekte bağlamıyor"
+    assert abandon([rb, rb], [0.5, 5.0], escalation_used=True)["abandon"] is False, "oracle S1'de bağlamıyor"
+    assert abandon([rb, rb], [5.0, 0.5], escalation_used=True)["abandon"] is False, "oracle S0'da bağlamıyor"
+    say("  oracle headroom'u (5.0 >= 2.0) tek ölçekte ve iki ölçeğin HER BİRİNDE terk etmeyi engelliyor — OK")
 
-    # ---- BİRİNCİL-2'nin eşdeğerlik kuralı ----------------------------------------------------
-    say("\n## BİRİNCİL-2'nin (X↔H) eşdeğerlik kuralı — V12 bunu da taramak zorunda")
-    say("  Kural: 'katkı yok' ancak farkın GA'sının TAMAMI MDE'nin altındaysa yazılabilir.")
+    # ---- BİRİNCİL-2'nin dört durumlu kuralı --------------------------------------------------
+    say("\n## BİRİNCİL-2'nin (X↔H) dört durumlu kuralı — V12 bunu da taramak zorunda")
     sdd = 0.88 * math.sqrt(2 * (1 - 0.07))            # kollar arası rho = +0.07
-    mde = MDE_PRIMARY2
     a2 = 0.05 / PRIMARY_FAMILY                        # Holm'un İLK adımı
-    say(f"  fark sd'si {sdd:.2f} puan | MDE {mde} puan | GA düzeyi α={a2} (Holm ilk adımı)")
-    say("  DÜZELTME: bu taramanın ilk hâli α=.05 aralıkları kullanıyordu, oysa kural (ve MDE'nin")
-    say("  türetimi) Holm'un ilk adımındaki α=.025'i söylüyor. Sonuç: 'ölçemedik' payı gerçek")
-    say("  katkı sıfırken n=5'te %24.6 değil %42.8 — 1.7 kat. Kuralı taramak, kuralın KENDİ")
-    say("  düzeyinde taramak demek; yoksa sınav başka bir kuralı sınıyor.")
-    say("  Dört durum, BİRBİRİNİ DIŞLAYAN ve TÜKETEN. Sınav bu bölümü yazarken kendi kuralımdaki")
-    say("  bir hatayı buldu: ilk hâl üç durum tanımlıyordu ve 'katkı var' (lo>0) ile 'katkı yok'")
-    say("  (hi<MDE) birbirini dışlamıyordu — ikisi birden doğru olabilir ve o, mümkün olan EN")
-    say("  bilgilendirici sonuçtur: 'katkı gerçek ama MDE'nin altında'. Üç durumla o hâl kaybolup")
-    say("  olasılıklar negatife düşüyordu (n=10'da −%11.6 gibi). Dört durum:")
-    say(f"  {'gerçek X−H':>11s} {'n':>3s} {'var,büyük':>10s} {'var,küçük':>10s} {'yok/sıfır':>10s} {'ölçemedik':>10s}")
-    for mu in (0.0, 0.5, 1.0, 1.88, 3.0):
+    say(f"  fark sd'si {sdd:.2f} puan | MDE çıtası {MDE_PRIMARY2} puan (n'den bağımsız SABİT) | "
+        f"GA düzeyi α={a2} (%97.5 GA)")
+    say("  Durumlar `src.stats.contribution()` ÇAĞRILARAK sayılıyor (ilk hâl kuralı satır içinde")
+    say("  yeniden yazıyordu; o zaman tarama kuralı değil kendi kopyasını sınıyordu).")
+    STATES = ("katkı var, büyük", "katkı var, küçük", "katkı MDE kadar değil", "ölçemedik")
+    say(f"  {'gerçek X−H':>11s} {'n':>3s} " + " ".join(f"{s[:16]:>17s}" for s in STATES))
+    sims2 = min(args.sims, 20_000)                    # contribution() Python'da: örnek başına çağrı
+    share: dict[tuple[float, int], dict[str, float]] = {}
+    for mu in (0.0, 0.5, 1.0, MDE_PRIMARY2, 3.0):
         for n in (5, 10):
-            m, lo, hi, _ = draw(mu, sdd, n, args.sims, seed=11, alpha=a2)
-            real, small = lo > 0, hi < mde
-            cells = [(real & ~small).mean(), (real & small).mean(),
-                     (~real & small).mean(), (~real & ~small).mean()]
-            assert abs(sum(cells) - 1.0) < 1e-9, "dört durum tüketmiyor"
-            say(f"  {mu:+10.2f}p {n:3d} " + " ".join(f"{100*c:9.1f}%" for c in cells))
-    say("  YORUM: gerçek katkı sıfırken n=5'te 'ölçemedik' payı %24.6 — MDE'nin ilan edilmesinin")
-    say("  sebebi bu. n=10'da o pay %0.6'ya düşüyor, yani seed artırmak birincil-2 için de doğru")
-    say("  yönde çalışıyor (ama hak ORTAK olduğu için birincil-1'i de yeniden ölçer).")
-    say("  'var,küçük' sütunu gerçek katkı 1.0 puanken n=10'da en yüksek: tam olarak ölçmek")
-    say("  istediğimiz ama n=5'te ayırt edemediğimiz hâl.")
+            x = np.random.default_rng(11).normal(mu, sdd, size=(sims2, n))
+            counts = dict.fromkeys(STATES, 0)
+            for row in x:
+                counts[contribution(row.tolist())["state"]] += 1      # bilinmeyen durum -> KeyError
+            share[(mu, n)] = {k: v / sims2 for k, v in counts.items()}
+            say(f"  {mu:+10.2f}p {n:3d} " + " ".join(f"{100*share[(mu, n)][s]:16.1f}%" for s in STATES))
+    c5, c10 = share[(0.0, 5)]["ölçemedik"], share[(0.0, 10)]["ölçemedik"]
+    say(f"  YORUM (HESAPLANAN değerlerden): gerçek katkı sıfırken 'ölçemedik' payı n=5'te %{100*c5:.1f},")
+    say(f"  n=10'da %{100*c10:.1f}. MDE'nin baştan ilan edilmesinin sebebi bu. Seed artırmak birincil-2 için de")
+    say("  doğru yönde çalışıyor; ama seed hakkını YALNIZCA birincil-1'in kesinlik ölçütü tetikler.")
+    assert c10 < c5, "seed artırmak birincil-2'de 'ölçemedik' payını düşürmüyor"
+    pw5, pw10 = (sum(share[(MDE_PRIMARY2, n)][s] for s in STATES[:2]) for n in (5, 10))
+    say(f"  Gerçek katkı tam MDE çıtasında ({MDE_PRIMARY2}) 'katkı var' oranı: n=5 %{100*pw5:.1f}, n=10 %{100*pw10:.1f}.")
+
+    # ---- birincil-2'nin GÜÇ TABLOSU: ön-kayıttaki tablo BURADAN gelir ve hücre hücre denetlenir ----
+    say("")
+    say("## BİRİNCİL-2 güç tablosu (ön-kayıttaki tablo; `check_prereg_numbers.py` hücre hücre denetler)")
+    say("  P('katkı var') = P(%97.5 GA alt sınırı > 0), fark sd'si 1.20 puan")
+    say(f"  {'gerçek X−H':>11s} {'n=5':>8s} {'n=10':>8s} {'n=20':>8s}")
+    for mu in (0.5, 1.0, 1.5, MDE_PRIMARY2, 2.0, 3.0):
+        cells = []
+        for n in (5, 10, 20):
+            m, lo, hi, _ = draw(mu, sdd, n, args.sims, seed=23, alpha=a2)
+            cells.append(100 * float((lo > 0).mean()))
+        say(f"  MDE-GÜÇ {mu:+.2f} " + " ".join(f"{c:7.1f}%" for c in cells))
 
     if args.crosscheck:
         say("\n## Çapraz kontrol: vektörize kural == src.stats'ın genel yolu")

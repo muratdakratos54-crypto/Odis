@@ -122,7 +122,7 @@ def paired(a: list[float], b: list[float], seeds_a=None, seeds_b=None) -> dict:
 
 
 def n_star(curve: list[tuple[float, float]], target: float) -> float | None:
-    """`N*`: eğrinin `target`'ı ilk kez AŞAĞI kestiği token sayısı. Kural burada PİNLİ.
+    """`N*`: eğrinin `target`'ın altına KALICI olarak indiği token sayısı. Kural burada PİNLİ.
 
     curve : (token, val_loss) çiftleri; sıralı olmak zorunda değil, sıralanır.
 
@@ -132,27 +132,32 @@ def n_star(curve: list[tuple[float, float]], target: float) -> float | None:
     1. **İnterpolasyon TOKEN ekseninde doğrusal.** ln(token) ekseninde doğrusal yapmak `N*`'ı bir
        eval aralığı içinde ~%0.06 oynatıyor. Küçük ama serbest bir parametre olmamalı.
        (`L*`'in kendisi interpolasyonsuzdur — bütçe %80 noktası tam bir eval noktasına düşecek
-       şekilde seçildi; interpolasyon yalnızca FOTON kollarının `N*`'ında devreye girer.)
+       şekilde seçildi; interpolasyon yalnızca `N*`'da devreye girer.)
 
-    2. **Kesişim SÜRDÜRÜLMÜŞ olmalı** (v01 EK1-B14): kesişimden sonraki eval noktalarının HİÇBİRİ
-       hedefin üstünde olamaz. Gürültülü bir eğri hedefin altına bir kez sarkıp geri çıkarsa, ilk
-       kesişimi okumak sahte bir kazanç üretir — ölçülü örnek: 2750'de sarkıp 3000'de geri çıkan
-       bir eğride ilk kesişim `N*`'ı 114.7M yerine 90.1M gösteriyor, yani `s_i`'yi ~21 puan
-       şişiriyor ve "nötr" bir sonucu "güçlü başarı" yapıyor. Böyle bir eğride tek bir `N*` anlamlı
-       değildir: None döner ve seed SANSÜRLÜ işlenir.
+    2. **Kesişim SÜRDÜRÜLMÜŞ olmalı** (v01 EK1-B14: "kesişimden sonraki eval noktası da ≤ L* olmalı;
+       değilse SONRAKİ kesişime bakılır"). Uygulama: `N*`, hedefin ÜSTÜNDEKİ son eval noktasından
+       hemen sonraki kesişimdir — yani ardından eğrinin bir daha hedefin üstüne çıkmadığı ilk
+       kesişim. Gürültülü bir eğri hedefin altına bir kez sarkıp geri çıkarsa o erken sarkma
+       `N*` sayılmaz: ölçülü örnek, 2750'de sarkıp 3000'de geri çıkan bir eğride ilk kesişim `N*`'ı
+       114.7M yerine 90.1M gösteriyor, yani `s_i`'yi ~21 puan şişirip "nötr"ü "güçlü başarı" yapıyor.
 
-    Hedefe hiç ulaşılmazsa da None döner. Çağıran taraf None'ı sansür olarak işlemek ZORUNDA
-    (bkz. `decide`'ın censored_mask'i); sessizce atlamak seed'i kaybettirir ve eşleştirmeyi bozar.
+       Bu fonksiyonun bir önceki hâli böyle bir eğride None döndürüp seed'i SANSÜRLÜYORDU — B14'ün
+       "sonraki kesişime bakılır" hükmünün tersi, ve ağır: 0.0005 nat'lık tek bir sıçrama, hedefin
+       0.025 nat altında biten bir koşuyu −150 puana, dolayısıyla bütün sonucu "başarısız"a
+       çeviriyordu. B14'ün kendisi uygulanıyor artık.
+
+    Eğrinin SON noktası hedefin üstündeyse (hedefe ulaşılmadı ya da ulaşılıp kaybedildi) None döner.
+    Çağıran taraf None'ı sansür olarak işlemek ZORUNDA (bkz. `decide`'ın censored_mask'i); sessizce
+    atlamak seed'i kaybettirir ve eşleştirmeyi bozar.
     """
     pts = sorted(curve)
-    for j, ((a, ya), (b, yb)) in enumerate(zip(pts, pts[1:])):
-        if ya >= target >= yb:
-            if any(y > target for _, y in pts[j + 2:]):
-                return None                      # B14: kesişim sürdürülmemiş
-            if ya == yb:                         # yatay ve tam hedefte: ilk nokta
-                return float(a)
-            return a + (ya - target) / (ya - yb) * (b - a)
-    return None
+    if not pts or pts[-1][1] > target:
+        return None
+    above = [j for j, (_, y) in enumerate(pts) if y > target]
+    if not above:
+        return float(pts[0][0])                  # eğri baştan beri hedefin altında
+    (a, ya), (b, yb) = pts[above[-1]], pts[above[-1] + 1]
+    return a + (ya - target) / (ya - yb) * (b - a)
 
 
 def savings(f_foton: list[float], f_base: list[float],
@@ -214,121 +219,116 @@ def indeterminate(mean: float, lo: float, hi: float) -> bool:
     return hi >= SUCCESS
 
 
-def abandon(scale_results: list[dict], oracle_gain_over_null: float,
-            oracle_threshold: float = 2.0, escalation_used: bool = False) -> dict:
-    """VAZGEÇME KOŞULU — SAĞLAM biçim. İki ardışık ölçekte başarı eşiği DIŞLANMIŞ olmalı.
+S_MAX = 100.0           # puan; tasarrufun aritmetik tavanı (F_foton = 0)
 
-    scale_results : ölçek başına `decide()` çıktısı, ölçek sırasına göre
-    oracle_gain_over_null : oracle routing kazancının null'ın ÜSTÜNDEKİ payı (yüzde puan)
-    escalation_used : ölçek yükseltme hakkı kullanıldı mı (v01 B10'un tek-ölçek yolunun ön-koşulu)
 
-    Neden eski biçim atıldı. v02'nin ilk hâli v01'den şunu devralmıştı: `s̄ <= 0` **ve**
-    `GA üst sınırı < +%2`. Bu, bir NOKTA TAHMİNİ ile bir ARALIK SINIRINI "ve" ile bağlıyor ve
-    GA yarı-genişliği ~1.167σ olduğu için koşul `s̄ < 2 − 1.167σ` demeye geliyordu. Ölçüldü:
+def ub95(savings: list[float], censored_mask: list[bool] | None = None) -> float:
+    """`s̄`'nin SANSÜRE DUYARLI %95 üst güven sınırı — vazgeçme kuralının baktığı tek sayı.
 
-        σ = 0.75 -> s̄ < +1.12 gerekir (ulaşılabilir)
-        σ = 1.72 -> s̄ < 0.00     (sınır)
-        σ = 3.00 -> s̄ < −1.50   (ULAŞILAMAZ: tam başabaş bir FOTON asla terk edilemez)
-        σ = 6.00 -> s̄ < −5.00   (v01 O9 FOTON'un sd'sinin BÜYÜK olmasını bekliyordu)
+        ÜS = ( n_u × (sansürsüz seed'lerin %95 GA üst sınırı) + Σ sansürlü ikameler ) / n
 
-    Yani kural tam ihtiyaç duyulduğu rejimde ölüyordu ve n=10 kurtarmıyordu. Bu, v01'in B10
-    maddesinde bir kez düzeltilen hatanın ikinci kez ortaya çıkışıydı; örüntü artık kayıtlı
-    (ön-kayıt V12: her durdurma kuralı `reachability` ile sayısal olarak sınanır).
+    Neden düz t-aralığı değil: sansürlü bir seed'in ikamesi (~−150 puan) bir GÖZLEM değil, tek
+    yanlı bir SINIRDIR — gerçek değer ondan da küçüktür (koşu 2x bütçede bile hedefe ulaşmadı).
+    Onu gözlem gibi t-aralığına sokmak sd'yi şişirir: `[0.2, −0.1, 0.3, 0.0, −149.82]` için düz
+    aralık [−113, +53] çıkar ve "GA üst < +5" şartı sansürlü HER senaryoda sağlanamaz olur
+    (ikinci denetimin bulgusu: kural ulaşılamazdı). Doğru muamele: sansürlü seed'ler yukarı yönde
+    belirsizlik TAŞIMAZ, belirsizlik yalnızca sansürsüz seed'lerden gelir.
 
-    SAĞLAM biçim bir EŞDEĞERLİK testidir: aralığın tamamı başarı eşiğinin altında kalmalı
-    (`hi < SUCCESS`), yani "etki eşik kadar büyük olabilir" olasılığı veriyle DIŞLANMALI. Nokta
-    tahmini koşulu yok. σ büyürse bu da zorlaşır — ama ona doğru çare vardır (n artırmak `hi`'yi
-    düşürür), ve zorlaştığında sonuç "terk edilmedi" değil **"yetersiz kesinlik"** olarak
-    raporlanır; iki durum artık ayrı.
+    Üçüncü denetimin bulduğu delik de burada kapanıyor: bir önceki hâl yalnızca sansürsüz ALT
+    örneğin aralığına bakıyordu; 3/5 sansürde 2 seed kalıyor, t(1) = 12.7 aralığı patlatıyor ve
+    EN NET başarısızlık (5 seed'in 3'ü hedefe ulaşamamış) terk edilemiyordu — kural sansür
+    sayısında monoton bile değildi (k=3 < k=2 < k=4). Bu sınır k'da monotondur: her sansürlü seed
+    onu ~30 puan aşağı çeker. Sansür yokken düz %95 GA üst sınırına eşittir, yani bağlayıcı
+    metindeki "`s̄`'nin %95 GA'sının tamamı +%5'in altında" ifadesinin aynısıdır.
+
+    Sansürsüz seed sayısı 2'den azsa aralık kurulamaz; o zaman aritmetik tavan (seed başına en çok
+    +100 puan) kullanılır, ki 5 seed'in 4'ü sansürlüyken bile (100 − 600)/5 = −100'dür.
     """
-    oracle_ok = oracle_gain_over_null < oracle_threshold
+    n = len(savings)
+    mask = list(censored_mask) if censored_mask is not None else [False] * n
+    if len(mask) != n:
+        raise ValueError("censored_mask, savings ile aynı uzunlukta olmalı")
+    unc = [s for s, c in zip(savings, mask) if not c]
+    cens = [s for s, c in zip(savings, mask) if c]
+    arith = (S_MAX * len(unc) + sum(cens)) / n
+    if len(unc) >= 2:
+        return min(arith, (len(unc) * ci95(unc)[2] + sum(cens)) / n)
+    return arith
 
-    def upper(r: dict) -> float:
-        """Eşdeğerlik testinin baktığı GA ÜST SINIRI — sansürsüz alt örnekten.
 
-        Neden tam örnekten değil: sansürlü bir seed'in `s_i`'si 2x bütçe ikamesiyle ~−150 puandır
-        ve tek bir tanesi n=5'te GA'yı ±80 puana şişirir. Ölçüldü: `s_i = [0.2, −0.1, 0.3, 0.0,
-        −149.82]` -> tam örnek GA [−113.13, +53.37], yani `hi < 5` ASLA sağlanamaz ve kural
-        sansürlü her senaryoda ulaşılamaz hâle gelirdi. Bu, `decide()`'ın kesinlik ölçütünde
-        zaten kapatılmış olan aynı hatanın vazgeçme kuralındaki kopyasıydı — ve V12'nin sayısal
-        sınavı onu göremiyordu, çünkü sınav yalnızca Gauss örnekleri çiziyor, sansür çizmiyor.
-        Artık `rule_reachability.py` sansürlü senaryoyu da tarıyor.
-        """
-        unc = r.get("ci95_uncensored")
-        if unc is not None:
-            return unc[1]
-        # Sansürsüz GA yoksa iki durum var ve ikisi de AÇIKÇA ele alınıyor (eskiden sessiz
-        # bir `.get(..., r["ci95"])` geri-düşüşüydü):
-        #  * < 2 sansürsüz seed (yani >= 4/5 sansür): tam örnek GA'sı ikamelerin hâkimiyetinde,
-        #    üst sınırı zaten çok negatif -> onu kullanmak doğru ve muhafazakâr.
-        #  * sansür yok ama anahtar da yok: `decide()` çıktısı DEĞİL, elle kurulmuş bir sözlük.
-        if r.get("n_censored", 0) == 0 or r.get("n", 0) - r.get("n_censored", 0) < 2:
-            return r["ci95"][1]
-        raise ValueError("abandon(): sansürlü sonuçta `ci95_uncensored` yok — `decide()` çıktısı "
-                         "verilmeli; elle kurulmuş sözlükte tam örnek GA'sına sessizce düşmek "
-                         "kuralı ulaşılamaz yapan eski hatayı geri getirirdi")
+def abandon(scale_results: list[dict], oracle_gain_over_null, oracle_threshold: float = 2.0,
+            escalation_used: bool = False) -> dict:
+    """VAZGEÇME KOŞULU — ön-kayıttaki "Vazgeçmenin İKİ yolu" tablosunun birebir uygulaması.
 
-    # B10: "başarısız" satırı TEK ölçekle vazgeçmeye yeter — AMA ÜÇ şartla, ve bu şartların
-    # eksikliği bir regresyon üretmişti (aşağıda ölçümüyle).
-    #
-    # (i) yükseltme hakkı KULLANILMAMIŞ olmalı. v01 B10 birebir şöyle: "Yükseltme hakkı
-    #     kullanılmazsa VE S0'da satır 'başarısız' ise hipotez tek ölçekle terk edilir."
-    #     İlk uygulamada bu ön-koşul yoktu ve fonksiyonun böyle bir parametresi bile yoktu.
-    # (ii) eşdeğerlik testi SANSÜRSÜZ alt örnekte de geçmeli. Ölçülen regresyon: tek bir sansürlü
-    #     seed, −149.82 ikamesi yüzünden tam örnek ortalamasını ≈−25'e çekip satırı diğer dört
-    #     seed'den BAĞIMSIZ olarak "başarısız" yapıyor. Sonuç: `4 × +%30 + 1 sansür` tek ölçekte
-    #     terk ediliyordu, sansürsüz GA üst sınırı **+30.15** iken. Yani tam olarak düzeltmek için
-    #     eklenen eşdeğerlik testi bu yolda hiç sorulmuyordu.
-    # (iii) oracle şartı — ilk hâlde zaten vardı ve korunuyor.
-    if scale_results and scale_results[-1]["row"] == "başarısız":
-        last = scale_results[-1]
-        hi_u = upper(last)
-        why = []
+    scale_results : ölçek başına BAĞLAYICI `decide()` çıktısı (strict=True, n ∈ {5, 10}), ölçek sırasıyla
+    oracle_gain_over_null : ölçek BAŞINA oracle kazancının null'ın üstündeki payı (yüzde puan).
+        Tek ölçekte sayı, iki ölçekte ölçek sırasıyla dizi. İki ölçekte tek sayı KABUL EDİLMEZ:
+        S0 = 1.5 / S1 = 2.5 iken sonuç hangi sayının verildiğine bağlı olurdu.
+    escalation_used : ölçek yükseltme hakkı kullanıldı mı (yalnızca tek ölçek yolunu etkiler)
+
+    İKİ ÖLÇEK yolu (elde >= 2 ölçek sonucu varsa DAİMA bu): son iki ölçeğin ikisinde de
+      `ub95 < +5`, hiçbiri "yüksek varyans / belirsiz" ya da "yetersiz kesinlik" değil, ve oracle
+      kazancı her iki ölçekte < eşik.
+    TEK ÖLÇEK yolu (v01 EK1-B10; yalnızca elde TEK ölçek sonucu varken): satır "başarısız",
+      yükseltme hakkı KULLANILMAMIŞ, `ub95 < +5`, oracle kazancı < eşik.
+
+    Üçüncü denetimin bulduğu regresyon: önceki hâl tek ölçek çıkışını elde İKİ ölçek varken de
+    deniyordu — `[S0 "başarılı", S1 "başarısız"]` hipotezi terk ettiriyordu, oysa iki ölçek kuralı
+    (S0'ın GA'sı [6.5, 7.5], tamamen +5'in ÜSTÜNDE) açıkça "terk yok" diyor.
+
+    Eski biçim (`s̄ <= 0` VE `GA üst < +2`) neden atıldı: bir nokta tahminini bir aralık sınırıyla
+    "ve" ile bağlıyordu; GA yarı-genişliği ~1.167σ olduğundan σ >~ 1.72'de tam başabaş bir FOTON
+    asla terk edilemiyordu (v01 B10'da bir kez düzeltilen hatanın ikinci ortaya çıkışı; bkz. V12).
+    """
+    if not scale_results:
+        return {"abandon": False, "reason": "ölçek sonucu yok", "path": None}
+    for r in scale_results:
+        if "ub95" not in r or "row" not in r:
+            raise ValueError("abandon(): girdi `decide()` çıktısı olmalı (`ub95` / `row` yok)")
+        if not r.get("strict", False) or r.get("n") not in REQUIRED_N:
+            raise ValueError(f"abandon(): bağlayıcı olmayan sonuç (strict={r.get('strict')}, "
+                             f"n={r.get('n')}) vazgeçme kararını süremez")
+    two = len(scale_results) >= 2
+    used = scale_results[-2:] if two else scale_results
+    if isinstance(oracle_gain_over_null, (int, float)):
+        if two:
+            raise ValueError("iki ölçekte oracle kazancı ölçek BAŞINA verilmeli (dizi)")
+        gains = [float(oracle_gain_over_null)]
+    else:
+        gains = [float(g) for g in oracle_gain_over_null][-len(used):]
+    if len(gains) != len(used) or any(g != g or g in (float("inf"), float("-inf")) for g in gains):
+        raise ValueError(f"oracle kazancı her ölçek için sonlu bir sayı olmalı: {gains}")
+    oracle_ok = all(g < oracle_threshold for g in gains)
+    ubs = [r["ub95"] for r in used]
+    base = {"ub95": ubs, "oracle_ok": oracle_ok, "single_scale": not two,
+            "path": "iki ölçek" if two else "tek ölçek"}
+    why = []
+    if two:
+        if any(r["row"] in ("yüksek varyans / belirsiz", "yetersiz kesinlik") for r in used):
+            return {**base, "abandon": False,
+                    "reason": "yetersiz kesinlik: bir ölçekte GA başarı eşiğini çözemedi; bu "
+                              "'hipotez ayakta' DEĞİL, 'ölçemedik' demektir"}
+    else:
+        r = used[0]
+        if r["row"] != "başarısız":
+            why.append(f"tek ölçek yolu yalnızca 'başarısız' satırından açılır (satır: '{r['row']}'); "
+                       "iki ardışık ölçek sonucu gerekiyor")
         if escalation_used:
             why.append("yükseltme hakkı KULLANILDI: v01 B10 tek ölçekle terk etmeyi yalnızca hak "
-                       "kullanılmadığında veriyor; iki ölçek kuralı uygulanır")
-        if hi_u >= SUCCESS:
-            why.append(f"satır 'başarısız' ama sansürsüz GA üst sınırı {hi_u:+.2f} >= {SUCCESS}: "
-                       "sansürsüz seed'lerde etki hâlâ eşik kadar büyük olabilir (satır sansür "
-                       "ikamesinden geliyor, ölçülen etkiden değil)")
-        if not oracle_ok:
-            why.append(f"oracle kazancı null'ın {oracle_gain_over_null:.2f} puan üstünde "
-                       f">= {oracle_threshold}: mükemmel yönlendirmede hâlâ kazanç var")
-        if not why:
-            return {"abandon": True, "reason": "son ölçekte satır 'başarısız', yükseltme hakkı "
-                    f"kullanılmadı, sansürsüz GA üst sınırı {hi_u:+.2f} < {SUCCESS} ve oracle "
-                    f"kazancı null'ın {oracle_gain_over_null:.2f} puan üstünde < {oracle_threshold} "
-                    "(v01 EK1-B10: tek ölçekle terk edilebilir)",
-                    "oracle_ok": True, "single_scale": True, "ci_upper": [hi_u]}
-        if not escalation_used and len(scale_results) < 2:
-            return {"abandon": False, "oracle_ok": oracle_ok, "single_scale": True,
-                    "ci_upper": [hi_u], "reason": "; ".join(why)}
-        # Hak kullanıldıysa ya da elimizde iki ölçek varsa aşağıdaki iki-ölçek kuralına düş.
-
-    if len(scale_results) < 2:
-        return {"abandon": False, "reason": "iki ardışık ölçek sonucu gerekiyor",
-                "n_scales": len(scale_results)}
-    last2 = scale_results[-2:]
-    excluded = [upper(r) < SUCCESS for r in last2]
-    indet = [r["row"] in ("yüksek varyans / belirsiz", "yetersiz kesinlik") for r in last2]
-    ok = all(excluded) and oracle_ok
-    if any(indet):
-        return {"abandon": False, "reason": "yetersiz kesinlik: bir ölçekte GA başarı eşiğini "
-                "çözemedi; bu 'hipotez ayakta' DEĞİL, 'ölçemedik' demektir",
-                "ci_upper": [upper(r) for r in last2], "oracle_ok": oracle_ok}
-    if ok:
-        return {"abandon": True, "reason": f"iki ardışık ölçekte GA üst sınırı < {SUCCESS} puan "
-                f"({upper(last2[0]):.2f}, {upper(last2[1]):.2f}) ve oracle kazancı "
-                f"null'ın {oracle_gain_over_null:.2f} puan üstünde < {oracle_threshold}",
-                "ci_upper": [upper(r) for r in last2], "oracle_ok": True}
-    why = []
-    if not all(excluded):
-        why.append("bir ölçekte GA üst sınırı başarı eşiğinin üstünde (etki eşik kadar büyük olabilir)")
+                       "kullanılmadığında veriyor; iki ardışık ölçek sonucu gerekiyor")
+    if not all(u < SUCCESS for u in ubs):
+        why.append(f"bir ölçekte s̄'nin GA üst sınırı başarı eşiğinin üstünde "
+                   f"({', '.join(f'{u:+.2f}' for u in ubs)}): etki eşik kadar büyük olabilir")
     if not oracle_ok:
-        why.append(f"oracle kazancı null'ın {oracle_gain_over_null:.2f} puan üstünde "
+        why.append(f"oracle kazancı null'ın {', '.join(f'{g:.2f}' for g in gains)} puan üstünde, "
                    f">= {oracle_threshold}: mükemmel yönlendirmede hâlâ kazanç var")
-    return {"abandon": False, "reason": "; ".join(why),
-            "ci_upper": [upper(r) for r in last2], "oracle_ok": oracle_ok}
+    if why:
+        return {**base, "abandon": False, "reason": "; ".join(why)}
+    return {**base, "abandon": True,
+            "reason": f"{base['path']} yolu: s̄'nin GA üst sınırı < {SUCCESS} puan "
+                      f"({', '.join(f'{u:+.2f}' for u in ubs)}) ve oracle kazancı null'ın "
+                      f"{', '.join(f'{g:.2f}' for g in gains)} puan üstünde < {oracle_threshold}"
+                      + ("" if two else "; satır 'başarısız' ve yükseltme hakkı kullanılmadı (v01 EK1-B10)")}
 
 
 def t_crit_alpha(df: int, alpha: float) -> float:
@@ -355,10 +355,10 @@ MDE_PRIMARY2 = 1.88      # puan; n=5, sd(fark) 1.20, Holm ilk adımı α=.025 (b
 
 
 def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
-                 alpha: float = 0.05 / PRIMARY_FAMILY) -> dict:
+                 alpha: float = 0.05 / PRIMARY_FAMILY, strict: bool = True) -> dict:
     """Birincil-2'nin DÖRT durumlu puanlaması. Karar tablosu birincil-2'ye UYGULANMAZ.
 
-    diffs : seed başına `s_i(X) − s_i(H)` (yüzde puan)
+    diffs : seed başına `s_i(X) − s_i(H)` (yüzde puan); SANSÜRSÜZ seed'ler (bkz. `decide_primary`)
 
     Neden ayrı: karar tablosunun eşikleri (+%2/+%5/+%10) TASARRUF için kalibre edildi ve
     birincil-2 bir FARK kontrastıdır. `decide()`'a verilseydi +1.88 puanlık gerçek bir
@@ -368,10 +368,17 @@ def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
     Dört durum BİRBİRİNİ DIŞLAR ve TÜKETİR. İlk hâl üç durum tanımlıyordu ve "katkı var"
     (`lo > 0`) ile "katkı yok" (`hi < MDE`) birbirini dışlamıyordu — ikisi birden doğru olabilir
     ve o hâl mümkün olan EN bilgilendirici sonuçtur: katkı gerçek ama MDE'nin altında.
+
+    Aralık Holm'un İLK adımının düzeyindedir (α = .025, yani %97.5 GA) ve MDE çıtası n'den
+    bağımsız SABİTTİR (1.88 puan); ikisi de ön-kayıtta pinli.
     """
-    if len(diffs) < 2:
-        raise ValueError("kontrast için en az 2 seed gerekir")
     n = len(diffs)
+    if n < 2:
+        raise ValueError("kontrast için en az 2 seed gerekir")
+    if strict and n not in REQUIRED_N:
+        # `decide()`'daki aynı boşluğun kopyası: bağlayıcı giriş 3 seed'den "katkı var, büyük"
+        # damgası basabiliyordu.
+        raise ValueError(f"bağlayıcı birincil-2 için n {REQUIRED_N} olmalı, verilen n={n}")
     m, sd = st.mean(diffs), st.stdev(diffs)
     h = t_crit_alpha(n - 1, alpha) * sd / math.sqrt(n)
     lo, hi = m - h, m + h
@@ -380,10 +387,15 @@ def contribution(diffs: list[float], mde: float = MDE_PRIMARY2,
              "katkı var, küçük" if real and small else
              "katkı MDE kadar değil" if small else
              "ölçemedik")
+    note = ""
+    if state == "ölçemedik":
+        note = "yeterince güçlü ölçemedik — 'heterojenlik çürütüldü' DEĞİL"
+    elif hi < -CI_EPS:
+        # Dört durum katkının İŞARETİNİ ayırmıyor; anlamlı NEGATİF bir katkı "MDE kadar değil"e
+        # düşer ve orada sessiz kalırdı. Durum adı değişmez (tablo pinli), not düşülür.
+        note = "katkı NEGATİF: aralığın tamamı sıfırın altında — heterojenlik H'ye göre ZARAR veriyor"
     return {"state": state, "mean": m, "sd": sd, "n": n, "ci": [lo, hi],
-            "alpha": alpha, "mde": mde,
-            "note": ("yeterince güçlü ölçemedik — 'heterojenlik çürütüldü' DEĞİL"
-                     if state == "ölçemedik" else "")}
+            "alpha": alpha, "mde": mde, "note": note}
 
 
 def _p_two_sided(values: list[float]) -> float:
@@ -395,32 +407,59 @@ def _p_two_sided(values: list[float]) -> float:
     return t_sf(abs(m / (sd / math.sqrt(n))), n - 1) * 2
 
 
-def decide_primary(s_xm: list[float], diffs_xh: list[float],
+def decide_primary(s_xm: list[float], s_hm: list[float],
                    quality_per_sec: float | dict[str, float] | None = None,
-                   censored_mask: list[bool] | None = None, strict: bool = True,
-                   alpha: float = 0.05) -> dict:
+                   censored_mask: list[bool] | None = None,
+                   censored_mask_h: list[bool] | None = None,
+                   strict: bool = True, alpha: float = 0.05,
+                   seed_right_available: bool = True) -> dict:
     """İKİ birincil uç noktayı BİRLİKTE karara bağlar: Holm (m = 2) satır adının ÖNÜNDEDİR.
 
-    s_xm     : birincil-1, seed başına `s_i(X↔M)` (yüzde puan)
-    diffs_xh : birincil-2, seed başına `s_i(X) − s_i(H)` (yüzde puan)
+    s_xm : seed başına `s_i(X↔M)` — birincil-1'in istatistiği
+    s_hm : seed başına `s_i(H↔M)`, AYNI seed sırasıyla — birincil-2 `s_xm − s_hm` farkıdır
+    censored_mask / censored_mask_h : X ve H kollarının seed başına sansür bayrakları
 
-    Neden var: ön-kayıt "birincil-1'in satır adı, `p₁` Holm'dan geçmezse 'başarılı' OLAMAZ"
-    diyor, ama bu kuralı uygulayan KOD yoktu — Holm aile büyüklüğü 2 olarak pinlenmiş, hiçbir
-    şeye bağlanmamıştı. `decide()` tek başına çağrıldığında `p = 0.037` gibi bir değerde
-    "başarılı" dönerken Holm hiçbir endpoint'i reddetmiyordu ve çelişki raporda görünmezdi.
-    Bağlayıcı metin "başka uygulama kullanılamaz" dediği için kuralın kodda olması şart.
+    Neden farkı çağıran değil BU fonksiyon kuruyor: iki liste ayrı ayrı verilirse iki endpoint'in
+    farklı n'de (ör. birincil-1 n=5, birincil-2 n=10) ya da sansürlü bir seed DÜŞÜRÜLEREK
+    hesaplanması mümkün oluyordu — ön-kaydın "sonuca göre seçilebilir" diye adını koyduğu seçim.
+    Ölçülü örnek: H'nin bir seed'i sansürlüyken tam fark listesi "ölçemedik" veriyor, o seed
+    düşürülünce "katkı var, büyük". Artık uzunluklar eşit olmak ZORUNDA ve sansür burada işleniyor.
+
+    SANSÜR KURALI (birincil-2): X ya da H'nin herhangi bir seed'i sansürlüyse fark o seed'de
+    tanımsızdır (ikame bir gözlem değil tek yanlı bir sınırdır; farkı ±150 puan oynatır). O zaman
+    birincil-2 "ölçemedik" olarak raporlanır, p₂ = 1 alınır ve Holm'da birincil-1 α/2 düzeyiyle
+    sınanır (muhafazakâr yön). Seed DÜŞÜRÜLMEZ.
 
     Sıra (ön-kayıttaki "Holm iki endpoint'e NASIL uygulanır" bölümünün birebir uygulaması):
       1. iki endpoint'in iki yanlı p değerleri,
       2. Holm, aile büyüklüğü PİNLİ (`PRIMARY_FAMILY`),
       3. birincil-1 satırı `decide()`'dan; Holm'dan geçmediyse başarı satırları "belirsiz"e düşer,
-      4. birincil-2 durumu `contribution()`'dan. "Katkı var" durumları zaten α = .025 GA'sının
-         alt sınırı > 0 şartına bağlı, bu da `p₂ < .025` demek — Holm'un HER adımından geçer;
-         tutarlılık yine de denetlenir ve ihlali sessiz geçilmez.
+      4. birincil-2 durumu `contribution()`'dan. "Katkı var" durumları α/2 GA'sının alt sınırı > 0
+         şartına bağlı, bu da `p₂ < α/2` demek — Holm'un HER adımından geçer; tutarlılık yine de
+         denetlenir ve ihlali sessiz geçilmez.
     """
-    r1 = decide(s_xm, quality_per_sec=quality_per_sec, censored_mask=censored_mask, strict=strict)
-    c2 = contribution(diffs_xh, alpha=alpha / PRIMARY_FAMILY)
-    p1, p2 = _p_two_sided(s_xm), _p_two_sided(diffs_xh)
+    if len(s_xm) != len(s_hm):
+        raise ValueError(f"iki endpoint AYNI seed kümesinde hesaplanır: n(X↔M) = {len(s_xm)}, "
+                         f"n(H↔M) = {len(s_hm)}")
+    n = len(s_xm)
+    mx = list(censored_mask) if censored_mask is not None else [False] * n
+    mh = list(censored_mask_h) if censored_mask_h is not None else [False] * n
+    if len(mx) != n or len(mh) != n:
+        raise ValueError("sansür maskeleri seed listeleriyle aynı uzunlukta olmalı")
+    r1 = decide(s_xm, quality_per_sec=quality_per_sec, censored_mask=mx, strict=strict,
+                seed_right_available=seed_right_available)
+    p1 = _p_two_sided(s_xm)
+    if any(mx) or any(mh):
+        k = sum(1 for a, b in zip(mx, mh) if a or b)
+        c2 = {"state": "ölçemedik", "mean": None, "sd": None, "n": n, "ci": None,
+              "alpha": alpha / PRIMARY_FAMILY, "mde": MDE_PRIMARY2,
+              "note": f"{k} seed'de X ya da H sansürlü: fark tanımsız, seed DÜŞÜRÜLMEZ; birincil-2 "
+                      "'ölçemedik' — 'heterojenlik çürütüldü' DEĞİL"}
+        p2 = 1.0
+    else:
+        diffs = [a - b for a, b in zip(s_xm, s_hm)]
+        c2 = contribution(diffs, alpha=alpha / PRIMARY_FAMILY, strict=strict)
+        p2 = _p_two_sided(diffs)
     holm = multiplicity([("birincil-1", p1), ("birincil-2", p2)], alpha=alpha,
                         family_size=PRIMARY_FAMILY)
     passed = set(holm["holm"])
@@ -429,10 +468,12 @@ def decide_primary(s_xm: list[float], diffs_xh: list[float],
         notes1.append(f"Holm düzeltmesinden GEÇMEDİ (p₁ = {p1:.4f}, p₂ = {p2:.4f}, aile "
                       f"büyüklüğü {PRIMARY_FAMILY}): satır '{row1}' -> 'belirsiz'")
         row1 = "belirsiz"
-    state2 = c2["state"]
-    if state2.startswith("katkı var") and "birincil-2" not in passed:
-        raise AssertionError(f"tutarsızlık: α={alpha / PRIMARY_FAMILY} GA'sı alt > 0 ama Holm "
-                             f"reddetmedi (p₁ = {p1}, p₂ = {p2}) — kuralın iki yarısı ayrıştı")
+    if c2["state"].startswith("katkı var") and "birincil-2" not in passed:
+        # Matematiksel olarak olamaz (`lo > 0` α/2 düzeyinde ⟹ p₂ < α/2 ⟹ Holm'un her adımı geçer);
+        # yalnızca kayan nokta bıçak sırtında görülebilir. Bağlayıcı yolda istisna atmak yerine
+        # MUHAFAZAKÂR yöne düşürülür ve kayda geçer.
+        c2 = {**c2, "state": "katkı MDE kadar değil" if c2["ci"][1] < c2["mde"] else "ölçemedik",
+              "note": f"Holm sınırında (p₂ = {p2:.6f}): 'katkı var' ilan EDİLMEDİ"}
     return {"primary1": {**r1, "row": row1, "notes": notes1, "p": p1,
                          "holm_passed": "birincil-1" in passed},
             "primary2": {**c2, "p": p2, "holm_passed": "birincil-2" in passed},
@@ -527,18 +568,29 @@ def _wbar(quality_per_sec) -> tuple[dict[str, float] | None, float | None]:
             # Alakasız bir anahtar `min()` üzerinden meşru bir "güçlü başarı"yı düşürüyordu:
             # {"M":+1,"D":+1,"Z":−1} -> "başarılı". Anahtar kümesi kapalı.
             raise ValueError(f"quality_per_sec anahtarları {WBAR_KEYS} olmalı, fazlası: {sorted(extra)}")
-        return dict(quality_per_sec), min(quality_per_sec.values())
-    return {"?": float(quality_per_sec)}, float(quality_per_sec)
+        wmap = {k: float(v) for k, v in quality_per_sec.items()}
+    else:
+        wmap = {"?": float(quality_per_sec)}
+    # NaN/inf REDDEDİLİR: `min()` NaN'la sıra-bağımlıdır ({"M": nan, "D": 1} -> nan, {"D": 1,
+    # "M": nan} -> 1) ve `nan > 0` False olsa da ikinci sırada kapıyı GEÇİYORDU.
+    bad = {k: v for k, v in wmap.items() if v != v or v in (float("inf"), float("-inf"))}
+    if bad:
+        raise ValueError(f"w̄ sonlu bir sayı olmalı: {bad} (ölçülemediyse anahtarı hiç verme)")
+    return wmap, min(wmap.values())
 
 
 def decide(savings: list[float], quality_per_sec: float | dict[str, float] | None = None,
-           censored_mask: list[bool] | None = None, strict: bool = True) -> dict:
-    """PREREGISTRATION_V02 karar tablosunu (v01 O5 + EK 1 B8/B10/B16) birebir uygular.
+           censored_mask: list[bool] | None = None, strict: bool = True,
+           seed_right_available: bool = True) -> dict:
+    """PREREGISTRATION_V02 karar tablosunu (öncelik tablosu + v01 EK 1 B8/B16) birebir uygular.
+
+    **Bağlayıcı karar bu fonksiyonla TEK BAŞINA verilmez**: iki birincil uç nokta Holm'la birlikte
+    `decide_primary()`'de karara bağlanır; `decide()` onun birincil-1 adımıdır.
 
     savings        : seed başına tasarruf, YÜZDE PUAN (`s_i`, bkz. `savings()`); sansürlü seed'ler
                      için 2x bütçe ikamesiyle hesaplanmış değer
-    quality_per_sec: w̄ ortalaması (yüzde puan). **None geçmek sessiz değildir**: "güçlü başarı"
-                     satırı değerlendirilemez ve bu bir NOT olarak kayda geçer (aşağıya bak).
+    quality_per_sec: w̄ (yüzde puan), baseline başına eşleme `{"M": .., "D": ..}`. **None geçmek
+                     sessiz değildir**: "güçlü başarı" erişilemez ve bu bir NOT olarak kayda geçer.
     censored_mask  : **YALNIZCA FOTON kolunun** seed başına sansür bayrağı (`n_star` None döndü).
                      Baseline'ın sansürü buraya GİRMEZ — v02'de dense kolu `L*`'e ulaşmıyor ve
                      maskeye onun beş sansürü konursa FOTON, baseline'ın yetersizliği yüzünden
@@ -546,9 +598,14 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
                      - >= 1 sansürlü seed: "başarılı"/"güçlü başarı" YASAK
                      - >= 2 sansürlü seed: sonuç doğrudan "başarısız"
     strict         : True ise `n` ön-kayıtlı seed sayılarından biri olmak ZORUNDA (`REQUIRED_N`).
-                     False yalnızca keşifsel kullanım içindir ve başarı satırlarını BLOKLAR.
+                     False yalnızca keşifsel kullanım içindir; başarı satırlarını BLOKLAR ve sonuç
+                     `abandon()`'a verilemez.
+    seed_right_available : tek seed artırma hakkı (EK1-B3, kampanya başına BİR kez) hâlâ duruyor mu.
+                     False iken kesinlik ölçütü tetiklenirse satır doğrudan "yetersiz kesinlik"tir:
+                     hak S0'da harcandıysa S1'de "seed 10'a çıkar" demek olmayan bir çaredir.
 
-    Döner: {"row", "mean", "sd", "sd_uncensored", "ci95", "n", "n_censored", "notes", "determinate"}
+    Döner: {"row", "mean", "sd", "sd_uncensored", "ci95", "ci95_uncensored", "ub95", "n",
+            "n_censored", "notes", "determinate", "strict", "w_bar"}
     """
     n = len(savings)
     if n < 2:
@@ -563,62 +620,82 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
     if len(mask) != n:
         raise ValueError("censored_mask, savings ile aynı uzunlukta olmalı")
     n_cens = sum(mask)
-    # Doğrulama sansürlü erken dönüşten ÖNCE: aksi hâlde `quality_per_sec={}` normal
-    # yolda ValueError verirken `n_cens >= 2` yolunda sessizce kabul ediliyordu.
-    wmap, wmin = _wbar(quality_per_sec)
+    wmap, wmin = _wbar(quality_per_sec)          # doğrulama HER dönüş yolundan önce
     mean, lo, hi = ci95(savings)
     sd = st.stdev(savings)
-    # EK 1 B8: sansürlü seed s_i ~ -150 puan verip sd'yi şişirir ve "hedefe ulaşamıyor" sonucunu
-    # "varyans yüksek" gibi gösterirdi. Kesinlik ölçütü bu yüzden sansürsüz seed'lere bakar.
     unc = [s for s, c in zip(savings, mask) if not c]
     sd_unc = st.stdev(unc) if len(unc) > 1 else float("nan")
-    notes: list[str] = []
     res = {"mean": mean, "sd": sd, "sd_uncensored": sd_unc, "n": n, "n_censored": n_cens,
-           "ci95": [lo, hi], "notes": notes, "w_bar": wmap}
-    # Sansürsüz alt örneğin GA'sı AYRI tutulur: `abandon()`'ın eşdeğerlik testi buna bakar, çünkü
-    # tek bir sansürlü seed (~−150 puan ikame) tam örnek GA'sını ±80 puana şişirip kuralı
-    # ulaşılamaz yapıyordu. `decide()`'ın kesinlik ölçütü aynı sebeple zaten sansürsüzlere bakıyor.
+           "ci95": [lo, hi], "ub95": ub95(savings, mask), "strict": strict, "w_bar": wmap}
     if len(unc) >= 2:
         mu_, lo_, hi_ = ci95(unc)
-        res["ci95_uncensored"] = [lo_, hi_]
-        res["mean_uncensored"] = mu_
+        res["ci95_uncensored"], res["mean_uncensored"] = [lo_, hi_], mu_
+    w_complete = wmap is not None and set(WBAR_KEYS) <= set(wmap)
+    notes: list[str] = []
+
+    def finish(row: str, determinate: bool) -> dict:
+        """HER dönüş yolu buradan geçer: zorunlu notlar erken dönüşlerde ATLANMASIN.
+
+        Üçüncü denetim buldu: sansür (>= 2) ve kesinlik dönüşleri w̄ notlarını ve B8(i)'in
+        raporda zorunlu "ikame FOTON'un LEHİNE yanlıdır" cümlesini atlıyordu.
+        """
+        extra: list[str] = []
+        if wmin is None:
+            extra.append("w̄ (quality/sec) VERİLMEDİ: ikincil ölçüt değerlendirilmedi, bu yüzden "
+                         "'güçlü başarı' satırı erişilemez ve çelişki kuralı uygulanamadı")
+        else:
+            # İKİ not BAĞIMSIZ: "w̄ eksik ölçüldü" ile "w̄ negatif" aynı anda doğru olabilir.
+            if not w_complete and mean >= STRONG and lo > CI_EPS:
+                missing = [k for k in WBAR_KEYS if k not in wmap]
+                how = ("tek skaler olarak verildi: hangi baseline'a karşı olduğu BİLİNMİYOR"
+                       if "?" in wmap else f"yalnızca {sorted(wmap)} için verildi")
+                extra.append(f"w̄ {how}; eksik: {missing or list(WBAR_KEYS)}. Ön-kayıt 'güçlü başarı' "
+                             f"için w̄({WBAR_KEYS[0]}) > 0 VE w̄({WBAR_KEYS[1]}) > 0 istiyor, bu yüzden "
+                             "o satır ERİŞİLEMEZ. Gerekçe: yalnızca M'e karşı hız kazancı, M bu kartta "
+                             "kendi başına D'den %27.9 yavaş olduğu için FOTON'un katkısı OLMADAN da "
+                             "sağlanabilir (v01 EK1-B16).")
+            # EK 1 B16: çelişki etiketi GÜRÜLTÜYE vurulmaz — FLOP kazancının GA'sı sıfırın üstünde olmalı.
+            if wmin <= 0:
+                neg = sorted(k for k, v in wmap.items() if v <= 0)
+                which = f" (negatif olan: {', '.join(neg)})" if neg != ["?"] else ""
+                if lo > CI_EPS:
+                    extra.append("FLOP kazancı var (GA tamamen > 0), duvar saati kaybı var -> "
+                                 f"çelişki kuralı: mimari başarı / sistem başarısızlığı{which}")
+                elif mean > 0:
+                    extra.append(f"s̄ pozitif ({mean:.2f}) ama GA sıfırı kesiyor ve w̄ <= 0: çelişki "
+                                 "kuralı UYGULANMAZ (FLOP kazancı istatistiksel olarak kurulmadı)")
+        if n_cens >= 1:
+            extra.append(f"{n_cens} FOTON seed'i L*'e ulaşmadı; s̄ 2x bütçe ikamesiyle hesaplandı ve "
+                         "bu ikame FOTON'un LEHİNE yanlıdır (EK 1 B8)")
+        return {**res, "notes": notes + extra, "row": row, "determinate": determinate}
 
     if n_cens >= 2:                                        # EK 1 B8: iki veya daha fazla sansür -> başarısız
         notes.append(f"{n_cens} FOTON seed'i L*'e ulaşmadı: EK 1 B8 gereği sonuç doğrudan 'başarısız'")
-        return {**res, "row": "başarısız", "determinate": True}
+        return finish("başarısız", True)
 
-    # ---- kesinlik ölçütü: mutlak sd tripwire'ının yerini aldı (bkz. SD_TRIPWIRE yorumu) ----
+    # ---- kesinlik ölçütü (mutlak sd tripwire'ının yerini aldı; v01 B8(ii) gereği SANSÜRSÜZ
+    #      seed'ler üzerinde: sansürlü seed "hedefe ulaşamadı"dır, "varyans yüksek" değil) ----
     if len(unc) >= 2:
-        m_u, lo_u, hi_u = ci95(unc)                        # sansürsüzlerin kendi aralığı
+        m_u, lo_u, hi_u = ci95(unc)
         indet = indeterminate(m_u, lo_u, hi_u)
         detail = f"sansürsüz {len(unc)} seed: s̄ {m_u:.2f}, GA [{lo_u:.2f}, {hi_u:.2f}]"
     else:
-        # Tek sansürsüz seed'de sd yok. Eski kod bu durumda HAM sd'ye düşüyordu ve -150'lik ikameyi
-        # "sansürsüz seed'lerin sd'si 110.31" diye raporluyordu — var olmayan bir niceliği rapor
-        # eden bir yalan, ve tam olarak B8'in engellemek için yazıldığı yanlış okuma.
-        indet = True
-        detail = f"yalnızca {len(unc)} sansürsüz seed: kesinlik DEĞERLENDİRİLEMEZ"
-    res["w_bar"] = wmap
-
+        indet, detail = True, f"yalnızca {len(unc)} sansürsüz seed: kesinlik DEĞERLENDİRİLEMEZ"
     if indet:
-        if n >= max(REQUIRED_N):
-            # TERMİNAL: B3 ikinci artırma hakkı vermiyor, ölçek yükseltmesi de kesinlik sorununun
-            # çaresi değil. "seed 10'a çıkar" demek olmayan bir çareye yönlendirmek olurdu.
-            notes.append(f"GA başarı eşiğini ({SUCCESS} puan) çözemiyor — {detail}; n={n} zaten "
-                         "azami seed sayısı (EK 1 B3 ikinci artırma hakkı vermiyor) ve ölçek "
-                         "yükseltmesi kesinlik sorununun çaresi değil: etki, başarı eşiğinin bu "
-                         "deneyin kesinliğiyle ayırt edilemeyeceği kadar yakınında. Ne kurulmuş "
-                         "ne dışlanmıştır; bu 'nötr' DEĞİLDİR.")
-            return {**res, "row": "yetersiz kesinlik", "determinate": False}
+        if n >= max(REQUIRED_N) or not seed_right_available:
+            # TERMİNAL: EK1-B3 tek bir seed artırma hakkı veriyor (kampanya başına). Hak yoksa
+            # "seed 10'a çıkar" demek olmayan bir çareye yönlendirmek olurdu.
+            neden = (f"n={n} zaten azami seed sayısı" if n >= max(REQUIRED_N)
+                     else "seed artırma hakkı bu kampanyada zaten harcandı")
+            notes.append(f"GA başarı eşiğini ({SUCCESS} puan) çözemiyor — {detail}; {neden} "
+                         "(EK 1 B3 ikinci artırma hakkı vermiyor) ve ölçek yükseltmesi kesinlik "
+                         "sorununun çaresi değil: etki, başarı eşiğinin bu deneyin kesinliğiyle ayırt "
+                         "edilemeyeceği kadar yakınında. Ne kurulmuş ne dışlanmıştır; bu 'nötr' DEĞİLDİR.")
+            return finish("yetersiz kesinlik", False)
         notes.append(f"GA başarı eşiğini ({SUCCESS} puan) çözemiyor — {detail}: "
                      "seed 10'a çıkar (EK 1 B3: {66,77,88,99,110})")
-        return {**res, "row": "yüksek varyans / belirsiz", "determinate": False}
+        return finish("yüksek varyans / belirsiz", False)
 
-    # "güçlü başarı" kapısı: w̄ HER İKİ baseline için de ölçülmüş VE ikisi de pozitif olmalı.
-    # İlk düzeltme yalnızca `min()`'e bakıyordu ve eksik anahtarı görmüyordu: `{"M": +1.0}`
-    # (D hiç ölçülmemiş) "güçlü başarı" döndürüyor, üstelik skaler yolun uyarısını da
-    # atlıyordu — yani blocker geri gelmişti, sessiz hâliyle.
-    w_complete = wmap is not None and set(WBAR_KEYS) <= set(wmap)
     crosses_zero = lo - CI_EPS <= 0 <= hi + CI_EPS
     if mean >= STRONG and lo > CI_EPS and wmin is not None and wmin > 0 and w_complete:
         row = "güçlü başarı"
@@ -633,50 +710,10 @@ def decide(savings: list[float], quality_per_sec: float | dict[str, float] | Non
         if crosses_zero:
             notes.append("ortalama < -%2 ama GA sıfırı kesiyor (O5: negatif ortalama 'belirsiz' üretmez)")
 
-    # w̄ yoksa bunu SÖYLE. Eskiden None sessizce geçiyordu: "güçlü başarı" kapısı da B16'nın çelişki
-    # etiketi de atlanıyor, ve rapor ikincil ölçütün hiç değerlendirilmediğini göstermiyordu.
-    # V11a duvar saatini eksik bir seed bloğunda geçersiz saydığı için bu ulaşılabilir bir durum.
-    if wmin is None:
-        notes.append("w̄ (quality/sec) VERİLMEDİ: ikincil ölçüt değerlendirilmedi, bu yüzden "
-                     "'güçlü başarı' satırı erişilemez ve çelişki kuralı uygulanamadı")
-        if row == "güçlü başarı":                          # savunma: buraya düşülemez ama sabitlensin
-            row = "başarılı"
-    else:
-        # İKİ not BAĞIMSIZ: "w̄ eksik ölçüldü" ile "w̄ negatif" aynı anda doğru olabilir. İlk hâl
-        # bunları `elif` ile zincirlemişti ve skaler w̄ = −3.0 verildiğinde eksiklik notu yazılıp
-        # B16'nın çelişki etiketi ATLANIYORDU — yani iki ayrı kural birbirini susturuyordu.
-        if not w_complete and mean >= STRONG and lo > CI_EPS:
-            missing = [k for k in WBAR_KEYS if k not in wmap]
-            how = ("tek skaler olarak verildi: hangi baseline'a karşı olduğu BİLİNMİYOR"
-                   if "?" in wmap else f"yalnızca {sorted(wmap)} için verildi")
-            notes.append(f"w̄ {how}; eksik: {missing or list(WBAR_KEYS)}. Ön-kayıt 'güçlü başarı' "
-                         f"için w̄({WBAR_KEYS[0]}) > 0 VE w̄({WBAR_KEYS[1]}) > 0 istiyor, bu yüzden "
-                         "o satır ERİŞİLEMEZ. Gerekçe: yalnızca M'e karşı hız kazancı, M bu kartta "
-                         "kendi başına D'den %27.9 yavaş olduğu için FOTON'un katkısı OLMADAN da "
-                         "sağlanabilir (v01 EK1-B16).")
-        # EK 1 B16: çelişki etiketi. Eskiden yalnızca `mean > 0` yetiyordu, yani s̄ = +0.01 puanlık
-        # bir gürültüye "mimari başarı" damgası vurulabiliyordu. Artık FLOP kazancının kendisi de
-        # İSTATİSTİKSEL olmak zorunda: GA'nın tamamı sıfırın üstünde.
-        if wmin <= 0:
-            neg = sorted(k for k, v in wmap.items() if v <= 0)
-            which = f" (negatif olan: {', '.join(neg)})" if neg != ["?"] else ""
-            if lo > CI_EPS:
-                notes.append("FLOP kazancı var (GA tamamen > 0), duvar saati kaybı var -> "
-                             f"çelişki kuralı: mimari başarı / sistem başarısızlığı{which}")
-            elif mean > 0:
-                notes.append(f"s̄ pozitif ({mean:.2f}) ama GA sıfırı kesiyor ve w̄ <= 0: çelişki "
-                             "kuralı UYGULANMAZ (FLOP kazancı istatistiksel olarak kurulmadı)")
-            if row == "güçlü başarı":   # wmin<=0 iken buraya düşülemez; kural kodda da sabit
-                row = "başarılı"
-
-    if n_cens == 1:
-        # B8(i) açıklaması her sansürlü durumda verilir — eskiden yalnızca başarı bloklanmadığında.
-        notes.append("1 FOTON seed'i L*'e ulaşmadı; s̄ 2x bütçe ikamesiyle hesaplandı ve bu ikame "
-                     "FOTON'un LEHİNE yanlıdır (EK 1 B8)")
-        if row in ("güçlü başarı", "başarılı"):
-            notes.append("EK 1 B8 gereği 1 sansürlü seed varken 'başarılı' ilan edilemez")
-            row = "belirsiz"
+    if n_cens == 1 and row in ("güçlü başarı", "başarılı"):
+        notes.append("EK 1 B8 gereği 1 sansürlü seed varken 'başarılı' ilan edilemez")
+        row = "belirsiz"
     if not strict and row in ("güçlü başarı", "başarılı"):
         notes.append(f"strict=False (n={n} ön-kayıtlı değil): başarı satırı bloklandı, keşifsel sonuç")
         row = "belirsiz"
-    return {**res, "row": row, "determinate": True}
+    return finish(row, True)

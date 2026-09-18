@@ -70,23 +70,6 @@ def test_n_star_returns_none_when_target_never_reached():
     assert n_star(_curve([4.0, 3.5, 3.2, 3.1]), 2.0) is None
 
 
-def test_n_star_requires_sustained_crossing_b14():
-    """EK1-B14: kesişimden sonra hedefin ÜSTÜNE çıkan bir eğride tek bir `N*` anlamlı değildir.
-
-    Bu, denetimin en somut karar-bozan bulgusuydu. Eğri 2750'de hedefin altına sarkıp 3000'de geri
-    çıkıyor, 3500'de kalıcı kesiyor. Sürdürme kontrolü OLMADAN ilk kesişim okunur ve `N*` ~%21
-    küçük çıkar; kontrol VARSA seed sansürlenir. Aradaki fark tek bir `if`.
-    """
-    #                 2500  2750  3000  3250  3500  3750
-    vals = [2.95, 2.89, 2.93, 2.92, 2.88, 2.86]   # hedef 2.90: 2750'de sark, 3000'de geri çık
-    c = _curve(vals, first=2500)
-    assert n_star(c, 2.90) is None
-    # Aynı eğride sarkma OLMASA kesişim geçerli ve erken:
-    ok = _curve([2.95, 2.89, 2.88, 2.87, 2.86, 2.85], first=2500)
-    got = n_star(ok, 2.90)
-    assert got is not None and 2500 * STEP < got < 2750 * STEP
-
-
 def test_n_star_sustained_check_allows_dip_before_crossing():
     """Kesişimden ÖNCEKİ dalgalanma kesişimi geçersiz kılmaz; yalnızca sonrası sayılır."""
     c = _curve([3.1, 3.3, 3.0, 2.8, 2.75], first=1000)     # 1250'de yukarı zıpla, sonra kes
@@ -284,82 +267,6 @@ def test_decide_censored_mask_is_foton_only_by_contract():
 
 # --------------------------------------------------------------------------- vazgeçme koşulu
 
-def test_abandon_fires_for_a_break_even_foton_at_measured_noise():
-    """Ölçülen σ'da başabaş bir FOTON TERK EDİLEBİLİR olmalı. Eski biçim σ>=1.72'de ölüydü."""
-    r5 = decide(_five(0.0, sd=0.75), quality_per_sec=-1.0)
-    r6 = decide(_five(0.1, sd=0.75), quality_per_sec=-1.0)
-    res = abandon([r5, r6], oracle_gain_over_null=0.5)
-    assert res["abandon"] is True and "GA üst sınırı" in res["reason"]
-
-
-def test_abandon_blocked_by_oracle_headroom():
-    """Mükemmel yönlendirmede hâlâ kazanç varsa hipotez terk EDİLMEZ — küçük ama gerçek etkiyi korur."""
-    rs = [decide(_five(0.0, sd=0.75), quality_per_sec=-1.0) for _ in range(2)]
-    res = abandon(rs, oracle_gain_over_null=5.0)
-    assert res["abandon"] is False and "oracle" in res["reason"]
-
-
-def test_abandon_blocked_when_effect_could_still_be_large():
-    """GA üst sınırı eşiğin üstündeyse "etki eşik kadar büyük olabilir": terk edilemez."""
-    rs = [decide(_five(4.0, sd=1.0), quality_per_sec=-1.0) for _ in range(2)]
-    assert all(r["ci95"][1] >= SUCCESS for r in rs)          # GA [2.76, 5.24]
-    assert abandon(rs, oracle_gain_over_null=0.0)["abandon"] is False
-
-
-def test_abandon_fires_on_a_real_but_sub_threshold_effect():
-    """ANLAM KARARI, açıkça kilitlenmiştir: +%3'lük GERÇEK bir kazanç da vazgeçmeyi tetikler.
-
-    `s̄ = 3.0, sd = 0.75` -> GA [2.07, 3.93]: etki sıfırdan farklı (kazanç gerçek) ama eşiğin
-    tamamen altında. İki ardışık ölçekte böyleyse ve oracle headroom'u < %2 ise ön-kayıtlı hipotez
-    TERK EDİLİR. Gerekçe: kilit cümlenin hipotezi "en az %5 tasarruf"tur, "sıfırdan büyük tasarruf"
-    değil. İki ölçekte kesin olarak %5'in altında kaldığı ve mükemmel yönlendirmenin de kayda değer
-    bir pay bırakmadığı gösterilmişse, ön-kayıtlı iddia çürütülmüştür.
-
-    Terk etmek bulguyu SİLMEK değildir: +%3 sonuç olarak raporlanır. Terk edilen şey "dizi düzeyi
-    top-1 yönlendirme %5+ getirir" iddiasıdır.
-
-    Bu testin varlık sebebi: eski biçimdeki `s̄ <= 0` şartı tam bu durumu korumak için vardı ve
-    onu attık. Attığımızın farkında olduğumuz burada kayıtlı; oracle şartı tek koruma olarak kalıyor.
-    """
-    rs = [decide(_five(3.0, sd=0.75), quality_per_sec=-1.0) for _ in range(2)]
-    assert all(r["ci95"][0] > 0 for r in rs)                 # kazanç GERÇEK
-    assert all(r["ci95"][1] < SUCCESS for r in rs)           # ama eşiğin altında
-    assert abandon(rs, oracle_gain_over_null=0.5)["abandon"] is True
-    # Oracle headroom varsa korunur:
-    assert abandon(rs, oracle_gain_over_null=3.0)["abandon"] is False
-
-
-def test_abandon_distinguishes_insufficient_precision_from_hypothesis_standing():
-    """Kural tetiklenmediğinde "hipotez ayakta" ile "ölçemedik" AYRI raporlanmalı.
-
-    Eski hâlin en sinsi sonucu buydu: geniş varyansta vazgeçme koşulu hiç tetiklenmiyor, sonuç da
-    "nötr / sonuçsuz" olarak park ediyordu — yani değersiz bir FOTON süresiz yaşayabiliyordu.
-    """
-    wide = decide([0.0 + d for d in (-9, -4.5, 0, 4.5, 9)], quality_per_sec=-1.0)
-    assert wide["row"] == "yüksek varyans / belirsiz"
-    res = abandon([wide, wide], oracle_gain_over_null=0.0)
-    assert res["abandon"] is False and "yetersiz kesinlik" in res["reason"]
-    assert "ölçemedik" in res["reason"]
-
-
-def test_abandon_needs_two_scales():
-    r = decide(_five(0.0, sd=0.75), quality_per_sec=-1.0)
-    assert abandon([r], oracle_gain_over_null=0.0)["abandon"] is False
-
-
-def test_abandon_reachability_beats_the_old_form():
-    """Sayısal sınav: sağlam biçim σ=3'te başabaş FOTON'u eski biçimden ÇOK daha sık terk eder."""
-    def robust(s):
-        return ci95(s)[2] < SUCCESS
-
-    def old(s):
-        m, lo, hi = ci95(s)
-        return m <= 0 and hi < 2.0
-    pr = reachability(robust, mu=0.0, sigma=3.0, n=5, sims=20000, seed=3)
-    po = reachability(old, mu=0.0, sigma=3.0, n=5, sims=20000, seed=3)
-    assert pr > 0.7 and po < 0.25, f"sağlam %{100*pr:.1f} vs eski %{100*po:.1f}"
-
-
 # --------------------------------------------------------------------------- multiplicity
 
 def test_multiplicity_family_size_must_be_pinned():
@@ -463,49 +370,6 @@ def test_precision_criterion_has_a_terminal_row_at_max_n():
     assert "yetersiz kesinlik" in ROWS
 
 
-def test_abandon_is_reachable_when_a_seed_is_censored():
-    """Eşdeğerlik testi SANSÜRSÜZ alt örneğin GA'sına bakar; yoksa kural sansürde ulaşılamaz olur.
-
-    Ölçülen senaryo: `s_i = [0.2, −0.1, 0.3, 0.0, −149.82]` (dördü başabaş, biri 2x bütçe
-    ikamesiyle sansürlü). Tam örnek GA'sı **[−113.13, +53.37]** — `hi < 5` ASLA sağlanamaz, yani
-    vazgeçme kuralı sansürlü her senaryoda ölürdü. Bu, `decide()`'ın kesinlik ölçütünde zaten
-    kapatılmış hatanın vazgeçme kuralındaki kopyasıydı; üstelik V12'nin sayısal sınavı onu
-    göremiyordu çünkü sınav yalnızca Gauss örnekleri çiziyordu (artık sansür de tarıyor).
-    """
-    s_i = [0.2, -0.1, 0.3, 0.0, -149.82]
-    r = decide(s_i, quality_per_sec={"M": -1.0, "D": -1.0}, censored_mask=[False] * 4 + [True])
-    assert r["ci95"][1] > SUCCESS, "tam örnek GA'sı gerçekten patlamalı (testin varlık sebebi)"
-    assert r["ci95_uncensored"][1] < SUCCESS
-    assert abandon([r, r], oracle_gain_over_null=0.0)["abandon"] is True
-
-
-def test_abandon_from_basarisiz_needs_only_one_scale():
-    """v01 EK1-B10: "başarısız" satırı TEK ölçekle terk etmeye yeter; oracle şartı yine uygulanır."""
-    bad = decide(_five(-8.0), quality_per_sec={"M": -1.0, "D": -1.0})
-    assert bad["row"] == "başarısız"
-    ok = abandon([bad], oracle_gain_over_null=0.5)
-    assert ok["abandon"] is True and ok["single_scale"] is True
-    blocked = abandon([bad], oracle_gain_over_null=5.0)
-    assert blocked["abandon"] is False and "oracle" in blocked["reason"]
-
-
-def test_abandon_two_censored_seeds_is_a_single_scale_abandonment():
-    """>= 2 sansür -> "başarısız" -> tek ölçekle terk. Eşdeğerlik testine sokmak anlamsız olurdu:
-    GA ikame yüzünden patlar ve mümkün olan EN GÜÇLÜ olumsuz sonuç "terk edilemez" çıkardı."""
-    two = decide([0.2, -0.1, 0.3, -149.8, -149.9], quality_per_sec={"M": -1.0, "D": -1.0},
-                 censored_mask=[False] * 3 + [True] * 2)
-    assert two["row"] == "başarısız"
-    assert abandon([two], oracle_gain_over_null=0.5)["abandon"] is True
-
-
-def test_abandon_blocked_by_indeterminate_terminal_row():
-    """"yetersiz kesinlik" de vazgeçmeyi ENGELLER: ölçemediğimiz durumda hipotez terk edilmez."""
-    r = decide(_five(4.0, sd=2.1, n=10), quality_per_sec={"M": -1.0, "D": -1.0})
-    assert r["row"] == "yetersiz kesinlik"
-    res = abandon([r, r], oracle_gain_over_null=0.0)
-    assert res["abandon"] is False and "yetersiz kesinlik" in res["reason"]
-
-
 # ------------------------------------------------- birincil-2 ve Holm'lu bileşik karar
 
 def test_contribution_four_states_partition_the_plane():
@@ -561,64 +425,6 @@ def test_contribution_is_not_scored_with_the_decision_table():
     assert contribution(xs)["state"].startswith("katkı var")          # doğru kuralla doğru etiket
 
 
-def test_decide_primary_holm_precedes_the_row_name():
-    """Holm'dan GEÇMEYEN birincil-1 "başarılı" OLAMAZ — kural artık kodda, yalnızca metinde değil.
-
-    Kurgu: s̄ = 6 ama gürültülü (p₁ ≈ .04), birincil-2 bütünüyle null (p₂ büyük). `decide()` tek
-    başına "başarılı" der (s̄ >= 5, %95 GA alt > 0); Holm'un ilk adımı .025 olduğu için p₁ geçmez
-    ve bileşik karar satırı "belirsiz"e düşürür.
-    """
-    from src.stats import decide_primary
-    s_xm = _five(6.0, sd=4.4)                        # t = 3.05, p ≈ .038
-    assert decide(s_xm, quality_per_sec=W_BOTH)["row"] == "başarılı"
-    out = decide_primary(s_xm, _five(0.0, sd=1.0), quality_per_sec=W_BOTH)
-    assert 0.025 < out["primary1"]["p"] < 0.05
-    assert out["primary1"]["row"] == "belirsiz" and out["primary1"]["holm_passed"] is False
-    assert any("Holm düzeltmesinden GEÇMEDİ" in n for n in out["primary1"]["notes"])
-    assert out["holm"]["n_tests"] == 2               # aile büyüklüğü PİNLİ
-
-
-def test_decide_primary_passes_clean_success_and_scores_primary2_separately():
-    from src.stats import decide_primary
-    out = decide_primary(_five(7.0, sd=0.8), _five(3.0, sd=0.5), quality_per_sec=W_BOTH)
-    assert out["primary1"]["row"] == "başarılı" and out["primary1"]["holm_passed"] is True
-    assert out["primary2"]["state"] == "katkı var, büyük" and out["primary2"]["holm_passed"] is True
-    # birincil-2 null iken birincil-1'in temiz başarısı DÜŞMEZ (p₁ çok küçük, Holm'un ilk adımını geçer)
-    out2 = decide_primary(_five(7.0, sd=0.8), _five(0.1, sd=1.2), quality_per_sec=W_BOTH)
-    assert out2["primary1"]["row"] == "başarılı"
-    assert out2["primary2"]["state"] in ("ölçemedik", "katkı MDE kadar değil")
-
-
-def test_abandon_refuses_hand_built_dict_without_uncensored_ci():
-    """Sansürlü bir sonuçta `ci95_uncensored` yoksa SESSİZCE tam örnek GA'sına düşülmez.
-
-    Sessiz geri-düşüş, kuralı sansürde ulaşılamaz yapan eski hatanın geri gelmesi demekti.
-    """
-    fake = {"row": "nötr", "ci95": [-113.0, 53.0], "n": 5, "n_censored": 1}
-    with pytest.raises(ValueError, match="ci95_uncensored"):
-        abandon([fake, fake], oracle_gain_over_null=0.0, escalation_used=True)
-
-
-def test_abandon_single_scale_path_has_three_preconditions():
-    """v01 B10'un tek-ölçek yolu: hak kullanılmamış + sansürsüz GA üst < eşik + oracle.
-
-    Kilitlenen regresyon: `4 × +%30 + 1 sansür` tek ölçekte terk ediliyordu (sansürsüz GA üst
-    sınırı +30.15 iken), çünkü dal yalnızca satır adına bakıyordu ve satırı tek başına sansür
-    ikamesi "başarısız" yapıyordu.
-    """
-    pos = decide([30.0, 30.1, 29.9, 30.05, -149.82], quality_per_sec={"M": -1.0, "D": -1.0},
-                 censored_mask=[False] * 4 + [True])
-    assert pos["row"] == "başarısız"
-    r = abandon([pos], oracle_gain_over_null=0.5)
-    assert r["abandon"] is False and "sansürsüz GA üst sınırı" in r["reason"]
-    assert abandon([pos, pos], oracle_gain_over_null=0.5, escalation_used=True)["abandon"] is False
-    # hak KULLANILDIYSA tek ölçek yolu kapalı: gerçek bir "başarısız" bile iki ölçek ister
-    bad = decide(_five(-8.0), quality_per_sec={"M": -1.0, "D": -1.0})
-    assert abandon([bad], oracle_gain_over_null=0.5, escalation_used=False)["abandon"] is True
-    assert abandon([bad], oracle_gain_over_null=0.5, escalation_used=True)["abandon"] is False
-    assert abandon([bad, bad], oracle_gain_over_null=0.5, escalation_used=True)["abandon"] is True
-
-
 # ------------------------------------------------- mutasyon sınavının bulduğu guard boşlukları
 
 def test_decision_thresholds_are_locked_literally_and_behaviourally():
@@ -655,3 +461,252 @@ def test_two_censored_seeds_give_basarisiz_with_the_b8_note_even_when_the_mean_w
     assert r["mean"] == pytest.approx(0.0)
     assert r["row"] == "başarısız"
     assert any("B8" in n and "doğrudan 'başarısız'" in n for n in r["notes"])
+
+
+# =====================================================================================
+# ÜÇÜNCÜ DENETİM TURU: n_star (B14), sansüre duyarlı üst sınır, vazgeçmenin iki yolu,
+# Holm'lu bileşik karar. Bu blok, o turun 8 HIGH bulgusunun her birini kilitler.
+# =====================================================================================
+NEG = {"M": -1.0, "D": -1.0}
+CENS = -149.82                                   # 2x bütçe ikamesinin puan karşılığı
+
+
+def test_n_star_takes_the_next_sustained_crossing_b14():
+    """EK1-B14: "kesişimden sonraki eval noktası da ≤ L* olmalı; değilse SONRAKİ kesişime bakılır."
+
+    Eğri 2750'de hedefin altına sarkıp 3000'de geri çıkıyor, 3250–3500 arasında KALICI kesiyor.
+    Doğru `N*` o kalıcı kesişimdir. İki yanlış okuma da kilitli:
+      * erken sarkmayı `N*` saymak (`s_i`'yi ~21 puan şişirir, "nötr"ü "güçlü başarı" yapar);
+      * seed'i SANSÜRLEMEK (bir önceki uygulama buydu — B14'ün tersi; tek bir 0.0005 nat'lık
+        sıçrama, hedefin altında biten bir koşuyu −150 puana çeviriyordu).
+    """
+    #        2500  2750  3000  3250  3500  3750
+    vals = [2.95, 2.89, 2.93, 2.92, 2.88, 2.86]          # hedef 2.90
+    got = n_star(_curve(vals, first=2500), 2.90)
+    assert got is not None, "sürdürülen kesişim VAR; seed sansürlenmemeli"
+    assert 3250 * STEP < got < 3500 * STEP, "erken sarkma N* sayıldı"
+    assert got == pytest.approx((3250 + 250 * (2.92 - 2.90) / (2.92 - 2.88)) * STEP)
+    # son nokta hedefin ÜSTÜNDEYSE (ulaşıp kaybetti) sansür
+    assert n_star(_curve([2.95, 2.89, 2.88, 2.93], first=2500), 2.90) is None
+
+
+def test_ub95_equals_plain_ci_without_censoring_and_is_monotone_in_censoring():
+    """Sansür yokken düz %95 GA üst sınırı; her sansürlü seed onu AŞAĞI çeker (monoton).
+
+    Üçüncü denetimin bulduğu delik: sansürsüz ALT örneğin aralığına bakan kural k=3'te (2 seed,
+    t(1) = 12.7) patlıyor ve en net başarısızlık terk edilemiyordu; kural k'da monoton değildi.
+    """
+    from src.stats import ub95
+    xs = _five(0.0, sd=0.88)
+    assert ub95(xs) == pytest.approx(ci95(xs)[2])
+    prev = ub95(xs)
+    for k in range(1, 5):
+        cur = ub95(xs[:5 - k] + [CENS] * k, [False] * (5 - k) + [True] * k)
+        assert cur < prev, f"k={k}: üst sınır monoton değil ({cur:.2f} >= {prev:.2f})"
+        prev = cur
+    # 3/5 sansür + geniş iki seed: eski kural +6.4 görüp terk etmeyi engelliyordu
+    assert ub95([0.5, -0.5, CENS, CENS, CENS], [False] * 2 + [True] * 3) < -80
+
+
+def test_abandon_two_scale_rule_uses_the_censor_aware_bound():
+    """İki ölçek yolu: her iki ölçekte `ub95 < +5` ve oracle (ölçek BAŞINA) < 2."""
+    be = decide(_five(0.0, sd=0.88), quality_per_sec=NEG)
+    assert abandon([be, be], [0.5, 0.5], escalation_used=True)["abandon"] is True
+    # bir ölçekte tek seed sansürlü: düz aralık [−113, +53] olurdu; sansüre duyarlı sınır −29
+    s1 = decide([0.2, -0.1, 0.3, 0.0, CENS], quality_per_sec=NEG, censored_mask=[False] * 4 + [True])
+    assert s1["ci95"][1] > SUCCESS and s1["ub95"] < SUCCESS
+    assert abandon([be, s1], [0.5, 0.5], escalation_used=True)["abandon"] is True
+    # bir ölçekte etki eşiğin ÜSTÜNDE kurulmuş (GA [6.0, 8.0]) -> terk yok
+    near = decide(_five(7.0, sd=0.8), quality_per_sec=NEG)
+    assert near["determinate"] and near["ub95"] >= SUCCESS
+    r = abandon([be, near], [0.5, 0.5], escalation_used=True)
+    assert r["abandon"] is False and "GA üst sınırı" in r["reason"]
+
+
+def test_abandon_needs_both_scales_not_just_the_last_one():
+    """`[S0 "başarılı", S1 "başarısız"]` TERK EDİLMEZ — üçüncü denetimin bulduğu regresyon.
+
+    Önceki hâl tek ölçek çıkışını elde iki ölçek varken de deniyordu ve yalnızca SON ölçeğe
+    bakıp hipotezi terk ettiriyordu; oysa S0'ın GA'sı [6.5, 7.5], tamamen +5'in ÜSTÜNDE.
+    Varsayılan `escalation_used=False` ile de aynı olmalı (v01 B10: "başarılı"da S1 isteğe bağlı,
+    hak harcanmaz — yani bu çağrı meşru).
+    """
+    s0 = decide([6.5, 7.0, 7.5, 6.8, 7.2], quality_per_sec={"M": 1.0, "D": -1.0})
+    s1 = decide([-4.0, -3.5, -4.5, -3.8, -4.2], quality_per_sec=NEG)
+    assert (s0["row"], s1["row"]) == ("başarılı", "başarısız")
+    for flag in (False, True):
+        r = abandon([s0, s1], [0.5, 0.5], escalation_used=flag)
+        assert r["abandon"] is False and r["path"] == "iki ölçek", (flag, r)
+
+
+def test_abandon_single_scale_path_follows_b10():
+    """Tek ölçek yolu (v01 EK1-B10): satır "başarısız" + hak KULLANILMAMIŞ + ub95 < 5 + oracle."""
+    bad = decide(_five(-8.0), quality_per_sec=NEG)
+    ok = abandon([bad], 0.5, escalation_used=False)
+    assert ok["abandon"] is True and ok["single_scale"] is True and "B10" in ok["reason"]
+    assert abandon([bad], 0.5, escalation_used=True)["abandon"] is False       # hak kullanıldı
+    assert abandon([bad], 5.0, escalation_used=False)["abandon"] is False      # oracle headroom'u
+    neutral = decide(_five(0.0, sd=0.88), quality_per_sec=NEG)
+    r = abandon([neutral], 0.5, escalation_used=False)
+    assert r["abandon"] is False and "'başarısız' satırından" in r["reason"]   # "nötr"den açılmaz
+
+
+def test_abandon_with_a_censored_seed_follows_the_preregistered_statistic():
+    """ANLAM KARARI, açıkça kilitli: `4 × +%30 + 1 sansür`, hak kullanılmazsa TERK EDİLİR.
+
+    Birincil istatistik `s̄`, hedefe ulaşamayan seed'i de içerir (EK1-B8 ikamesi): burada
+    s̄ ≈ −5.9, satır "başarısız". v01 B10 harfiyen: "başarısız"ta yükseltme hakkı kullanılabilir;
+    kullanılmazsa hipotez terk edilir. Yani sahibin önünde iki yol var — S1'e çıkmak ya da terk —
+    üçüncü bir "başarısız ama ne terk ne devam" hâli YOKTUR (o hâl bir park yörüngesiydi: bir
+    önceki uygulama sansürsüz GA'ya bakıp bu sonucu ne terk ediyor ne ilerletiyordu, üstelik
+    bu şart hiçbir bağlayıcı metinde yazmıyordu).
+    """
+    pos = decide([30.0, 30.1, 29.9, 30.05, CENS], quality_per_sec=NEG,
+                 censored_mask=[False] * 4 + [True])
+    assert pos["row"] == "başarısız" and pos["mean"] == pytest.approx(-5.954, abs=1e-3)
+    assert pos["ub95"] == pytest.approx((4 * ci95([30.0, 30.1, 29.9, 30.05])[2] + CENS) / 5)
+    assert pos["ub95"] < SUCCESS
+    assert abandon([pos], 0.5, escalation_used=False)["abandon"] is True
+    assert abandon([pos], 0.5, escalation_used=True)["abandon"] is False       # hak kullanıldı: S1 beklenir
+    assert abandon([pos], 35.0, escalation_used=False)["abandon"] is False     # oracle korur
+
+
+def test_abandon_is_reachable_with_three_of_five_seeds_censored():
+    """5 seed'in 3'ü hedefe ulaşamadı: mümkün olan EN NET başarısızlık, her iki yolda terk edilebilir."""
+    r = decide([0.5, -0.5, CENS, CENS, CENS], quality_per_sec=NEG, censored_mask=[False] * 2 + [True] * 3)
+    assert r["row"] == "başarısız"
+    assert abandon([r], 0.5, escalation_used=False)["abandon"] is True
+    assert abandon([r, r], [0.5, 0.5], escalation_used=True)["abandon"] is True
+
+
+def test_abandon_blocked_by_indeterminate_rows_and_says_so():
+    """"yüksek varyans / belirsiz" ve "yetersiz kesinlik" vazgeçmeyi ENGELLER: ölçemedik ≠ hipotez ayakta."""
+    wide = decide([d for d in (-9, -4.5, 0, 4.5, 9)], quality_per_sec=NEG)
+    term = decide(_five(4.0, sd=2.1, n=10), quality_per_sec=NEG)
+    assert (wide["row"], term["row"]) == ("yüksek varyans / belirsiz", "yetersiz kesinlik")
+    for r in (wide, term):
+        res = abandon([r, r], [0.0, 0.0], escalation_used=True)
+        assert res["abandon"] is False and "yetersiz kesinlik" in res["reason"] and "ölçemedik" in res["reason"]
+
+
+def test_abandon_oracle_is_per_scale_and_must_be_finite():
+    """İki ölçekte tek sayı KABUL EDİLMEZ: S0 = 1.5 / S1 = 2.5 iken sonuç verilen sayıya bağlı olurdu."""
+    be = decide(_five(0.0, sd=0.88), quality_per_sec=NEG)
+    with pytest.raises(ValueError, match="ölçek BAŞINA"):
+        abandon([be, be], 0.5, escalation_used=True)
+    assert abandon([be, be], [1.5, 2.5], escalation_used=True)["abandon"] is False   # S1'de headroom var
+    assert abandon([be, be], [1.5, 1.9], escalation_used=True)["abandon"] is True
+    with pytest.raises(ValueError, match="sonlu"):
+        abandon([be, be], [0.5, float("nan")], escalation_used=True)
+
+
+def test_abandon_refuses_non_binding_or_hand_built_results():
+    """Keşifsel (strict=False) bir sonuç ya da elle kurulmuş bir sözlük vazgeçme kararını SÜREMEZ."""
+    expl = decide([-4.0, -3.5, -4.5], quality_per_sec=NEG, strict=False)
+    with pytest.raises(ValueError, match="bağlayıcı olmayan"):
+        abandon([expl], 0.5)
+    with pytest.raises(ValueError, match="decide"):
+        abandon([{"row": "nötr", "ci95": [-1.0, 1.0], "n": 5}], 0.5)
+
+
+def test_seed_right_spent_makes_the_precision_row_terminal_at_n5():
+    """Tek seed artırma hakkı KAMPANYA başınadır. S0'da harcandıysa S1'de (n=5) kesinlik ölçütü
+    tetiklenince satır doğrudan "yetersiz kesinlik"tir; "seed 10'a çıkar" olmayan bir çaredir."""
+    xs = _five(4.0, sd=1.5)
+    assert decide(xs, quality_per_sec=W_BOTH)["row"] == "yüksek varyans / belirsiz"
+    r = decide(xs, quality_per_sec=W_BOTH, seed_right_available=False)
+    assert r["row"] == "yetersiz kesinlik" and "zaten harcandı" in r["notes"][0]
+
+
+def test_mandatory_notes_survive_every_early_return():
+    """w̄ ve B8(i) notları sansür / kesinlik erken dönüşlerinde ATLANMAZ (rapor bunları zorunlu kılıyor)."""
+    two = decide([0.2, -0.1, 0.3, CENS, CENS], censored_mask=[False] * 3 + [True] * 2)
+    assert any("VERİLMEDİ" in n for n in two["notes"]) and any("LEHİNE yanlıdır" in n for n in two["notes"])
+    term = decide(_five(4.2, sd=1.5, n=10), quality_per_sec=NEG)       # GA [3.13, 5.27]: alt > 0, eşiği kesiyor
+    assert term["row"] == "yetersiz kesinlik" and term["ci95"][0] > 0
+    assert any("mimari başarı / sistem başarısızlığı" in n for n in term["notes"])
+
+
+def test_wbar_rejects_nan():
+    """NaN w̄ `min()`'i sıra-bağımlı yapıyor ve ikinci sırada "güçlü başarı" kapısını GEÇİYORDU."""
+    for w in ({"M": float("nan"), "D": 1.0}, {"D": 1.0, "M": float("nan")}, float("nan")):
+        with pytest.raises(ValueError, match="sonlu"):
+            decide(_five(11.0), quality_per_sec=w)
+
+
+def test_decide_primary_holm_precedes_the_row_name_for_both_success_rows():
+    """Holm'dan GEÇMEYEN birincil-1 ne "başarılı" ne "güçlü başarı" OLABİLİR.
+
+    s̄ gürültülü (p₁ ≈ .04), birincil-2 null. `decide()` tek başına başarı der; Holm'un ilk adımı
+    .025 olduğu için bileşik karar satırı "belirsiz"e düşürür. "güçlü başarı" kolu ayrıca kilitli:
+    mutasyon denetimi, yalnızca "başarılı"yı düşüren bir mutantın hayatta kaldığını buldu.
+    """
+    from src.stats import decide_primary
+    for mean, sd, solo in ((6.0, 4.4, "başarılı"), (12.0, 8.8, "güçlü başarı")):
+        s_xm = _five(mean, sd=sd)                        # t = 3.05, p ≈ .038
+        assert decide(s_xm, quality_per_sec=W_BOTH)["row"] == solo
+        s_hm = [a - d for a, d in zip(s_xm, _five(0.0, sd=1.0))]     # X−H null
+        out = decide_primary(s_xm, s_hm, quality_per_sec=W_BOTH)
+        assert 0.025 < out["primary1"]["p"] < 0.05
+        assert out["primary1"]["row"] == "belirsiz" and out["primary1"]["holm_passed"] is False
+        assert any("Holm düzeltmesinden GEÇMEDİ" in n for n in out["primary1"]["notes"])
+        assert out["holm"]["n_tests"] == 2
+
+
+def test_decide_primary_holm_is_step_down_not_independent():
+    """Holm ADIM ADIMdır: küçük p ilk adımı (.025) geçemezse büyük p HİÇ sınanmaz.
+
+    p₂ ≈ .03 (küçük olan) .025'i geçemiyor; p₁ ≈ .04 tek başına .05'in altında ama sınanmamalı.
+    Bağımsız eşiklerle (ya da `break` yerine `continue` ile) p₁ yanlışlıkla geçerdi.
+    """
+    from src.stats import decide_primary
+    s_xm = _five(6.0, sd=4.4)                            # p₁ ≈ .038
+    diffs = _five(1.5, sd=0.97)                          # p₂ ≈ .026..03, p₁'den KÜÇÜK
+    out = decide_primary(s_xm, [a - d for a, d in zip(s_xm, diffs)], quality_per_sec=W_BOTH)
+    p1, p2 = out["primary1"]["p"], out["primary2"]["p"]
+    assert 0.025 < p2 < p1 < 0.05, (p1, p2)
+    assert out["holm"]["holm"] == [] and out["primary1"]["row"] == "belirsiz"
+    assert m_holm([("a", 0.04), ("b", 0.03)]) == []
+
+
+def m_holm(tests):
+    return multiplicity(tests, family_size=2)["holm"]
+
+
+def test_decide_primary_scores_primary2_at_the_holm_level():
+    """Birincil-2'nin aralığı α/2 = .025 düzeyindedir; `decide_primary` bunu `contribution()`'a
+    GERÇEKTEN iletir (.05 ileten mutant hayatta kalıyordu)."""
+    from src.stats import decide_primary
+    s_xm = _five(7.0, sd=0.8)
+    diffs = _five(1.3, sd=1.0)                           # %95'te "katkı var", %97.5'te değil
+    out = decide_primary(s_xm, [a - d for a, d in zip(s_xm, diffs)], quality_per_sec=W_BOTH)
+    assert out["primary2"]["alpha"] == pytest.approx(0.025)
+    assert not out["primary2"]["state"].startswith("katkı var")
+    clean = decide_primary(s_xm, [a - d for a, d in zip(s_xm, _five(3.0, sd=0.5))], quality_per_sec=W_BOTH)
+    assert clean["primary1"]["row"] == "başarılı" and clean["primary1"]["holm_passed"] is True
+    assert clean["primary2"]["state"] == "katkı var, büyük" and clean["primary2"]["holm_passed"] is True
+
+
+def test_decide_primary_forces_one_seed_set_and_never_drops_a_censored_seed():
+    """İki endpoint AYNI seed kümesinde; sansürlü seed DÜŞÜRÜLMEZ, birincil-2 "ölçemedik" olur.
+
+    Denetimin ölçtüğü seçim: H'nin bir seed'i sansürlüyken tam fark listesi "ölçemedik", o seed
+    düşürülünce "katkı var, büyük". Artık farkı çağıran değil fonksiyon kuruyor.
+    """
+    from src.stats import decide_primary
+    s_xm = [6.0, 6.5, 5.5, 6.2, 5.8]
+    with pytest.raises(ValueError, match="AYNI seed kümesinde"):
+        decide_primary(s_xm, [4.0, 4.4, 3.6, 4.1], quality_per_sec=W_BOTH)
+    out = decide_primary(s_xm, [4.0, 4.4, 3.6, 4.1, CENS], quality_per_sec=W_BOTH,
+                         censored_mask_h=[False] * 4 + [True])
+    assert out["primary2"]["state"] == "ölçemedik" and "DÜŞÜRÜLMEZ" in out["primary2"]["note"]
+    assert out["primary2"]["p"] == 1.0 and out["primary1"]["row"] == "başarılı"
+    with pytest.raises(ValueError, match="bağlayıcı birincil-2"):
+        from src.stats import contribution
+        contribution([2.0, 2.1, 1.9])                    # 3 seed'den bağlayıcı durum çıkmaz
+
+
+def test_contribution_flags_a_significantly_negative_contribution():
+    from src.stats import contribution
+    r = contribution(_five(-3.0, sd=0.5))
+    assert r["state"] == "katkı MDE kadar değil" and "NEGATİF" in r["note"]

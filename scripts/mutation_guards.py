@@ -62,74 +62,12 @@ G_PINS = "PINS"        # gerçek depodaki verify_pins.py, --manifest <bozulmuş 
 S = "src/stats.py"
 
 # (kimlik, guard, dosya, eski, yeni, NE bozuldu) — `nth`: kaçıncı geçiş (1 tabanlı); "all": hepsi
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mutation_catalog_stats import REACH_MUTANTS, STATS_MUTANTS  # noqa: E402
+
 MUTANTS: list[dict] = [
-    # ------------------------------------------------------------------ karar kuralı: src/stats.py
-    dict(id="S01", guard=G_STATS, file=S, what="paired(): seed KİMLİĞİ yerine liste KONUMU",
-         old="    if seeds_a is not None and seeds_b is not None:\n        pos = {s: i",
-         new="    if False:\n        pos = {s: i"),
-    dict(id="S02", guard=G_STATS, file=S, what="t kritik değeri n'den bağımsız sabit (v3 hatası)",
-         old="    if df in T975:\n        return T975[df]", new="    if df in T975:\n        return T975[2]"),
-    dict(id="S03", guard=G_STATS2, file=S, what="n_star: B14 sürdürülmüş-kesişim kontrolü kapalı",
-         old="            if any(y > target for _, y in pts[j + 2:]):", new="            if False:"),
-    dict(id="S04", guard=G_STATS2, file=S, what="savings(): baseline KONUMLA bulunuyor",
-         old="        fb = f_base[pos[s]]", new="        fb = f_base[len(s_i)]"),
-    dict(id="S05", guard=G_STATS2, file=S, what="savings(): seed kümesi uyuşmazlığı sessiz",
-         old="    if sorted(seeds_f) != sorted(seeds_b):", new="    if False:"),
-    dict(id="S06", guard=G_STATS2, file=S, what="decide(): n ∈ {5,10} şartı kapalı (2 seed'le başarı)",
-         old="    if strict and n not in REQUIRED_N:", new="    if False:"),
-    dict(id="S07", guard=G_STATS2, file=S, what="decide(): 'güçlü başarı' iki baseline'ı da İSTEMİYOR",
-         old="and wmin > 0 and w_complete:", new="and wmin > 0:"),
-    dict(id="S08", guard=G_STATS2, file=S, what="decide(): çelişki etiketi GA yerine yalnız mean > 0",
-         old="            if lo > CI_EPS:\n                notes.append(\"FLOP kazancı var (GA tamamen > 0)",
-         new="            if mean > 0:\n                notes.append(\"FLOP kazancı var (GA tamamen > 0)"),
-    dict(id="S09", guard=G_STATS2, file=S, what="decide(): n=10'da terminal satır yok",
-         old="        if n >= max(REQUIRED_N):", new="        if False:"),
-    dict(id="S10", guard=G_STATS, file=S, what="decide(): ≥2 sansür -> 'başarısız' kuralı kapalı",
-         old="    if n_cens >= 2:", new="    if n_cens >= 99:"),
-    dict(id="S11", guard=G_STATS, file=S, what="kesinlik ölçütü (tripwire) tamamen kapalı",
-         old="    return hi >= SUCCESS", new="    return False"),
-    dict(id="S12", guard=G_STATS2, file=S, what="abandon(): sansürsüz GA yerine TAM örnek GA'sı",
-         old="        if unc is not None:\n            return unc[1]",
-         new="        if unc is not None:\n            return r[\"ci95\"][1]"),
-    dict(id="S13", guard=G_STATS2, file=S, what="abandon(): B10 yolunda sansürsüz GA şartı kapalı (+%30 terk)",
-         old="        if hi_u >= SUCCESS:", new="        if False:"),
-    dict(id="S14", guard=G_STATS2, file=S, what="abandon(): 'yükseltme hakkı kullanılmadı' ön-koşulu kapalı",
-         old="        if escalation_used:\n            why.append(", new="        if False:\n            why.append("),
-    dict(id="S15", guard=G_STATS2, file=S, what="abandon(): oracle şartı bağlamıyor",
-         old="    oracle_ok = oracle_gain_over_null < oracle_threshold", new="    oracle_ok = True"),
-    dict(id="S16", guard=G_STATS2, file=S, what="contribution(): Holm düzeyi (.025) yerine .05 GA",
-         old="    h = t_crit_alpha(n - 1, alpha) * sd / math.sqrt(n)",
-         new="    h = t_crit(n - 1) * sd / math.sqrt(n)"),
-    dict(id="S17", guard=G_STATS2, file=S, what="contribution(): 'küçük' durumu hiç oluşmuyor (dört durum çöküyor)",
-         old="    real, small = lo > CI_EPS, hi < mde", new="    real, small = lo > CI_EPS, False"),
-    dict(id="S18", guard=G_STATS2, file=S, what="decide_primary(): Holm satır adını DÜŞÜRMÜYOR",
-         old="    if row1 in (\"güçlü başarı\", \"başarılı\") and \"birincil-1\" not in passed:",
-         new="    if False:"),
-    dict(id="S19", guard=G_STATS2, file=S, what="multiplicity(): pinli aile büyüklüğü yok sayılıyor",
-         old="    m = family_size if family_size is not None else m_eff", new="    m = m_eff"),
-    dict(id="S20", guard=G_STATS2, file=S, what="_wbar(): alakasız anahtar kabul ediliyor",
-         old="        if extra:", new="        if False:"),
-    dict(id="S21", guard=G_STATS, file=S, what="decide(): 1 sansürlü seed varken başarı BLOKLANMIYOR",
-         old="        if row in (\"güçlü başarı\", \"başarılı\"):\n            notes.append(\"EK 1 B8 gereği",
-         new="        if False:\n            notes.append(\"EK 1 B8 gereği"),
-    dict(id="S22", guard=G_STATS, file=S, what="başarı eşiği 5 -> 4 puan",
-         old="SUCCESS = 5.0           # puan", new="SUCCESS = 4.0           # puan"),
-    dict(id="S23", guard=G_STATS, file=S, what="'güçlü başarı' eşiği 10 -> 9 puan",
-         old="STRONG = 10.0           # puan", new="STRONG = 9.0            # puan"),
-    dict(id="S24", guard=G_STATS, file=S, what="'nötr' bandı ±2 -> ±1 puan",
-         old="NEUTRAL = 2.0           # puan", new="NEUTRAL = 1.0           # puan"),
-    dict(id="S25", guard=G_STATS, file=S, what="birincil-2'nin MDE çıtası 1.88 -> 1.00 puan",
-         old="MDE_PRIMARY2 = 1.88      # puan", new="MDE_PRIMARY2 = 1.00      # puan"),
-    dict(id="S26", guard=G_STATS, file=S, what="Holm aile büyüklüğü 2 -> 1 (düzeltme fiilen kapalı)",
-         old="PRIMARY_FAMILY = 2       # birincil-1", new="PRIMARY_FAMILY = 1       # birincil-1"),
-    dict(id="S27", guard=G_STATS, file=S, what="decide(): 'başarılı' dalı GA alt > 0 şartını aramıyor",
-         old="    elif mean >= SUCCESS and lo > CI_EPS:", new="    elif mean >= SUCCESS:",
-         equivalent=("EŞDEĞER MUTANT — hiçbir test öldüremez, çünkü davranış değişmiyor. Kanıt: kesinlik "
-                     "ölçütü bu daldan ÖNCE koşar ve karar ancak `(lo > 0 ve s̄ >= 5)` ya da `hi < 5` ise "
-                     "belirlidir. `s̄ >= 5` iken `hi >= 5` olduğundan ikinci yol kapalıdır; yani bu dala "
-                     "`s̄ >= 5` ile gelen her örnekte `lo > 0` ZATEN sağlanmıştır. Sansürlü durumda ölçüt "
-                     "sansürsüz alt örneğe bakar ama o zaman tam örnek ortalaması ikame yüzünden ~−25'tir "
-                     "ve bu dala hiç girilmez. Koşul yedekli savunmadır; silinmesi satırı değiştirmez.")),
+    # karar kuralı: katalog `scripts/mutation_catalog_stats.py`, guard = iki test dosyasının birleşimi
+    *[{**m, "guard": G_STATS, "file": S} for m in STATS_MUTANTS],
     # ------------------------------------------------------------------ ölçüt ve veri akışı
     dict(id="T01", guard=G_FROZEN, file="src/train.py", what="evaluate(): maske prefix yerine SUFFIX'i tutuyor",
          old="        return full, per_pos[:, k:].mean().item()",
@@ -161,16 +99,8 @@ MUTANTS: list[dict] = [
     dict(id="Q02", guard=G_QSELF, file="scripts/make_campaign_queue.py", what="Latin kare rotasyonu yok — betiğin KENDİ assertion'ı",
          old="        order = arms[bi % len(arms):] + arms[:bi % len(arms)]", new="        order = list(arms)"),
     # ------------------------------------------------------------------ ulaşılabilirlik sınavının assertion'ları
-    dict(id="R01", guard=G_REACH, file=S, what="(S13 mutantı) tarama +%7/+%30 senaryosunun terk edildiğini YAKALAMALI",
-         old="        if hi_u >= SUCCESS:", new="        if False:"),
-    dict(id="R02", guard=G_REACH, file=S, what="(S12 mutantı) tarama sansürde ulaşılamazlığı YAKALAMALI",
-         old="        if unc is not None:\n            return unc[1]",
-         new="        if unc is not None:\n            return r[\"ci95\"][1]"),
-    dict(id="R03", guard=G_REACH, file=S, what="(S15 mutantı) tarama oracle'ın bağlamadığını YAKALAMALI",
-         old="    oracle_ok = oracle_gain_over_null < oracle_threshold", new="    oracle_ok = True"),
-    dict(id="R04", guard=G_REACH, file="scripts/rule_reachability.py", what="dört durum birbirini dışlamıyor (toplam ≠ 1)",
-         old="            cells = [(real & ~small).mean(), (real & small).mean(),",
-         new="            cells = [(real).mean(), (real & small).mean(),"),
+    # aynı bozulmalar, bu kez ulaşılabilirlik taramasının KENDİ assertion'larına karşı
+    *[{**m, "guard": G_REACH, "file": S} for m in REACH_MUTANTS],
     # ------------------------------------------------------------------ belge ↔ artifact tutarlılığı
     dict(id="N01", guard=G_DOC, file=PREREG, what="eski L_aux (2.9646) belgeye geri girdi", append="\nL_aux = 2.9646\n"),
     dict(id="N02", guard=G_DOC, file=PREREG, what="eski tok/s düşüşü BİR ondalıkla (%33.8) geri girdi",
@@ -197,6 +127,10 @@ MUTANTS: list[dict] = [
          old="| %61.7 | **%89.5** |", new="| %46.4 | **%89.5** |"),
     dict(id="N15", guard=G_DOC, file=PREREG, what="güç tablosu `+10%` satırında eski kuralın hücresi",
          old="| %90.6 | %99.9 |", new="| %58.4 | %99.9 |"),
+    dict(id="N17", guard=G_DOC, file=PREREG, what="birincil-2 güç tablosunun +1.88 satırı bozuk (3. denetimde guard'sızdı)",
+         old="| +1.88 puan | %56.7 | %97.6 | %100.0 |", new="| +1.88 puan | %52.9 | %96.3 | %100.0 |"),
+    dict(id="N18", guard=G_DOC, file=PREREG, what="birincil-2 'ölçemedik' payı α=.05'in eski sayısına dönmüş",
+         old='**"ölçemedik" %42.8**, "var"', new='**"ölçemedik" %24.6**, "var"'),
     dict(id="N16", guard=G_DOC, file=PREREG, what="belgedeki bir SHA-256 çivisi bozuk",
          old="b0f6570240ac87a5", new="c0f6570240ac87a5"),
     # ------------------------------------------------------------------ çivi manifesti

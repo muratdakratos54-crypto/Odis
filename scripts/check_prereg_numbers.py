@@ -58,7 +58,8 @@ FORBIDDEN = {
     # arayan ilk hâl onu kaçırdı — denetlediği hata sınıfının aynısı.
     # V13 bu guard'ın kendi tarihçesini anlatırken deseni BİLEREK anıyor ("guard" bağlamı).
     "%33.79": ["guard"], "%33.8": ["guard"],     # ilk kümenin tok/s düşüşü
-    "%51.0": ["süre artışı"], "%30.4": ["oturum", "1 |"],
+    # "%51.0" birincil-2 güç tablosunda MEŞRU bir hücre de olabilir ("puan |" bağlamı).
+    "%51.0": ["süre artışı", "puan |"], "%30.4": ["oturum", "1 |"],
     "13 test": [],                 # eski test sayımı
     "1 + 2 + 10": [],
     "MDE'si ≈ **+1.5": [],
@@ -183,6 +184,39 @@ def main() -> None:
                            + ("" if got == want else f" (belge {got} != log {want})"))
 
     # ---- 6) çiviler ----------------------------------------------------------------------------
+    # ---- 5b) birincil-2'nin güç tablosu ve dört durum dağılımı: reachability.log'dan -----------
+    print("\n## 5b. Birincil-2 güç tablosu reachability.log ile aynı mı?")
+    # Üçüncü denetim buldu: bu tablo HİÇBİR guard'a bağlı değildi ve `+1.88` satırı yanlıştı (satır
+    # +1.8 puanda hesaplanıp +1.88 diye etiketlenmişti). Rapor bu tabloyu birebir basmak zorunda.
+    rlog = open(os.path.join(ROOT, "experiments/foton-v02-prereg/reachability.log"), encoding="utf-8").read()
+    mde_rows = re.findall(r"MDE-GÜÇ ([+-][0-9.]+)\s+([0-9.]+)%\s+([0-9.]+)%\s+([0-9.]+)%", rlog)
+    check(len(mde_rows) == 6, f"reachability.log'da 6 MDE-GÜÇ satırı (bulunan: {len(mde_rows)})")
+    for mu, a, b, c in mde_rows:
+        want = f"| {mu} puan | %{a} | %{b} | %{c} |"
+        check(want in text, f"birincil-2 güç satırı {mu}: {want}")
+    m = re.search(r"'ölçemedik' payı n=5'te %([0-9]+\.[0-9]),\s*n=10'da %([0-9]+\.[0-9])", rlog)
+    check(m is not None, "reachability.log'da 'ölçemedik' payı YORUM satırı")
+    if m:
+        check(f'"ölçemedik" %{m.group(1)}' in text, f"'ölçemedik' payı n=5 %{m.group(1)} metinde")
+        check(f'n=10\'da "ölçemedik" %{m.group(2)}' in text, f"'ölçemedik' payı n=10 %{m.group(2)} metinde")
+        # HER geçiş denetlenir: sayı belgede iki kez yazılı ve mutasyon sınavı (N18) kopyalardan
+        # yalnızca biri bozulduğunda alt-dize kontrolünün diğerinden geçtiğini gösterdi.
+        for i, l in enumerate(lines, 1):
+            for mm in re.finditer(r'"ölçemedik" %([0-9]+\.[0-9])', l):
+                check(mm.group(1) in (m.group(1), m.group(2)),
+                      f"satır {i}: \"ölçemedik\" %{mm.group(1)} (log: %{m.group(1)} / %{m.group(2)})")
+
+    # ---- 5c) V13'ün mutasyon sayımı mutation_log.md ile aynı mı --------------------------------
+    print("\n## 5c. V13'teki mutasyon sayımı kayıtla aynı mı?")
+    mlog = open(os.path.join(ROOT, "experiments/foton-v02-prereg/mutation_log.md"), encoding="utf-8").read()
+    mm = re.search(r"\*\*(\d+) mutant: (\d+) yakalandı, (\d+) kanıtlı eşdeğer, (\d+) hayatta kaldı\.\*\*", mlog)
+    check(mm is not None, "mutation_log.md özet satırı okunabiliyor")
+    if mm:
+        n_all, n_caught, n_eq, n_alive = mm.groups()
+        check(n_alive == "0", f"hayatta kalan mutant yok (kayıt: {n_alive})")
+        want = f"**{n_all} mutant — {n_caught} yakalandı, {n_eq} kanıtlı eşdeğer, {n_alive} hayatta kaldı.**"
+        check(want in text, f"V13 sayımı metinde: {want}")
+
     print("\n## 6. Metindeki SHA-256'lar diskle uyuşuyor mu?")
     import hashlib
     pins = re.findall(r"^([0-9a-f]{64})  (\S+)$", text, re.M)
