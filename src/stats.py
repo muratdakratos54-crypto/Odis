@@ -236,23 +236,49 @@ def abandon(scale_results: list[dict], oracle_gain_over_null: float,
     düşürür), ve zorlaştığında sonuç "terk edilmedi" değil **"yetersiz kesinlik"** olarak
     raporlanır; iki durum artık ayrı.
     """
+    oracle_ok = oracle_gain_over_null < oracle_threshold
+
+    def upper(r: dict) -> float:
+        """Eşdeğerlik testinin baktığı GA ÜST SINIRI — sansürsüz alt örnekten.
+
+        Neden tam örnekten değil: sansürlü bir seed'in `s_i`'si 2x bütçe ikamesiyle ~−150 puandır
+        ve tek bir tanesi n=5'te GA'yı ±80 puana şişirir. Ölçüldü: `s_i = [0.2, −0.1, 0.3, 0.0,
+        −149.82]` -> tam örnek GA [−113.13, +53.37], yani `hi < 5` ASLA sağlanamaz ve kural
+        sansürlü her senaryoda ulaşılamaz hâle gelirdi. Bu, `decide()`'ın kesinlik ölçütünde
+        zaten kapatılmış olan aynı hatanın vazgeçme kuralındaki kopyasıydı — ve V12'nin sayısal
+        sınavı onu göremiyordu, çünkü sınav yalnızca Gauss örnekleri çiziyor, sansür çizmiyor.
+        Artık `rule_reachability.py` sansürlü senaryoyu da tarıyor.
+        """
+        return r.get("ci95_uncensored", r["ci95"])[1]
+
+    # B10: "başarısız" satırı TEK ölçekle vazgeçmeye yeterlidir (oracle şartı yine uygulanır).
+    # Bu, ≥2 sansürlü seed durumunu da kapsar: o durum mümkün olan en güçlü olumsuz sonuçtur ve
+    # eşdeğerlik testine sokmak anlamsız olurdu (GA ikame yüzünden zaten patlar).
+    if scale_results and scale_results[-1]["row"] == "başarısız":
+        if oracle_ok:
+            return {"abandon": True, "reason": "son ölçekte satır 'başarısız' (v01 EK1-B10: tek "
+                    f"ölçekle terk edilebilir) ve oracle kazancı null'ın {oracle_gain_over_null:.2f} "
+                    f"puan üstünde < {oracle_threshold}", "oracle_ok": True, "single_scale": True}
+        return {"abandon": False, "oracle_ok": False, "single_scale": True,
+                "reason": f"satır 'başarısız' ama oracle kazancı null'ın {oracle_gain_over_null:.2f} "
+                          f"puan üstünde >= {oracle_threshold}: mükemmel yönlendirmede hâlâ kazanç var"}
+
     if len(scale_results) < 2:
         return {"abandon": False, "reason": "iki ardışık ölçek sonucu gerekiyor",
                 "n_scales": len(scale_results)}
     last2 = scale_results[-2:]
-    excluded = [r["ci95"][1] < SUCCESS for r in last2]
-    indet = [r["row"] == "yüksek varyans / belirsiz" for r in last2]
-    oracle_ok = oracle_gain_over_null < oracle_threshold
+    excluded = [upper(r) < SUCCESS for r in last2]
+    indet = [r["row"] in ("yüksek varyans / belirsiz", "yetersiz kesinlik") for r in last2]
     ok = all(excluded) and oracle_ok
     if any(indet):
         return {"abandon": False, "reason": "yetersiz kesinlik: bir ölçekte GA başarı eşiğini "
                 "çözemedi; bu 'hipotez ayakta' DEĞİL, 'ölçemedik' demektir",
-                "ci_upper": [r["ci95"][1] for r in last2], "oracle_ok": oracle_ok}
+                "ci_upper": [upper(r) for r in last2], "oracle_ok": oracle_ok}
     if ok:
         return {"abandon": True, "reason": f"iki ardışık ölçekte GA üst sınırı < {SUCCESS} puan "
-                f"({last2[0]['ci95'][1]:.2f}, {last2[1]['ci95'][1]:.2f}) ve oracle kazancı "
+                f"({upper(last2[0]):.2f}, {upper(last2[1]):.2f}) ve oracle kazancı "
                 f"null'ın {oracle_gain_over_null:.2f} puan üstünde < {oracle_threshold}",
-                "ci_upper": [r["ci95"][1] for r in last2], "oracle_ok": True}
+                "ci_upper": [upper(r) for r in last2], "oracle_ok": True}
     why = []
     if not all(excluded):
         why.append("bir ölçekte GA üst sınırı başarı eşiğinin üstünde (etki eşik kadar büyük olabilir)")
@@ -260,7 +286,7 @@ def abandon(scale_results: list[dict], oracle_gain_over_null: float,
         why.append(f"oracle kazancı null'ın {oracle_gain_over_null:.2f} puan üstünde "
                    f">= {oracle_threshold}: mükemmel yönlendirmede hâlâ kazanç var")
     return {"abandon": False, "reason": "; ".join(why),
-            "ci_upper": [r["ci95"][1] for r in last2], "oracle_ok": oracle_ok}
+            "ci_upper": [upper(r) for r in last2], "oracle_ok": oracle_ok}
 
 
 def reachability(fires, mu: float, sigma: float, n: int, sims: int = 100_000,
@@ -319,10 +345,38 @@ def multiplicity(tests: list[tuple[str, float]], alpha: float = 0.05,
 
 
 # Karar tablosu satır adları — rapor bunlardan birini BİREBİR yazmak zorunda.
-ROWS = ("güçlü başarı", "başarılı", "belirsiz", "nötr", "başarısız", "yüksek varyans / belirsiz")
+#
+# "yetersiz kesinlik" TERMİNAL satırdır ve n = max(REQUIRED_N)'de kesinlik ölçütü yine tetiklenirse
+# döner. Ayrı bir ad olması şart: B3 ikinci bir seed artırma hakkı vermiyor, dolayısıyla o noktada
+# "yüksek varyans / belirsiz" döndürmek raporu OLMAYAN bir çareye ("seed 10'a çıkar") yönlendirirdi.
+# "nötr"den ayrımı da kritik: nötr, etkinin sıfıra yakın olduğunu ÖLÇTÜĞÜMÜZ durumdur; yetersiz
+# kesinlik, ölçemediğimiz durumdur.
+ROWS = ("güçlü başarı", "başarılı", "belirsiz", "nötr", "başarısız",
+        "yüksek varyans / belirsiz", "yetersiz kesinlik")
 
 
-def decide(savings: list[float], quality_per_sec: float | None = None,
+def _wbar(quality_per_sec) -> tuple[dict[str, float] | None, float | None]:
+    """`quality_per_sec`'i normalize eder: (baseline -> w̄ eşlemesi, en küçük w̄).
+
+    Neden eşleme: ön-kayıt "güçlü başarı"yı **`w̄(M) > 0` VE `w̄(D) > 0`** şartına bağlıyor
+    (gerekçe: M bu kartta kendi başına D'den token başına %27.9 yavaştır, dolayısıyla yalnızca
+    M'e karşı `w̄ > 0` FOTON'un hız katkısı olmadan da sağlanabilir — v01 EK1-B16'nın aynı kolda
+    bulduğu sorun). Tek bir skaler bu şartı İFADE EDEMEZ: ölçüldü, `decide(s̄=11, w=+1.0)`
+    "güçlü başarı" döndürüyordu ve bu, ön-kaydın "başarılı" dediği duruma denk geliyordu.
+
+    Skaler geçmek hâlâ mümkün (tarama, tek baseline'lı keşifsel kullanım) ama o zaman notlarda
+    hangi baseline olduğunun bilinmediği yazılır.
+    """
+    if quality_per_sec is None:
+        return None, None
+    if isinstance(quality_per_sec, dict):
+        if not quality_per_sec:
+            raise ValueError("quality_per_sec boş eşleme olamaz")
+        return dict(quality_per_sec), min(quality_per_sec.values())
+    return {"?": float(quality_per_sec)}, float(quality_per_sec)
+
+
+def decide(savings: list[float], quality_per_sec: float | dict[str, float] | None = None,
            censored_mask: list[bool] | None = None, strict: bool = True) -> dict:
     """PREREGISTRATION_V02 karar tablosunu (v01 O5 + EK 1 B8/B10/B16) birebir uygular.
 
@@ -363,6 +417,13 @@ def decide(savings: list[float], quality_per_sec: float | None = None,
     notes: list[str] = []
     res = {"mean": mean, "sd": sd, "sd_uncensored": sd_unc, "n": n, "n_censored": n_cens,
            "ci95": [lo, hi], "notes": notes}
+    # Sansürsüz alt örneğin GA'sı AYRI tutulur: `abandon()`'ın eşdeğerlik testi buna bakar, çünkü
+    # tek bir sansürlü seed (~−150 puan ikame) tam örnek GA'sını ±80 puana şişirip kuralı
+    # ulaşılamaz yapıyordu. `decide()`'ın kesinlik ölçütü aynı sebeple zaten sansürsüzlere bakıyor.
+    if len(unc) >= 2:
+        mu_, lo_, hi_ = ci95(unc)
+        res["ci95_uncensored"] = [lo_, hi_]
+        res["mean_uncensored"] = mu_
 
     if n_cens >= 2:                                        # EK 1 B8: iki veya daha fazla sansür -> başarısız
         notes.append(f"{n_cens} FOTON seed'i L*'e ulaşmadı: EK 1 B8 gereği sonuç doğrudan 'başarısız'")
@@ -379,14 +440,30 @@ def decide(savings: list[float], quality_per_sec: float | None = None,
         # eden bir yalan, ve tam olarak B8'in engellemek için yazıldığı yanlış okuma.
         indet = True
         detail = f"yalnızca {len(unc)} sansürsüz seed: kesinlik DEĞERLENDİRİLEMEZ"
+    wmap, wmin = _wbar(quality_per_sec)
+    res["w_bar"] = wmap
+
     if indet:
+        if n >= max(REQUIRED_N):
+            # TERMİNAL: B3 ikinci artırma hakkı vermiyor, ölçek yükseltmesi de kesinlik sorununun
+            # çaresi değil. "seed 10'a çıkar" demek olmayan bir çareye yönlendirmek olurdu.
+            notes.append(f"GA başarı eşiğini ({SUCCESS} puan) çözemiyor — {detail}; n={n} zaten "
+                         "azami seed sayısı (EK 1 B3 ikinci artırma hakkı vermiyor) ve ölçek "
+                         "yükseltmesi kesinlik sorununun çaresi değil: etki, başarı eşiğinin bu "
+                         "deneyin kesinliğiyle ayırt edilemeyeceği kadar yakınında. Ne kurulmuş "
+                         "ne dışlanmıştır; bu 'nötr' DEĞİLDİR.")
+            return {**res, "row": "yetersiz kesinlik", "determinate": False}
         notes.append(f"GA başarı eşiğini ({SUCCESS} puan) çözemiyor — {detail}: "
                      "seed 10'a çıkar (EK 1 B3: {66,77,88,99,110})")
         return {**res, "row": "yüksek varyans / belirsiz", "determinate": False}
 
     crosses_zero = lo - CI_EPS <= 0 <= hi + CI_EPS
-    if mean >= STRONG and lo > CI_EPS and quality_per_sec is not None and quality_per_sec > 0:
+    if mean >= STRONG and lo > CI_EPS and wmin is not None and wmin > 0:
         row = "güçlü başarı"
+        if wmap is not None and len(wmap) == 1 and "?" in wmap:
+            notes.append("w̄ tek skaler olarak verildi: hangi baseline'a karşı olduğu BİLİNMİYOR. "
+                         "Ön-kayıt 'güçlü başarı' için w̄(M) > 0 VE w̄(D) > 0 istiyor; bu satır "
+                         "ancak ikisi de verilirse bağlayıcıdır.")
     elif mean >= SUCCESS and lo > CI_EPS:
         row = "başarılı"
     elif mean > NEUTRAL and (crosses_zero or mean < SUCCESS):
@@ -401,7 +478,7 @@ def decide(savings: list[float], quality_per_sec: float | None = None,
     # w̄ yoksa bunu SÖYLE. Eskiden None sessizce geçiyordu: "güçlü başarı" kapısı da B16'nın çelişki
     # etiketi de atlanıyor, ve rapor ikincil ölçütün hiç değerlendirilmediğini göstermiyordu.
     # V11a duvar saatini eksik bir seed bloğunda geçersiz saydığı için bu ulaşılabilir bir durum.
-    if quality_per_sec is None:
+    if wmin is None:
         notes.append("w̄ (quality/sec) VERİLMEDİ: ikincil ölçüt değerlendirilmedi, bu yüzden "
                      "'güçlü başarı' satırı erişilemez ve çelişki kuralı uygulanamadı")
         if row == "güçlü başarı":                          # savunma: buraya düşülemez ama sabitlensin
@@ -409,13 +486,17 @@ def decide(savings: list[float], quality_per_sec: float | None = None,
     # EK 1 B16: çelişki etiketi. Eskiden yalnızca `mean > 0` yetiyordu, yani s̄ = +0.01 puanlık bir
     # gürültüye "mimari başarı" damgası vurulabiliyordu. Artık FLOP kazancının kendisi de
     # İSTATİSTİKSEL olmak zorunda: GA'nın tamamı sıfırın üstünde.
-    elif quality_per_sec <= 0:
+    elif wmin <= 0:
+        neg = sorted(k for k, v in wmap.items() if v <= 0)
+        which = f" (negatif olan: {', '.join(neg)})" if neg != ["?"] else ""
         if lo > CI_EPS:
             notes.append("FLOP kazancı var (GA tamamen > 0), duvar saati kaybı var -> "
-                         "çelişki kuralı: mimari başarı / sistem başarısızlığı")
+                         f"çelişki kuralı: mimari başarı / sistem başarısızlığı{which}")
         elif mean > 0:
             notes.append(f"s̄ pozitif ({mean:.2f}) ama GA sıfırı kesiyor ve w̄ <= 0: çelişki kuralı "
                          "UYGULANMAZ (FLOP kazancı istatistiksel olarak kurulmadı)")
+        if row == "güçlü başarı":       # wmin<=0 iken buraya düşülemez; kural kodda da sabit
+            row = "başarılı"
 
     if n_cens == 1:
         # B8(i) açıklaması her sansürlü durumda verilir — eskiden yalnızca başarı bloklanmadığında.

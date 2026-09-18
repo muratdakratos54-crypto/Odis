@@ -33,7 +33,7 @@ import numpy as np
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT)
-from src.stats import SUCCESS, decide, reachability, t_crit  # noqa: E402
+from src.stats import SUCCESS, abandon, decide, reachability, t_crit  # noqa: E402
 
 SIGMAS = (0.75, 1.5, 1.72, 3.0, 4.28, 5.0, 6.0)
 out: list[str] = []
@@ -146,6 +146,56 @@ def main() -> None:
         say(f"  {sd:6.2f} {r[0]:7.1f}% {r[1]:7.1f}%")
     say("  YORUM: tam eşikte güç ~%50 ve seed sayısıyla DÜZELMEZ — bağlayıcı olan nokta tahmini")
     say("  şartıdır (v01 O9'un yapısal sonucu, v02'de de geçerli). Eşik gevşetilmiyor.")
+
+    # ---- SANSÜRLÜ senaryo: sınavın Gauss-dışı kör noktası ------------------------------------
+    say("\n## SANSÜRLÜ senaryo — sınavın Gauss varsayımının kör noktası")
+    say("  İkinci denetim şunu buldu: `abandon()` eşdeğerlik testini TAM örnek GA'sına uyguluyordu")
+    say("  ve tek bir sansürlü seed (2x bütçe ikamesiyle ~−150 puan) o GA'yı ±80 puana şişiriyordu,")
+    say("  yani kural sansürlü HER senaryoda ulaşılamaz hâle geliyordu. Bu sınav onu göremiyordu")
+    say("  çünkü yalnızca Gauss örnekleri çiziyordu. Artık sansür de taranıyor.")
+    say(f"  {'senaryo':44s} {'satır':>22s} {'GA üst (tam)':>13s} {'GA üst (sansürsüz)':>19s} {'terk':>6s}")
+    CENS = -149.82                                    # 2x bütçe ikamesinin puan karşılığı
+    scen = [
+        ("4 başabaş + 1 sansür", [0.2, -0.1, 0.3, 0.0, CENS], [False] * 4 + [True]),
+        ("4 x +%7 + 1 sansür", [7.0, 7.1, 6.9, 7.05, CENS], [False] * 4 + [True]),
+        ("3 başabaş + 2 sansür", [0.2, -0.1, 0.3, CENS, CENS], [False] * 3 + [True] * 2),
+        ("sansür yok, başabaş", [0.2, -0.1, 0.3, 0.0, 0.1], [False] * 5),
+        ("sansür yok, −%8", [-8.0, -8.1, -7.9, -8.05, -7.95], [False] * 5),
+    ]
+    for label, s_i, mask in scen:
+        r = decide(s_i, quality_per_sec={"M": -1.0, "D": -1.0}, censored_mask=mask)
+        unc = r.get("ci95_uncensored")
+        res = abandon([r, r], oracle_gain_over_null=0.5)
+        say(f"  {label:44s} {r['row']:>22s} {r['ci95'][1]:13.2f} "
+            f"{(f'{unc[1]:.2f}' if unc else '—'):>19s} {('EVET' if res['abandon'] else 'hayır'):>6s}")
+    say("  Beklenen: dört senaryoda da terk EDİLEBİLİR olmalı (başabaş ve negatif sonuçlar),")
+    say("  ve bunu sansürün varlığı engellememeli. Tek istisna: oracle headroom'u olan durumlar.")
+
+    # ---- BİRİNCİL-2'nin eşdeğerlik kuralı ----------------------------------------------------
+    say("\n## BİRİNCİL-2'nin (X↔H) eşdeğerlik kuralı — V12 bunu da taramak zorunda")
+    say("  Kural: 'katkı yok' ancak farkın GA'sının TAMAMI MDE'nin altındaysa yazılabilir.")
+    sdd = 0.88 * math.sqrt(2 * (1 - 0.07))            # kollar arası rho = +0.07
+    mde = 1.88                                        # Holm ilk adımı alpha=.025, n=5
+    say(f"  fark sd'si {sdd:.2f} puan | MDE {mde} puan")
+    say("  Dört durum, BİRBİRİNİ DIŞLAYAN ve TÜKETEN. Sınav bu bölümü yazarken kendi kuralımdaki")
+    say("  bir hatayı buldu: ilk hâl üç durum tanımlıyordu ve 'katkı var' (lo>0) ile 'katkı yok'")
+    say("  (hi<MDE) birbirini dışlamıyordu — ikisi birden doğru olabilir ve o, mümkün olan EN")
+    say("  bilgilendirici sonuçtur: 'katkı gerçek ama MDE'nin altında'. Üç durumla o hâl kaybolup")
+    say("  olasılıklar negatife düşüyordu (n=10'da −%11.6 gibi). Dört durum:")
+    say(f"  {'gerçek X−H':>11s} {'n':>3s} {'var,büyük':>10s} {'var,küçük':>10s} {'yok/sıfır':>10s} {'ölçemedik':>10s}")
+    for mu in (0.0, 0.5, 1.0, 1.88, 3.0):
+        for n in (5, 10):
+            m, lo, hi, _ = draw(mu, sdd, n, args.sims, seed=11)
+            real, small = lo > 0, hi < mde
+            cells = [(real & ~small).mean(), (real & small).mean(),
+                     (~real & small).mean(), (~real & ~small).mean()]
+            assert abs(sum(cells) - 1.0) < 1e-9, "dört durum tüketmiyor"
+            say(f"  {mu:+10.2f}p {n:3d} " + " ".join(f"{100*c:9.1f}%" for c in cells))
+    say("  YORUM: gerçek katkı sıfırken n=5'te 'ölçemedik' payı %24.6 — MDE'nin ilan edilmesinin")
+    say("  sebebi bu. n=10'da o pay %0.6'ya düşüyor, yani seed artırmak birincil-2 için de doğru")
+    say("  yönde çalışıyor (ama hak ORTAK olduğu için birincil-1'i de yeniden ölçer).")
+    say("  'var,küçük' sütunu gerçek katkı 1.0 puanken n=10'da en yüksek: tam olarak ölçmek")
+    say("  istediğimiz ama n=5'te ayırt edemediğimiz hâl.")
 
     if args.crosscheck:
         say("\n## Çapraz kontrol: vektörize kural == src.stats'ın genel yolu")

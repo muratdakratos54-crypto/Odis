@@ -466,6 +466,36 @@ iddiasını desteklemez — o, "router + üç ağırlık kümesi" etkisidir, het
 yenip X'in H'yi yenemediği durum açıkça yazılacaktır: **"yönlendirme kazandırdı, heterojenlik
 kazandırmadı."**
 
+### Birincil-2 nasıl puanlanır — karar tablosuyla DEĞİL
+
+Karar tablosunun eşikleri (+%2 / +%5 / +%10) **tasarruf** için kalibre edildi ve birincil-1'e aittir.
+Birincil-2 bir **fark kontrastıdır** (`s̄(X) − s̄(H)`) ve aynı eşiklerle puanlanamaz: `decide()`'a
+verildiğinde +1.88 puanlık bir gerçek heterojenlik katkısı "nötr" satırına düşerdi (çünkü
++1.88 < +%2), yani deneyin asıl sorusunun olumlu cevabı "etki yok" diye etiketlenirdi.
+
+Birincil-2'nin puanlaması şudur — **DÖRT durum, birbirini dışlayan ve tüketen.** `lo` ve `hi`,
+`s̄(X) − s̄(H)`'ın %95 GA'sının sınırları (Holm'un o endpoint'e düşen düzeyinde), MDE = 1.88 puan:
+
+| durum | ölçüt | nasıl yazılır |
+|---|---|---|
+| **katkı var, büyük** | `lo > 0` ve `hi ≥ MDE` | "heterojenlik ölçülebilir katkı yaptı: +X.X puan, GA [a, b]" |
+| **katkı var, küçük** | `lo > 0` ve `hi < MDE` | "heterojenlik katkı yaptı ama katkı MDE'nin altında: +X.X puan" |
+| **katkı MDE kadar değil** | `lo ≤ 0` ve `hi < MDE` | "heterojenliğin katkısı MDE kadar büyük DEĞİL; sıfır olabilir" |
+| **ölçemedik** | `lo ≤ 0` ve `hi ≥ MDE` | **"yeterince güçlü ölçemedik"** — "heterojenlik çürütüldü" DEĞİL |
+
+**DÜZELTME, kayda geçiyor:** ilk hâl ÜÇ durum tanımlıyordu ve "katkı var" (`lo > 0`) ile
+"katkı yok" (`hi < MDE`) **birbirini dışlamıyordu** — ikisi birden doğru olabilir ve o hâl,
+mümkün olan **en bilgilendirici** sonuçtur: katkı gerçek ama MDE'nin altında. Üç durumla o hâl
+tabloda karşılığı olmayan bir bölgeye düşüyordu; V12'nin sayısal sınavı bunu olasılıkların
+NEGATİFE dönmesiyle yakaladı (n=10, gerçek katkı +1.0 puanda −%11.6). Dört durumun tükettiği
+`scripts/rule_reachability.py` içinde assertion olarak kilitli.
+
+Ölçülen dağılım (gerçek katkı = 0, n=5): "MDE kadar değil" %73.0, **"ölçemedik" %24.6**,
+"var" %2.4. n=10'da "ölçemedik" %0.6'ya düşüyor. Yani **"ölçemedik" en olası tek sonuç değil**
+ama dörtte bire yakın ve bu baştan kabul edilmiştir. `src/stats.decide()` birincil-2'ye
+**uygulanmaz** (eşikleri tasarruf için kalibre edilmiştir); uygulanan `src/stats.ci95()` ve
+yukarıdaki dört durumdur.
+
 ### Birincil-2'nin saptanabilir en küçük etkisi (MDE) — ŞİMDİ yazılıyor
 
 X↔H karşılaştırması **birincil-1'den yapısal olarak daha güçsüzdür** ve bu tag'den önce ölçülmüştür:
@@ -474,30 +504,74 @@ X↔H karşılaştırması **birincil-1'den yapısal olarak daha güçsüzdür**
 * kollar arası seed korelasyonu **ρ = +0.07** (v01 kalibrasyonu; eşleştirme varyansı düşürmüyor,
   paired/unpaired kazancı 0.90× ve 0.82×)
 * → X−H farkının sd'si = `0.88 × √(2 × 0.93)` = **1.20 puan**
-* → n=5'te %95 GA yarı-genişliği = **1.49 puan**
+* → **Holm'un ilk adımı α = .025**, çünkü aile büyüklüğü 2 (aşağıya bak). t(4) bu düzeyde 3.4954,
+  t(9) 2.6850 — α = .05'in 2.7764 / 2.2622'sinden belirgin biçimde büyük.
+* → n=5'te %95 GA yarı-genişliği **1.88 puan** (α=.05 varsayımıyla 1.49 olurdu)
 
 | gerçek X−H | n=5 | n=10 | n=20 |
 |---|---|---|---|
-| +0.3 puan | %6.5 | %10.6 | %18.5 |
-| +0.5 puan | %10.8 | %21.8 | %42.3 |
-| **+1.0 puan** | **%30.0** | %65.3 | %94.2 |
-| +1.5 puan | %56.2 | %93.9 | %100 |
-| +2.0 puan | %79.4 | %99.6 | %100 |
-| +3.0 puan | %98.2 | %100 | %100 |
+| +0.5 puan | %6.1 | %13.6 | %31.0 |
+| +1.0 puan | %18.1 | %51.1 | %89.2 |
+| +1.5 puan | **%38.8** | %87.3 | %99.8 |
+| **+1.88 puan** | **%52.9** | %96.3 | %100 |
+| +2.0 puan | %62.2 | %98.7 | %100 |
+| +3.0 puan | %92.6 | %100 | %100 |
 
-**Bağlayıcı yorum kuralı.** n=5'te birincil-2'nin MDE'si ≈ **+1.5 puan**. Dolayısıyla birincil-2'den
-çıkan bir null sonuç:
+**Bağlayıcı yorum kuralı.** n=5'te birincil-2'nin MDE'si (%50 güç noktası) **+1.88 puan**.
+Dolayısıyla birincil-2'den çıkan bir null sonuç:
 
 > **"heterojenlik çürütüldü" DİYE OKUNAMAZ. "yeterince güçlü ölçemedik" diye okunur.**
 
 Rapor, birincil-2 null çıktığında bu cümleyi ve yukarıdaki güç tablosunu **birebir** içerecektir.
-"Heterojenlik katkı yapmıyor" iddiası ancak X−H'nin %95 GA'sının tamamı +1.5 puanın altında
-kaldığında kurulabilir — yani eşdeğerlik biçiminde, nokta tahminiyle değil (bkz. V12).
+
+**DÜZELTME, kayda geçiyor:** bu tablonun ilk hâli MDE'yi α = .05'te türetip **+1.5 puan** yazıyordu,
+ama aynı bölüm iki endpoint'e Holm uyguluyor ve Holm'un ilk adımı α/2 = .025'tir. Düzeltilmiş
+değerler yukarıdadır; +1.5 puandaki güç %56.2 değil **%38.8**. Ölçülen sd de 0.75'ten 0.88'e
+güncellendi (ikinci baseline kümesi).
 
 **Eşik neden yükseltilmedi ve seed neden artırılmadı:** birincil-1'in eşiği (+%5) ön-kayıtta
 donmuştur ve birincil-2 ondan türemez; birincil-2'nin işi büyüklük ölçmek değil, birincil-1'in
-kazancının heterojenlikten mi geldiğini söylemektir. n=20'ye çıkmak 4 kola × 20 seed = 80 koşu
+kazancının heterojenlikten mi geldiğini söylemektir. n=20'ye çıkmak 4 kol × 20 seed = 80 koşu
 demektir (~50 GPU saati) ve bu deneyin bütçesinde yoktur. Güçsüzlük **giderilmiyor, ilan ediliyor.**
+
+### Holm iki endpoint'e NASIL uygulanır — ve satır adını nasıl etkiler
+
+`src/stats.multiplicity([(ad, p)], alpha=0.05, family_size=2)` ile. Bağlayıcı sıra:
+
+1. Her iki endpoint için eşleştirilmiş `p` değeri hesaplanır (`src/stats.paired`).
+2. Holm uygulanır: küçük `p` α/2 = .025 ile, büyük `p` α = .05 ile karşılaştırılır.
+3. **Birincil-1'in satır adı, `p₁` Holm'dan GEÇMEZSE "başarılı" ya da "güçlü başarı" OLAMAZ.**
+   O durumda satır "belirsiz"e düşürülür ve not olarak "Holm düzeltmesinden geçmedi" yazılır.
+4. Birincil-2 yukarıdaki üç durumla puanlanır ve "katkı var" ancak `p₂` Holm'dan geçerse yazılır.
+
+**Bu adım ilk hâlde EKSİKTİ:** Holm aile büyüklüğü 2 olarak pinlenmişti ama hiçbir şeye
+bağlanmamıştı, yani `p = 0.0371` gibi bir değerde satır "başarılı" çıkarken Holm hiçbir endpoint'i
+reddetmiyordu ve ikisi arasındaki çelişki raporda görünmeyebilirdi. Artık Holm satır adının
+ÖNÜNDEDİR.
+
+### İki endpoint, TEK yükseltme hakkı — kime ait?
+
+BELİRSİZ SONUÇ tek bir ölçek yükseltme hakkı, EK1-B3 tek bir seed artırma hakkı veriyor. İki
+endpoint olduğu için bu hakların kime ait olduğu belirsizdi; kural:
+
+* **Seed artırma hakkı (n=5 → 10) endpoint'lere ORTAKTIR ve ikisi de yeni n ile yeniden
+  hesaplanır.** Yani birincil-2 kesinlik sorunu yüzünden 10 seed'e çıkılırsa, birincil-1 de
+  10 seed'le yeniden karar verir. Gerekçe: aksi hâlde "birincil-1'i n=5'te 'başarılı' bırak,
+  birincil-2'yi n=10'da ölç" gibi bir seçim mümkün olurdu ve o seçim sonuca göre yapılabilirdi.
+  Ölçülü risk: n=5'te GA [5.41, 5.59] ile "başarılı" olan bir sonuç, n=10'da GA [3.30, 5.20] ile
+  terminal bir sonuca dönüşebilir — yani hangi analiz kümesinin bağladığı SONUCU değiştirir.
+* **Ölçek yükseltme hakkı (S0 → S1) da ortaktır:** kullanılırsa dört kol da S1'de koşulur ve
+  iki endpoint de S1'de yeniden hesaplanır.
+* Raporda **hangi n ve hangi ölçekte** karar verildiği her iki endpoint için birlikte yazılır.
+
+**Güç tablolarının kapsamı:** yukarıdaki ve V9'daki bütün güç sayıları **TEK BAKIŞLIDIR**
+(single-look), yani n=5'teki tek bir analizi varsayar. Seed artırma hakkı devredeyken gerçek
+prosedür iki bakışlıdır ve iki bakışlı bir prosedürün gerçek yanlış-pozitif oranı tek bakışlının
+üstündedir. Bu ön-kayıtta alfa harcaması (alpha spending) **uygulanmıyor**; bunun yerine
+kapsam sınırı yazılıyor: kesinlik ölçütü tetiklenip n=10'a çıkıldığı koşularda raporlanan
+`p` değerleri ve GA'lar **nominaldir**, iki bakışlı prosedür için düzeltilmemiştir, ve bu
+raporda anılır. Gerekçe: alfa harcaması tabloları bu ön-kaydın karmaşıklık bütçesini aşıyor ve
+kesinlik ölçütü ölçülen σ = 0.88'de +%5 eşiği dışında hiç tetiklenmiyor (V9 tablosu).
 
 ## İKİNCİL ÖLÇÜT
 
@@ -509,8 +583,8 @@ MoE baseline'ı dense'e duvar saatinde kaybediyor, ve kaybı v2'de TinyStories't
 
 | | FLOP/token | hedefe token `N*` | hedefe **FLOP** | hedefe **duvar saati** (TAM ölçüm) |
 |---|---|---|---|---|
-| M (MoE) | 267.755.520 | 98.75M | %13.88 **daha az** | 26.79 dk |
-| D (dense) | 267.411.456 | 114.82M | — | 22.58 dk |
+| M (MoE) | 267.755.520 | 98.75M | %13.88 **daha az** | **25.93 dk** |
+| D (dense) | 267.411.456 | 114.82M | — | **21.87 dk** |
 
 Eşleştirilmiş fark: **+4.06 dk = %+18.6**, %95 GA [+2.63, +5.49] dk, **p = .0014**.
 **Yani MoE aynı hedefe %13.9 daha az FLOP'la ama %19 daha uzun sürede varıyor.**
@@ -717,7 +791,7 @@ FOTON v0.2 başarılı sayılacaksa, beş eşleştirilmiş seed üzerinde önced
 hedefine ulaşmak için gereken aktif FLOP'ta **M'e karşı** en az %5 ortalama azalma göstermeli ve
 eşleştirilmiş %95 güven aralığının alt sınırı sıfırın üzerinde olmalıdır (birincil-1). Heterojenliğin
 katkı yaptığı ancak **H'ye karşı** aynı ölçütte gösterilebilir (birincil-2) ve bu karşılaştırmanın
-n=5'teki saptanabilir en küçük etkisi +1.5 puandır; oradan çıkan bir null "heterojenlik çürütüldü"
+n=5'teki saptanabilir en küçük etkisi +1.88 puandır; oradan çıkan bir null "heterojenlik çürütüldü"
 değil "yeterince güçlü ölçemedik" demektir. İki uç noktaya Holm uygulanır. %2-5 arası veya sıfırı
 kesen güven aralığı belirsiz sayılır ve yalnızca bir üst ölçek basamağında tekrarlanır. GA başarı
 eşiğini çözemiyorsa sonuç "yüksek varyans / belirsiz"dir ve seed 10'a çıkılır. İki ardışık ölçekte
@@ -1114,13 +1188,22 @@ veriliyor, ve V12'nin σ taraması 6.0'a kadar gidiyor.
 **(3) Karar kuralının gücü** (Monte Carlo 200.000, ön-kayıttaki bileşik kural, **kesinlik ölçütü
 dahil**). Hücreler "başarılı + güçlü başarı" oranı:
 
-| gerçek etki | sd=0.88, n=5 | sd=0.88, n=10 | sd=3.0, n=5 | sd=3.0, n=10 | sd=5.0, n=5 |
-|---|---|---|---|---|---|
-| 0% | %0.0 | %0.0 | %0.0 | %0.0 | %0.6 |
-| +2% | %0.0 | %0.0 | %1.2 | %0.1 | %4.5 |
-| **+5%** | **%49.8** | %49.9 | %47.5 | %49.9 | %27.2 |
-| +7% | **%100** | %100 | %90.2 | **%97.9** | %46.4 |
-| +10% | %100 | %100 | %97.4 | %99.7 | %58.4 |
+| gerçek etki | sd=0.88, n=5 | sd=0.88, n=10 | sd=3.0, n=5 | sd=3.0, n=10 | sd=5.0, n=5 | sd=5.0, n=10 |
+|---|---|---|---|---|---|---|
+| 0% | %0.0 | %0.0 | %0.0 | %0.0 | %0.6 | %0.0 |
+| +2% | %0.0 | %0.0 | %1.3 | %0.1 | %5.5 | %1.9 |
+| **+5%** | **%49.8** | %49.9 | %47.7 | %50.1 | %32.6 | %49.5 |
+| +7% | **%100** | %100 | %91.6 | **%98.2** | %61.7 | **%89.5** |
+| +10% | %100 | %100 | %100 | %100 | %90.6 | %99.9 |
+
+**DÜZELTME, kayda geçiyor.** Bu tablonun ilk hâli **kaldırılmış** mutlak sd tripwire'ının (`sd > 5`)
+sayılarını taşıyordu: `scripts/calibrate_v02.py` bir kez eski kuralla koşulmuş, tablo o çıktıdan
+yazılmış, betik sonra kesinlik ölçütüne çevrilmiş ama tablo güncellenmemişti. Fark kötümser
+sütunlarda büyük — sd=5.0'da +%7 için %46.4 yerine **%61.7**, +%10 için %58.4 yerine **%90.6**
+(32.2 puan). Yön FOTON'un lehine, yani hata gücü **az** gösteriyordu; yine de dondurulmuş bir
+belgede kaldırılmış bir kuralın sayılarının durması kabul edilemez. Yukarıdaki değerler
+`experiments/foton-v02-prereg/calibration.log` ile hücre hücre aynıdır ve
+`rule_reachability.py --crosscheck` vektörize kuralı `decide()` yoluna karşı doğruluyor.
 
 GA yarı-genişliği: n=5'te **1.03 puan**, n=10'da 0.61 puan (Monte Carlo ortalaması). Ölçülen sd'nin
 ima ettiği tam değer `t(4)·0.88/√5` = **1.09 puan**; tabloda 1.03 çıkıyor çünkü örnek sd'si yanlıdır
@@ -1133,8 +1216,8 @@ ortalamasını (0.87) sd'nin ima ettiği değer gibi yazıyordu.
 seed artırılıyor; gerekçe v01 O9'la aynı.
 
 **Ama seed artırmanın YARARLI olduğu bir rejim var ve tablo onu gösteriyor:** sd = 3.0'da +%7'lik
-gerçek bir etkiyi saptama gücü n=5'te %90.2, n=10'da **%97.9**. Yani FOTON beklendiği gibi
-gürültülü çıkarsa kesinlik ölçütünün çaresi gerçekten çalışır. İlk hâl yalnızca sd = 0.88
+gerçek bir etkiyi saptama gücü n=5'te %91.6, n=10'da **%98.2**; sd = 5.0'da %61.7 -> **%89.5**.
+Yani FOTON beklendiği gibi gürültülü çıkarsa kesinlik ölçütünün çaresi gerçekten çalışır. İlk hâl yalnızca sd = 0.88
 sütununun n=10'unu gösterip "seed artırmak düzeltmez" diyordu; bu, en iyimser sütunla savunulan
 bir iddiaydı. Doğru ifade: **eşikte düzeltmez, eşiğin üstünde düzeltir.**
 
@@ -1164,8 +1247,8 @@ yüzden maskeli ölçüt sistematik olarak daha düşüktür. Dört kolda da ayn
 bir **seviye kaymasıdır**, karşılaştırmayı etkilemez.
 
 **(5) Birincil-2'nin (X↔H) sd'si ve MDE'si** — BİRİNCİL ÖLÇÜT bölümünde tablosuyla yazılı.
-Özet: kol başına 0.88, ρ = +0.07 → fark sd'si **1.20 puan**, n=5'te GA yarı-genişliği **1.49 puan**,
-MDE ≈ **+1.5 puan**.
+Özet: kol başına 0.88, ρ = +0.07 → fark sd'si **1.20 puan**; Holm'un ilk adımı α=.025 olduğu için
+n=5'te GA yarı-genişliği **1.88 puan** ve MDE ≈ **+1.88 puan** (α=.05 varsayımıyla 1.49 olurdu).
 
 ### V10. Tag'den sonra nesi değişebilir
 

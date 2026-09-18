@@ -393,3 +393,89 @@ def _five(mean: float, sd: float = 0.05, n: int = 5) -> list[float]:
 def test_helpers_produce_the_requested_moments():
     xs = _five(7.0, sd=1.25)
     assert st.mean(xs) == pytest.approx(7.0) and st.stdev(xs) == pytest.approx(1.25)
+
+
+# ------------------------------------------------- ikinci denetimin bulduklari
+
+def test_strong_success_needs_both_baselines():
+    """"güçlü başarı" için `w̄(M) > 0` VE `w̄(D) > 0` gerekir; tek skaler bunu İFADE EDEMEZ.
+
+    Ön-kayıt bu şartı şu gerekçeyle koyuyor: M bu kartta kendi başına D'den token başına %27.9
+    yavaştır (16 expert'in AdamW state'i + dispatch), FOTON kollarında ise ne o expert'ler ne o
+    dispatch var. Dolayısıyla yalnızca M'e karşı `w̄ > 0`, FOTON'un kendi hız katkısı OLMADAN da
+    sağlanabilir — v01 EK1-B16'nın aynı kolda bulduğu sorun.
+
+    Denetim ölçtü: `decide(s̄=11, quality_per_sec=1.0)` tek skalerle "güçlü başarı" döndürüyordu,
+    yani ön-kaydın "başarılı" dediği durum koda "güçlü başarı" olarak giriyordu.
+    """
+    xs = _five(11.0)
+    assert decide(xs, quality_per_sec={"M": 1.0, "D": 1.0})["row"] == "güçlü başarı"
+    # D'ye karşı kaybediyorsa satır DÜŞER
+    r = decide(xs, quality_per_sec={"M": 1.0, "D": -5.0})
+    assert r["row"] == "başarılı"
+    assert any("çelişki kuralı" in n and "D" in n for n in r["notes"])
+    # Tek skaler geçmek mümkün ama hangi baseline olduğunun bilinmediği YAZILIR
+    r2 = decide(xs, quality_per_sec=1.0)
+    assert any("BİLİNMİYOR" in n for n in r2["notes"])
+
+
+def test_precision_criterion_has_a_terminal_row_at_max_n():
+    """n = 10'da kesinlik yine çözemiyorsa satır "yetersiz kesinlik" — "seed 10'a çıkar" DEĞİL.
+
+    Eski mutlak sd tripwire'ının çıkmazı "n=10'da ateşlendi" satırının olmamasıydı. Kesinlik
+    ölçütü o çıkmazı tekrar etmemeli: B3 ikinci bir artırma hakkı vermiyor ve ölçek yükseltmesi
+    kesinlik sorununun çaresi değil, dolayısıyla o noktada raporu olmayan bir çareye yönlendirmek
+    hatanın aynısı olurdu. "nötr"den ayrımı da kritik: nötr ölçülmüş bir sıfırdır, bu ölçülememiş
+    bir eşiktir.
+    """
+    n5 = _five(4.0, sd=1.5)
+    n10 = _five(4.0, sd=2.1, n=10)
+    r5, r10 = decide(n5, quality_per_sec={"M": 1.0, "D": 1.0}), decide(n10, quality_per_sec={"M": 1.0, "D": 1.0})
+    assert r5["row"] == "yüksek varyans / belirsiz" and "seed 10'a çıkar" in r5["notes"][0]
+    assert r10["row"] == "yetersiz kesinlik"
+    assert "azami seed" in r10["notes"][0] and "'nötr' DEĞİLDİR" in r10["notes"][0]
+    from src.stats import ROWS
+    assert "yetersiz kesinlik" in ROWS
+
+
+def test_abandon_is_reachable_when_a_seed_is_censored():
+    """Eşdeğerlik testi SANSÜRSÜZ alt örneğin GA'sına bakar; yoksa kural sansürde ulaşılamaz olur.
+
+    Ölçülen senaryo: `s_i = [0.2, −0.1, 0.3, 0.0, −149.82]` (dördü başabaş, biri 2x bütçe
+    ikamesiyle sansürlü). Tam örnek GA'sı **[−113.13, +53.37]** — `hi < 5` ASLA sağlanamaz, yani
+    vazgeçme kuralı sansürlü her senaryoda ölürdü. Bu, `decide()`'ın kesinlik ölçütünde zaten
+    kapatılmış hatanın vazgeçme kuralındaki kopyasıydı; üstelik V12'nin sayısal sınavı onu
+    göremiyordu çünkü sınav yalnızca Gauss örnekleri çiziyordu (artık sansür de tarıyor).
+    """
+    s_i = [0.2, -0.1, 0.3, 0.0, -149.82]
+    r = decide(s_i, quality_per_sec={"M": -1.0, "D": -1.0}, censored_mask=[False] * 4 + [True])
+    assert r["ci95"][1] > SUCCESS, "tam örnek GA'sı gerçekten patlamalı (testin varlık sebebi)"
+    assert r["ci95_uncensored"][1] < SUCCESS
+    assert abandon([r, r], oracle_gain_over_null=0.0)["abandon"] is True
+
+
+def test_abandon_from_basarisiz_needs_only_one_scale():
+    """v01 EK1-B10: "başarısız" satırı TEK ölçekle terk etmeye yeter; oracle şartı yine uygulanır."""
+    bad = decide(_five(-8.0), quality_per_sec={"M": -1.0, "D": -1.0})
+    assert bad["row"] == "başarısız"
+    ok = abandon([bad], oracle_gain_over_null=0.5)
+    assert ok["abandon"] is True and ok["single_scale"] is True
+    blocked = abandon([bad], oracle_gain_over_null=5.0)
+    assert blocked["abandon"] is False and "oracle" in blocked["reason"]
+
+
+def test_abandon_two_censored_seeds_is_a_single_scale_abandonment():
+    """>= 2 sansür -> "başarısız" -> tek ölçekle terk. Eşdeğerlik testine sokmak anlamsız olurdu:
+    GA ikame yüzünden patlar ve mümkün olan EN GÜÇLÜ olumsuz sonuç "terk edilemez" çıkardı."""
+    two = decide([0.2, -0.1, 0.3, -149.8, -149.9], quality_per_sec={"M": -1.0, "D": -1.0},
+                 censored_mask=[False] * 3 + [True] * 2)
+    assert two["row"] == "başarısız"
+    assert abandon([two], oracle_gain_over_null=0.5)["abandon"] is True
+
+
+def test_abandon_blocked_by_indeterminate_terminal_row():
+    """"yetersiz kesinlik" de vazgeçmeyi ENGELLER: ölçemediğimiz durumda hipotez terk edilmez."""
+    r = decide(_five(4.0, sd=2.1, n=10), quality_per_sec={"M": -1.0, "D": -1.0})
+    assert r["row"] == "yetersiz kesinlik"
+    res = abandon([r, r], oracle_gain_over_null=0.0)
+    assert res["abandon"] is False and "yetersiz kesinlik" in res["reason"]
