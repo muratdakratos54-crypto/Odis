@@ -120,8 +120,9 @@ def main() -> None:
         x, y = ds.windows(pairs[bi * args.batch_size:(bi + 1) * args.batch_size])
         dom_all.append(ds.last_domain_ids.cpu().numpy())
         if bi == 0:                                   # yeniden kurulan trunk, modelin kendi forward'ıyla aynı loss'u veriyor mu
-            with torch.no_grad():
-                _, ref, _ = model(x, y, force_module=0)
+            with torch.no_grad():                     # SAF CE ile karşılaştır: V7'nin regularizasyonlu koşullarında
+                _, _, info = model(x, y, force_module=0)   # modelin `loss`'u entropi bonusu / aux terimini de içerir
+            ref = info["ce"]
             _, _, mine = forced_loss_and_gate_grad(model, x, y, 0, nullctx)
             if abs(ref.item() - mine.item()) > 1e-5:
                 sys.exit(f"yeniden kurulan trunk modelin forward'ıyla uyuşmuyor: {ref.item()} != {mine.item()}")

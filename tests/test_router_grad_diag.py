@@ -34,7 +34,8 @@ def tiny():
 def test_rebuilt_trunk_gives_the_models_own_forced_module_loss(tiny):
     model, idx, tgt = tiny
     for m in range(3):
-        _, ref, _ = model(idx, tgt, force_module=m)
+        _, _, info = model(idx, tgt, force_module=m)
+        ref = info["ce"]                                # saf CE: regularizasyonlu koşullarda `loss` ek terim taşır
         seq, g, loss = gd.forced_loss_and_gate_grad(model, idx, tgt, m, contextlib.nullcontext())
         assert loss.item() == pytest.approx(ref.item(), abs=1e-6)
         assert seq.shape == (5,) and g.shape == (5,) and seq.mean().item() == pytest.approx(loss.item(), abs=1e-6)
