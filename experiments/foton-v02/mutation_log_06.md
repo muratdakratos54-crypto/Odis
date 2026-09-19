@@ -3,7 +3,7 @@
 Her satır: bir guard'ın koruduğu şey KASTEN bozuldu ve guard koşuldu. "Bozdum, yakaladı".
 Bütün guard'lar önce bozulmamış hâlde koşuldu ve geçti. Gerçek depo değiştirilmedi.
 
-**68 mutant: 68 yakalandı, 0 kanıtlı eşdeğer, 0 hayatta kaldı.**
+**71 mutant: 71 yakalandı, 0 kanıtlı eşdeğer, 0 hayatta kaldı.**
 
 Eşdeğer mutant = kodu değiştiren ama DAVRANIŞI değiştirmeyen mutant; hiçbir test öldüremez.
 Sessizce atlanmaz: kanıtıyla birlikte aşağıda durur ve her koşumda yeniden denenir (bir gün
@@ -78,4 +78,7 @@ yakalanırsa kanıt yanlış demektir).
 | Y07 | code_dirty tests/ ve docs/ altını kod saymıyor | `-m pytest tests/test_run_queue.py` | **yakaladı** | FAILED tests/test_run_queue.py::test_code_dirty_sees_every_code_path[?? tests/test_yeni.py] / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!! |
 | Y08 | yinelenen koşu adı kabul ediliyor (ikinci koşu 'zaten bitmiş' diye atlanır) | `-m pytest tests/test_run_queue.py` | **yakaladı** | FAILED tests/test_run_queue.py::test_plan_refuses_duplicate_names_and_inconsistent_or_missing_state / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 fail |
 | Y09 | blok kimliği katmanlar arasında tekil değil (tarama ve S1 blokları da `s<seed>`) | `-m pytest tests/test_campaign_queue.py` | **yakaladı** | FAILED tests/test_campaign_queue.py::test_block_ids_do_not_collide_between_tiers / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!! |
-| Y10 | `--strict` kuyruğa `_strict` yazmıyor (karar kuyruğu sıkı görünür ama değildir) | `-m pytest tests/test_campaign_queue.py` | **yakaladı** | FAILED tests/test_campaign_queue.py::test_strict_flag_writes_strict_true_and_nothing_else_changes / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failur |
+| Y10 | üreteç kuyruğa `_strict` yazmıyor (yürütücü anahtarın yokluğunu 'sıkı değil' sayar) | `-m pytest tests/test_campaign_queue.py` | **yakaladı** | D tests/test_campaign_queue.py::test_strict_is_the_default_and_the_run_list_does_not_depend_on_it / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failur |
+| Y12 | sıkılık varsayılan değil (bayraksız kuyruk gevşek: v02'deki unutulabilir `--strict`) | `-m pytest tests/test_campaign_queue.py` | **yakaladı** | D tests/test_campaign_queue.py::test_strict_is_the_default_and_the_run_list_does_not_depend_on_it / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failur |
+| Y13 | karar (etiketsiz) ve S1 kuyruğu `--loose` ile gevşek üretilebiliyor | `-m pytest tests/test_campaign_queue.py` | **yakaladı** | gn_queue.py::test_a_loose_queue_needs_an_explicit_flag_and_is_refused_for_decision_and_s1_queues / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failure |
+| Y14 | gevşeklik ret kuralı S1'i kapsamıyor (etiketli S1 kuyruğu gevşek üretilebilir) | `-m pytest tests/test_campaign_queue.py` | **yakaladı** | gn_queue.py::test_a_loose_queue_needs_an_explicit_flag_and_is_refused_for_decision_and_s1_queues / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failure |

@@ -268,3 +268,18 @@ Betikler: `scripts/router_health.py`, `router_diag.py`, `router_grad_diag.py`, `
 `screening_context.py`, `topology_overlap.py` (hepsi testli; son altısı `mutation_guards.py --suite 07` sınavında).
 V10 yer tutucusu DOLDURULMADI: karar koşusu olmadığı için preset hash'i yazılmadı (hesaplanan toplam
 `fb9cd95a8276293e…`, bilgi için).
+
+---
+
+## EK — onaydan sonra (2026-09-19; yukarıdaki metin değiştirilmedi)
+
+* **Sahibi 07'yi ONAYLADI.** Doğrulama turundan gelen düzeltmeleri — özellikle "öğrenilecek bir şey yoktu" cümlesinin
+  kapsamının daraltılmasını — doğru buldu ve kayıtta kalmasını istedi.
+* **Sahibinin kayda geçirdiği kendi hatası:** `v03_design_notes.md` için verdiği notta "üç modül attention maskesi dışında
+  her şeyi paylaşıyor" yazıyordu; YANLIŞ — her modülün kendi 2 bloğu (kendi attention ve FFN ağırlıkları, 6,424,576
+  parametre) var. Notlardaki düzeltme doğrudur. Bu tür ezberden cümlelerin tekrarını önlemek için mimari, kurulan modelden
+  sayılarak tek sayfada yazıldı: `docs/ARCHITECTURE_AS_BUILT.md` (`scripts/architecture_as_built.py`; sayıları testle belgeye
+  kilitli). Sahibinin şartı: o sayfa okunmadan v03 tasarımına bir kelime daha yazılmaz.
+* **Bölüm 6'daki açık madde KAPATILDI** (sahibi: "guard ertelenmez"): `make_campaign_queue.py` artık her kuyruğa
+  `"_strict": true` yazar (varsayılan); gevşek kuyruk yalnızca etiketli bir S0 tarama kuyruğu için ve açıkça `--loose`
+  istenirse üretilir; etiketsiz (karar) ve S1 kuyruklarında `--loose` REDDEDİLİR. Test + mutantlar Y10, Y12–Y14.

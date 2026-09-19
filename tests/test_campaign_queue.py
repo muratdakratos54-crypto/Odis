@@ -142,18 +142,37 @@ def test_committed_decision_queue_run_list_is_reproduced_exactly():
     assert mcq.build_runs(ARMS, SEEDS) == committed["runs"]
 
 
-def test_strict_flag_writes_strict_true_and_nothing_else_changes(tmp_path, monkeypatch):
-    """`--strict` kuyruğa `"_strict": true` yazar (run_queue.py kirli kodla başlamaz); bayrak yoksa anahtar
-    da yoktur. Koşu listesi iki durumda aynıdır: sıkılık sırayı ya da adları etkileyemez."""
-    out = {}
-    for flag in ([], ["--strict"]):
-        path = str(tmp_path / f"q{len(flag)}.json")
-        monkeypatch.setattr(sys, "argv", ["make_campaign_queue.py", "--arms", ",".join(ARMS),
-                                          "--seeds", "11,22,33,44,55", "--out", path, *flag])
-        mcq.main()
-        with open(path, encoding="utf-8") as f:
-            out[bool(flag)] = json.load(f)
-    assert "_strict" not in out[False]
-    assert out[True]["_strict"] is True
-    assert out[True]["runs"] == out[False]["runs"] == mcq.build_runs(ARMS, SEEDS)
-    assert out[True]["_blocks"] == out[False]["_blocks"] and len(out[True]["_blocks"]) == 5
+def _make(tmp_path, monkeypatch, name, *flags):
+    path = str(tmp_path / f"{name}.json")
+    monkeypatch.setattr(sys, "argv", ["make_campaign_queue.py", "--arms", ",".join(ARMS),
+                                      "--seeds", "11,22,33,44,55", "--out", path, *flags])
+    mcq.main()
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def test_strict_is_the_default_and_the_run_list_does_not_depend_on_it(tmp_path, monkeypatch):
+    """SIKILIK VARSAYILAN: bayraksız üretilen kuyruk da `"_strict": true` taşır (v02'de `--strict` isteğe bağlıydı ve
+    unutulabilirdi). `--strict` artık bir şey değiştirmez. Koşu listesi sıkılıktan bağımsızdır."""
+    default = _make(tmp_path, monkeypatch, "varsayilan")
+    explicit = _make(tmp_path, monkeypatch, "acik", "--strict")
+    assert default["_strict"] is True and explicit["_strict"] is True
+    assert default["runs"] == explicit["runs"] == mcq.build_runs(ARMS, SEEDS)
+    assert default["_blocks"] == explicit["_blocks"] and len(default["_blocks"]) == 5
+
+
+def test_a_loose_queue_needs_an_explicit_flag_and_is_refused_for_decision_and_s1_queues(tmp_path, monkeypatch):
+    """Kural: karar koşularında `code_dirty = False` zorunlu, İSTİSNASIZ. Gevşek kuyruk yalnızca etiketli (tarama) S0
+    kuyruğu için ve açıkça istenirse üretilir; etiketsiz (karar) ve S1 kuyruğunda `--loose` reddedilir."""
+    loose = _make(tmp_path, monkeypatch, "tarama", "--tag", "screen", "--loose")
+    assert loose["_strict"] is False and all(r["name"].startswith("screen-") for r in loose["runs"])
+    assert _make(tmp_path, monkeypatch, "tarama-siki", "--tag", "screen")["_strict"] is True     # taramada da varsayılan SIKI
+    with pytest.raises(SystemExit, match="gevşek üretilemez"):
+        _make(tmp_path, monkeypatch, "karar", "--loose")
+    assert not os.path.exists(tmp_path / "karar.json")                                            # reddedilen kuyruk YAZILMAZ
+    with pytest.raises(SystemExit, match="birlikte verilemez"):
+        _make(tmp_path, monkeypatch, "celiski", "--tag", "screen", "--strict", "--loose")
+    assert mcq.strictness("", "S0", False) is True and mcq.strictness("v7", "S0", True) is False
+    for tag, scale in (("", "S0"), ("", "S1"), ("s1x", "S1")):
+        with pytest.raises(ValueError, match="gevşek üretilemez"):
+            mcq.strictness(tag, scale, True)

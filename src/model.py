@@ -16,7 +16,11 @@ FOTON v0.2 kolları (`ModelConfig.foton` = "h" | "x"; PREREGISTRATION_V02.md "M�
 
   * Paylaşılan 6 blok D kolunun bloklarıyla BİREBİR aynıdır (tam nedensel attention, dense SwiGLU).
     FOTON'un baseline'dan farkı yalnızca yönlendirilen 2 katmanda yaşar.
-  * Modüller aynı `Block`'tur; TEK fark attention maskesi (`src/attn_patterns.py`'den, config'ten DEĞİL).
+  * Her modülün KENDİ ağırlıkları vardır: modül = 2 ayrı `Block` örneği (kendi attention + SwiGLU + normları,
+    6.4M parametre); üç modül arasında paylaşılan parametre YOKTUR. Modüller aynı `Block` SINIFINDANDIR ve D'nin
+    bloğuyla aynı şekildedir; sınıf düzeyindeki tek fark attention maskesidir (`src/attn_patterns.py`'den, config'ten
+    DEĞİL). (Bu madde eskiden "Modüller aynı `Block`'tur; TEK fark attention maskesi" diyordu ve "ağırlıklar
+    paylaşılıyor" diye okunabiliyordu — okundu da; bkz. docs/ARCHITECTURE_AS_BUILT.md.)
     X: A yerel W=150 / B dilated r=2 W=256 / C yarım yerel W=256 + yarım strided s=4 W=256. H: üçü de A.
   * Router dizinin yalnızca İLK k=64 pozisyonunun gizli durumunu görür (nedensel prefix), dizi düzeyinde top-1.
   * `foton == ""` iken bu dosyadaki FOTON kodunun HİÇBİRİ çalışmaz ve modelin kurulma sırası (dolayısıyla
@@ -321,7 +325,8 @@ class GPT(nn.Module):
         for blk in self.blocks[:pre]:
             x, _ = blk(x, cos, sin)
         choice, probs, logits = self._foton_route(x)
-        if force_module is not None:                       # oracle değerlendirmesi: bütün diziler TEK modülden
+        if force_module is not None:                       # bütün diziler TEK modülden; gate YOK (router gradyan almaz).
+            # Yalnızca testler ve scripts/router_grad_diag.py çağırır; ORACLE eğrileri buradan DEĞİL `foton_eval_all`'dan gelir.
             x_out = self._foton_module(force_module, x, cos, sin)
         else:
             y = torch.zeros_like(x)

@@ -16,7 +16,13 @@ Seed bloğu aynı pencereyi dört kolun paylaşmasını sağlar. Maliyeti sıfı
 
 Her koşu `_block` kimliğini taşır; `scripts/run_queue.py` V11a(iii)'ü ("blok yarıda kesilirse TAMAMI yeniden
 koşulur") bu kimlikle uygular ve koşu defterine bu kimliği yazar. Kimlik katmanlar arasında tekildir
-(`block_id`). Karar ve S1 kuyrukları `--strict` ile üretilir (`"_strict": true`).
+(`block_id`).
+
+SIKILIK VARSAYILANDIR: üretilen her kuyruk `"_strict": true` taşır (run_queue.py commit'lenmemiş kodla BAŞLAMAZ, her
+koşudan önce `code_dirty`'yi yeniden denetler, kuyruk sürerken src/ değişirse durur). Kural: karar koşularında
+`code_dirty = False` zorunlu, İSTİSNASIZ — bu yüzden gevşek kuyruk (`--loose`) yalnızca ETİKETLİ (tarama) S0 kuyruğu için
+ve açıkça istenirse üretilir; etiketsiz (karar) ya da S1 kuyruğu için `--loose` REDDEDİLİR. (v02'de sıkılık `--strict` ile
+isteğe bağlıydı; guard ertelenmez. `--strict` geriye dönük uyumluluk için kabul edilir ve artık bir şey değiştirmez.)
 """
 from __future__ import annotations
 
@@ -126,6 +132,17 @@ def check_balance(runs: list[dict], arms: list[str], seeds: list[int]) -> None:
                                    f"gördü, en az {floor} olmalı — blok-içi sıra kolla karışıyor")
 
 
+def strictness(tag: str, scale: str, loose: bool) -> bool:
+    """Kuyruğun `_strict` değeri. Varsayılan True; gevşeklik yalnızca etiketli (tarama) S0 kuyruğunda ve açıkça istenirse.
+
+    Etiketsiz S0 kuyruğu KARAR kuyruğudur (koşu adları `d-s11`, ...; commit'li `queues/decision.json` ile aynı liste) ve
+    S1 kuyruğu da karar verisidir: ikisinde `code_dirty = False` zorunlu, istisnasız — gevşek üretilemezler."""
+    if loose and (scale == "S1" or not tag):
+        raise ValueError("karar (etiketsiz) ve S1 kuyrukları gevşek üretilemez: karar koşularında code_dirty = False "
+                         "zorunlu, istisnasız. `--loose` yalnızca `--tag` verilmiş bir tarama kuyruğu içindir.")
+    return not loose
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows konsolu cp1252 olabilir
     p = argparse.ArgumentParser()
@@ -137,9 +154,12 @@ def main() -> None:
     p.add_argument("--tag", default="", help="koşu adı öneki (ör. screen)")
     p.add_argument("--owner_log", default=None, help="sahibin karar defteri (varsayılan: owner_decision.LOG)")
     p.add_argument("--strict", action="store_true",
-                   help="kuyruğa \"_strict\": true yazar (karar ve S1 kuyrukları): run_queue.py commit'lenmemiş "
-                        "kodla BAŞLAMAZ ve kuyruk sürerken src/ değişirse sıradaki koşuyu başlatmadan DURUR")
+                   help="VARSAYILAN zaten budur (geriye dönük uyumluluk için kabul edilir): kuyruk \"_strict\": true taşır")
+    p.add_argument("--loose", action="store_true",
+                   help="\"_strict\": false yazar — YALNIZCA --tag verilmiş S0 tarama kuyruğunda; karar / S1 için reddedilir")
     args = p.parse_args()
+    if args.strict and args.loose:
+        sys.exit("HATA: --strict ile --loose birlikte verilemez")
 
     arms = [a.strip() for a in args.arms.split(",")]
     seeds = [int(s) for s in args.seeds.split(",")]
@@ -154,6 +174,10 @@ def main() -> None:
             decision = owner_decision.require_s1_authorized(args.owner_log or owner_decision.LOG)
         except PermissionError as e:
             sys.exit(f"HATA: {e}")
+    try:
+        strict = strictness(args.tag, scale, args.loose)
+    except ValueError as e:
+        sys.exit(f"HATA: {e}")
     runs = build_runs(arms, seeds, tag=args.tag, stop_step=args.stop_step)
     check_balance(runs, arms, seeds)
     blocks = blocks_of(runs)
@@ -161,15 +185,14 @@ def main() -> None:
          "_scale": scale, "_owner_decision": decision,
          "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
          "_blocks": [[r["name"] for r in members] for members in blocks.values()]}
-    if args.strict:
-        # Anahtar yalnızca istenince yazılır ki bayraksız çıktı eskisiyle aynı kalsın; yürütücü anahtarın
-        # YOKLUĞUNU "sıkı değil" sayar, bool olmayan değeri ise reddeder.
-        q["_strict"] = True
+    # Anahtar HER ZAMAN ve açıkça yazılır: yürütücü anahtarın YOKLUĞUNU "sıkı değil" sayar (eski kuyruk dosyaları için),
+    # bu yüzden üreteç sıkılığı yokluğa bırakmaz.
+    q["_strict"] = strict
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(q, f, indent=1, ensure_ascii=False)
     print(f"{len(runs)} koşu, {len(seeds)} seed bloğu x {len(arms)} kol -> {args.out}"
-          + (" | SIKI (_strict)" if args.strict else ""))
+          + (" | SIKI (_strict)" if strict else " | GEVŞEK (--loose): karar verisi ÜRETMEZ"))
     for i, (b, members) in enumerate(blocks.items()):
         print(f"  blok {i+1} ({b}): " + ", ".join(r["name"] for r in members))
     pos = positions(runs, arms, seeds)

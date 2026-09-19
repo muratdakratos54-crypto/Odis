@@ -121,3 +121,10 @@ karşı-olgusaldır. Ham sayı tek başına raporlanmamalıdır.
 * Rapor yazıldıktan sonra bağımsız bir doğrulama turu (kör yeniden hesap + sayı denetimi + düşmanca hakem) koşulsun: v02'nin
   07 raporunda bu tur bir aşırı iddiayı ("öğrenilecek bir şey yoktu"), birime bağlı bir eğilim cümlesini ("tavan küçülüyor")
   ve FOTON lehine yanıltıcı bir parantezi ("fark kapanıyor") yakaladı.
+
+---
+
+**Kayıt (2026-09-19, sahibinden):** Yön 2'deki düzeltme doğrudur; "üç modül maske dışında her şeyi paylaşıyor" cümlesi
+sahibinin kendi hatasıydı ve öyle kayda geçmesini istedi. Kurulduğu hâliyle mimari: `docs/ARCHITECTURE_AS_BUILT.md`.
+Bölüm 3'teki "açık kalan" madde kapatıldı: `make_campaign_queue.py`'de sıkılık artık VARSAYILAN, karar / S1 kuyruğunda
+`--loose` reddedilir. Sahibinin şartı: `ARCHITECTURE_AS_BUILT.md` okunup onaylanmadan bu dosyaya tasarım eklenmez.
