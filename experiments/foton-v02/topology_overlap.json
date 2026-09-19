@@ -1,0 +1,189 @@
+{
+ "what": "donmuş üç desenin grafik örtüşmesi (kombinatorik; kayıp ölçümü DEĞİL)",
+ "frozen_spec": {
+  "A_LOCAL_W": 150,
+  "B_DILATION_R": 2,
+  "B_BUDGET_W": 256,
+  "C_LOCAL_W": 256,
+  "C_STRIDE_S": 4,
+  "C_STRIDE_W": 256
+ },
+ "by_T": [
+  {
+   "T": 512,
+   "full_causal_avg_connections": 256.5,
+   "modules": {
+    "A": {
+     "avg_connections_per_token_head": 128.173828125,
+     "density_vs_full_causal": 0.499703033625731,
+     "union_coverage_of_causal_pairs": 0.499703033625731,
+     "mean_reach_tokens": 70.21447619047619,
+     "max_reach_tokens": 149
+    },
+    "B": {
+     "avg_connections_per_token_head": 128.5,
+     "density_vs_full_causal": 0.5009746588693957,
+     "union_coverage_of_causal_pairs": 0.5009746588693957,
+     "mean_reach_tokens": 170.0,
+     "max_reach_tokens": 510
+    },
+    "C": {
+     "avg_connections_per_token_head": 128.375,
+     "density_vs_full_causal": 0.5004873294346979,
+     "union_coverage_of_causal_pairs": 0.8128654970760234,
+     "mean_reach_tokens": 130.9652278177458,
+     "max_reach_tokens": 508
+    }
+   },
+   "pairs": {
+    "A-B": {
+     "jaccard": 0.33327584282772127,
+     "share_of_a_also_in_b": 0.5005714285714286,
+     "share_of_b_also_in_a": 0.499300826848249
+    },
+    "A-C": {
+     "jaccard": 0.6147425809352518,
+     "share_of_a_also_in_b": 1.0,
+     "share_of_b_also_in_a": 0.6147425809352518
+    },
+    "B-C": {
+     "jaccard": 0.5011135857461024,
+     "share_of_a_also_in_b": 0.8754863813229572,
+     "share_of_b_also_in_a": 0.539568345323741
+    }
+   }
+  },
+  {
+   "T": 2048,
+   "full_causal_avg_connections": 1024.5,
+   "modules": {
+    "A": {
+     "avg_connections_per_token_head": 144.54345703125,
+     "density_vs_full_causal": 0.1410868297035139,
+     "union_coverage_of_causal_pairs": 0.1410868297035139,
+     "mean_reach_tokens": 73.54995355122034,
+     "max_reach_tokens": 149
+    },
+    "B": {
+     "avg_connections_per_token_head": 224.125,
+     "density_vs_full_causal": 0.2187652513421181,
+     "union_coverage_of_causal_pairs": 0.2187652513421181,
+     "mean_reach_tokens": 242.8165086447295,
+     "max_reach_tokens": 510
+    },
+    "C": {
+     "avg_connections_per_token_head": 216.15625,
+     "density_vs_full_causal": 0.21098706686188384,
+     "union_coverage_of_causal_pairs": 0.3633479746217667,
+     "mean_reach_tokens": 294.5683344526528,
+     "max_reach_tokens": 1020
+    }
+   },
+   "pairs": {
+    "A-B": {
+     "jaccard": 0.24391127922857805,
+     "share_of_a_also_in_b": 0.5001266784899924,
+     "share_of_b_also_in_a": 0.3225433979364194
+    },
+    "A-C": {
+     "jaccard": 0.3882967280893217,
+     "share_of_a_also_in_b": 1.0,
+     "share_of_b_also_in_a": 0.3882967280893217
+    },
+    "B-C": {
+     "jaccard": 0.40571596935769005,
+     "share_of_a_also_in_b": 0.7679866146123815,
+     "share_of_b_also_in_a": 0.4623908663532572
+    }
+   }
+  },
+  {
+   "T": 4096,
+   "full_causal_avg_connections": 2048.5,
+   "modules": {
+    "A": {
+     "avg_connections_per_token_head": 147.271728515625,
+     "density_vs_full_causal": 0.071892471816268,
+     "union_coverage_of_causal_pairs": 0.071892471816268,
+     "mean_reach_tokens": 74.03377678312404,
+     "max_reach_tokens": 149
+    },
+    "B": {
+     "avg_connections_per_token_head": 240.0625,
+     "density_vs_full_causal": 0.11718940688308518,
+     "union_coverage_of_causal_pairs": 0.11718940688308518,
+     "mean_reach_tokens": 249.3126789898464,
+     "max_reach_tokens": 510
+    },
+    "C": {
+     "avg_connections_per_token_head": 236.078125,
+     "density_vs_full_causal": 0.11524438613619722,
+     "union_coverage_of_causal_pairs": 0.20020746887966806,
+     "mean_reach_tokens": 322.8150716245047,
+     "max_reach_tokens": 1020
+    }
+   },
+   "pairs": {
+    "A-B": {
+     "jaccard": 0.23477065012752252,
+     "share_of_a_also_in_b": 0.5000621658585105,
+     "share_of_b_also_in_a": 0.3067743588909138
+    },
+    "A-C": {
+     "jaccard": 0.3590898592273697,
+     "share_of_a_also_in_b": 1.0,
+     "share_of_b_also_in_a": 0.3590898592273697
+    },
+    "B-C": {
+     "jaccard": 0.3889185580774366,
+     "share_of_a_also_in_b": 0.7583962509763083,
+     "share_of_b_also_in_a": 0.4439195367266077
+    }
+   }
+  },
+  {
+   "T": 8192,
+   "full_causal_avg_connections": 4096.5,
+   "modules": {
+    "A": {
+     "avg_connections_per_token_head": 148.6358642578125,
+     "density_vs_full_causal": 0.03628362364404064,
+     "union_coverage_of_causal_pairs": 0.03628362364404064,
+     "mean_reach_tokens": 74.26902782055231,
+     "max_reach_tokens": 149
+    },
+    "B": {
+     "avg_connections_per_token_head": 248.03125,
+     "density_vs_full_causal": 0.060547113389478824,
+     "union_coverage_of_causal_pairs": 0.060547113389478824,
+     "mean_reach_tokens": 252.24770064256015,
+     "max_reach_tokens": 510
+    },
+    "C": {
+     "avg_connections_per_token_head": 246.0390625,
+     "density_vs_full_causal": 0.06006079885267911,
+     "union_coverage_of_causal_pairs": 0.1047388014158428,
+     "mean_reach_tokens": 335.06835396941005,
+     "max_reach_tokens": 1020
+    }
+   },
+   "pairs": {
+    "A-B": {
+     "jaccard": 0.2305684932518432,
+     "share_of_a_also_in_b": 0.5000307976593779,
+     "share_of_b_also_in_a": 0.2996497810885725
+    },
+    "A-C": {
+     "jaccard": 0.3464200769300801,
+     "share_of_a_also_in_b": 1.0,
+     "share_of_b_also_in_a": 0.3464200769300801
+    },
+    "B-C": {
+     "jaccard": 0.38164774901160564,
+     "share_of_a_also_in_b": 0.7540632480786191,
+     "share_of_b_also_in_a": 0.4359067734887109
+    }
+   }
+  }
+ ]
+}
