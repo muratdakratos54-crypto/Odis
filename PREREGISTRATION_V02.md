@@ -1908,3 +1908,146 @@ yeniden koşumun sadakat kontrolüdür ve sonucu V9'da raporlanıyor. İlk küme
 (`1a592a2` + 14 değişiklik); ikinci küme `0a43847`'den sonra koştu, ancak ilk koşu (`r-d-s11`)
 commit'ten önce başladığı için onun provenance'ı da kirli — o koşu kuyruğun sonunda yeniden
 koşulacak ki 10 koşunun tamamı aynı commit'i göstersin.
+
+---
+
+*Aşağıdaki girdiler `foton-v02-prereg` tag'inden SONRA, 06 (uygulama) adımında, hiçbir FOTON koşusu
+yapılmadan ÖNCE yazıldı. Tag'li gövde değişmedi (`scripts/check_prereg_frozen.py` bunu mekanik olarak
+denetler). Girdi numaraları ölçek basamaklarıyla (S0/S1) karışmasın diye kodda ve raporda
+"Sapma-S3" biçiminde anılır.*
+
+**S3 — 2026-09-19: O-X1 bölümü ESKİ modül tasarımını anlatıyor; uygulanan tasarım DONMUŞ tablodur.**
+O-X1 "A (bitişik 256), B (dilated 256), C (128+128)" diyor. Bu, denetimin reddettiği ilk tasarımdır:
+nedensel maske altında **192.25 / 128.50 / 88.31** bağlantı verir, yani tam olarak ortadan kaldırılan
+compute confound'un kendisi. Bağlayıcı olan MİMARİ tablosu ve V10'un donmuş parametre listesidir:
+**A yerel W=150 (128.17), B dilated r=2 W=256 (128.50), C yarım yerel W=256 + yarım strided s=4 W=256
+(128.38)**; H'nin deseni A'dır (O-X1'in "H'nin bitişik penceresi" ayrı bir şey değildir). Stale metnin
+koda sızmaması için iki kilit: (i) `tests/test_foton_model.py` her modülün bağlantısını modelin SDPA'ya
+verdiği maskeden SAYAR (128.4 ± 0.4) ve grafiği attention çıktısının girdiye fonksiyonel bağımlılığından
+ölçer; (ii) `GPT.verify_foton_masks()` her model kurulumunda — yani her koşunun başında — donmuş
+sabitleri ve sayılmış bağlantıyı denetler; eski tasarımla model KURULAMAZ. Desen parametreleri
+config'ten ya da komut satırından ezilemez. O-X1 mikrobenchmark'ı (`scripts/ox1_microbench.py`) donmuş
+desenleri ölçer ve sayım tutmazsa koşmayı reddeder.
+
+**S4 — 2026-09-19: ölçümü ÜRETEN kodda metnin açık bıraktığı seçimler, ilk FOTON koşusundan ÖNCE sabitlendi.**
+Tag'li metin aşağıdakileri yazmıyordu; her biri koşulardan sonra onarılamayacağı için burada kayıtlıdır.
+Kural: metnin en düz okuması; iki okuma varsa FOTON'un ALEYHİNE olan; ve mümkün olan her yerde HAM veri
+de loglanır ki başka bir okuma sonradan hesaplanabilsin.
+* **Bloklar.** FOTON'un bütün blokları (6 paylaşılan + modüller) D kolunun bloğudur: dense SwiGLU(1408),
+  MoE yok. "D ve M'in bloklarıyla birebir aynı" cümlesi yalnızca attention için doğrudur (M'in FFN'i MoE'dir);
+  eşitlenen eksenler listesindeki `ffn_hidden` ve "aktif FLOP tek modüllü bir modelle aynı" bunu söylüyor.
+* **Derinlik ve init.** `n_layer = 8` bir dizinin GEÇTİĞİ derinliktir (kurulan 12 blok değil); residual
+  projeksiyonlarının init ölçeği `(2·8)^-0.5`, D/M ile aynı. H'nin üç modülü bağımsız init çekimleridir.
+  Maskeler RNG tüketmediği için aynı seed'de H ile X bit düzeyinde AYNI başlangıç ağırlıklarından başlar.
+* **Router.** Girdi: yönlendirilen ilk katmanın girdisi olan HAM residual akış (normalizasyon yok, ek
+  parametre yok), pozisyon 0..63'ün eşit ağırlıklı ortalaması, gradyan gövdeye akar (detach yok). Tek
+  doğrusal katman d→3, bias yok, init N(0, 0.02) (diğer bütün doğrusal katmanlar gibi), sıcaklık 1, gürültü
+  yok, float32'de ve autocast dışında (`src/moe.py` ile aynı gerekçe). Eşitlikte en küçük indeks.
+  V10'un "donmuş spesifikasyonda yer alır" dediği init ölçeği / sıcaklık / gürültü değerleri metinde yoktu;
+  değerleri bunlardır.
+* **Gate'in yeri.** `x_çıkış = x + g · (Modül(x) − x)`, `g = p/p.detach()`: gate modülün residual akışa
+  EKLEDİĞİ farkı çarpar, kimlik yolu gate'lenmez ("residual dalını zayıflatmaması için").
+* **Dizi almayan modül.** Bir optimizer adımında hiç dizi almayan modülün forward'ı çalışmaz, gradyanı
+  `None` kalır ve AdamW onu ATLAR (weight decay ve moment güncellemesi de uygulanmaz).
+* **Mikro-batch.** H ve X için 16 × 4 bölüşümü sabittir (V1 bölüşümü serbest bırakıyor, ama router
+  istatistikleri ve V7'nin aux terimi mikro-batch başınadır).
+* **Aktif FLOP.** Yönlendirilen katmanların bağlam terimi `4·d·c`; `c` `src/attn_patterns`'ten
+  programatik alınır: H için A'nın sayılmış ortalaması (128.17), X için üç modülün EN BÜYÜĞÜ (128.50,
+  metnin "ortak hedef"i) — kol başına TEK sabit, FOTON'un aleyhine, router'ın seçiminden bağımsız
+  (paydayı router oynatamasın). Fark 0.0015 puan mertebesindedir; gerçekleşen seçim karışımıyla hesap
+  raporda duyarlılık satırı olarak verilir. Router: dizi başına `2·d·3` FLOP, token başına `2·d·3/T = 6`.
+* **Oracle.** Dizi başına seçim ÖLÇÜT pozisyonları (64..511) üzerindeki ortalama CE ile yapılır (B12 prefix
+  maskesinden önce yazılmıştı; "oracle eğrisi FOTON'un eğrisinin üstünde olamaz" ancak böyle doğrudur).
+  `val_loss` dört kolda da aynı koddan gelir; oracle geçişi ek bir ölçümdür.
+* **Oracle NULL'ı (B11: "modül çıktıları birbirine permüte edilerek").** Okuma: her dizide, her
+  POZİSYONDA üç modülün token kayıpları kendi aralarında rastgele permüte edilir (sabit tohum 54321; her
+  eval noktasında, her koşuda aynı permütasyon), aynı oracle prosedürü bu değiş-tokuş edilebilir
+  "sözde-modüllere" uygulanır. Metnin en düz okuması (etiketleri dizi içinde permüte etmek) minimumu
+  değiştirmez (null = oracle, kazanç hep 0); kayıpları DİZİLER arasında karıştırmak alanlar arası ~0.9
+  nat'lık farkı seçime sokar (null ≪ oracle). İkisi de vazgeçme koşulunun oracle bacağını anlamsız kılar;
+  seçilen okuma B11'in gerekçesini ("modüller aynı olsa bile seçim eğriyi aşağı çeker") taşıyan tek
+  okumadır. **Bu seçim tartışılabilir olduğu için her eval noktasında HAM veri diske yazılır**
+  (`<koşu>/eval_raw/step_*.npz`: üç modülün pozisyon başına CE'si, dizi ortalamaları, router seçimi /
+  olasılıkları / logit'leri, alan kimliği): başka her okuma koşulardan sonra yeniden hesaplanabilir.
+* **Router logları (V6).** `router_dead`: log aralığındaki yük payı ideal payın (1/3) %10'undan az olan
+  modül sayısı (`src/moe.py`'nin eşiği). `router_load_cv`: popülasyon std (tam çökme = √2).
+  `router_switch_rate`: eğitim pencereleri tekrar etmediği için "aynı dizinin modül değiştirmesi"
+  tanımsızdır; ölçülen, ardışık iki log aralığında `p(modül | alan)` dağılımları arasındaki toplam değişim
+  uzaklığının alanlar üzerinden ortalamasıdır. Ham sayımlar (modül; alan × modül) her satırda loglanır.
+* **V7.** Kol X; üç koşul üç preset'tir (`foton-x` / `foton-x-ent` / `foton-x-lb`); iki katsayı da **0.01**
+  (Switch'in aux katsayısı; bu depodaki `aux_loss_coef` varsayılanı; metinde yoktu); entropi bonusu
+  `loss −= 0.01 · ort(H(p_dizi))` (nat), aux `loss += 0.01 · 3 · Σ_m f_m · P_m` mikro-batch başına.
+  "Regularizasyon yok" koşulunda router'a HİÇBİR ek terim gelmez (z-loss dahil). **"%50 bütçe" =
+  `--stop_step 2188`, LR schedule tam bütçe üzerinden**: tarama koşusu, karar koşusunun yörüngesinin ilk
+  yarısıdır. Seçim penceresi son 500 adım; (i) `router_dead = 0` üç seed'in üçünde ve penceredeki her
+  satırda; (ii) dizi-başı entropinin pencere ortalamasının seed ortalaması, en düşük; (iii) fark < 1e-3 ise
+  metnin sırası. Hiçbir koşul (i)'i geçemezse (metin yazmıyor) en az ölü modüllü koşullar arasında (ii)–(iii)
+  ve bu açıkça raporlanır. **Kazanan koşul HEM H HEM X preset'ine uygulanır** (yoksa birincil-2 heterojenliği
+  regularizasyonla karıştırırdı). Uygulama `scripts/router_health.py`; val loss'u OKUMAZ.
+* **V6 erken uyarı.** "İlk 500 adımda kalıcı" = 500. adımda biten ardışık üç log aralığının (450, 475, 500)
+  üçünde de ihlal. "Herhangi üç ardışık aralık" okuması her koşuda ateşlenirdi: init'te router logit'leri
+  ~0 olduğu için dizi-başı entropi ilk aralıklarda zorunlu olarak ~1.0'dır (duman testinde ölçüldü).
+  Çare çevrimleri yalnızca hata düzeltebilir ya da V7 koşulunu değiştirebilir; V10'un dondurduğu
+  düğmelere (init ölçeği, sıcaklık, gürültü, gate normalizasyonu) dokunmak sapmadır.
+* **Zorunlu 2× koşu (V3 adım 2).** Sıfırdan, ayrı bir koşudur; `TrainConfig.budget_mult = 2`: LR schedule
+  referans bütçe üzerinden tanımlı kalır (cosine 1×'te min_lr'a iner, 2×'e kadar min_lr'da SABİT kalır —
+  v01 EK1-B9), `max_steps` 4375'te kalır (V2). Seed bloğunun dışındadır; duvar saatine girmez.
+* **S1 katman bölüşümü.** 10 katmanda **4 + 2 + 4**: modül başına katman sayısı (2) donmuş eksendir,
+  paylaşılan yığınlar simetrik büyür, router yine ilk paylaşılan yığının çıkışını okur. S0 sonuçları
+  görülmeden, S0 preset'leriyle birlikte hash'lendi.
+* **Config hash'i (V10).** Hash'lenen: preset başına `{model, train}` sözlüğünün kanonik JSON'u
+  (`vocab_size` 32768 çözülmüş); toplam = ad→hash eşlemesinin hash'i (`scripts/preset_hash.py`,
+  `experiments/foton-v02/preset_hashes.json`). V7 kazananı preset'e işlendikten SONRA, karar koşularından
+  ÖNCE yazılır.
+* **Blok yeniden koşumu ve provenance (V11a-iii).** Metin "o bloğun TAMAMI yeniden koşulur" diyordu ama
+  kuyruk koşucusu bunu uygulamıyordu (biteni atlıyor, kalanı koşuyordu). Artık uygulanıyor: kısmen koşulmuş
+  bloğun BÜTÜN klasörleri — bitmiş olanlar dahil — silinmeden `<ad>.blok-iptal-<n>` adıyla kenara alınır,
+  deftere yazılır, blok ilk koşusundan yeniden başlar; iptal edilen denemeler duvar saati analizine girmez.
+  Karar ve S1 kuyrukları SIKI'dır: ölçümü üreten kod (`src/`, `scripts/`, `tests/`, `docs/`, ön-kayıt)
+  commit'siz ise kuyruk hiç başlamaz, kuyruk sürerken `src/` değişirse sıradaki koşu başlatılmaz. Her
+  koşunun `provenance.json`'u oturum kimliğini (`session`) ve `code_dirty` alanını taşır (ham `dirty`,
+  kuyruk kendi defterini yazdığı için kampanya boyunca hep True çıkıyor ve hiçbir şey söylemiyordu).
+
+**S5 — 2026-09-19: "H, X'ten ÖNCE koşulur" ile V11a'nın Latin karesi çelişiyor; V11a geçerli.**
+"Sıra" bölümü H'nin X'ten önce koşulmasını istiyor (router hatası varsa GPU yakmamak için); V11a ise
+bağlayıcı olarak seed bloğu + Latin kare rotasyonu istiyor ve üretilen kuyrukta `x-s11`, `h-s22`'den önce,
+blok s44'te X, H'den önce koşuyor. H'yi kol bloğu hâlinde öne almak V11a'nın kaldırdığı confound'u geri
+getirir ve H'nin duvar saatini V11a(iv) gereği geçersiz kılardı. Okuma: "H önce" bir DEVREYE ALMA
+sırasıdır ve amacı (router hatasını ucuza yakalamak) karar koşularından önceki duman testleri ve V7
+taramasıyla karşılanır; karar ve S1 kuyruklarının sırası V11a'nınkidir.
+
+**S6 — 2026-09-19: dondurulmuş korpusta doküman sınırı YOK; D10 tanımsız, D11 val'de D9 ile eşdoğrusal.**
+KORPUS bölümü "doküman sınırları EOS ile işaretli" diyor. Altı `.bin` dosyasının tamamı (306M token)
+tarandı: id ≤ 2 olan (unk / bos / eos) TEK bir token yok. Korpus yeniden kurulmaz (TRIPWIRE: korpus
+değişikliği yeni bir deneydir) ve dört kol aynı veriyi gördüğü için karşılaştırma yanlı değildir. Sonuçları:
+D10 (dizi uzunluğu) ölçülemez — her pencere 512 token'lık sabit bir kesittir ve doküman uzunluğu veriden
+geri çıkarılamaz; D11 (doküman türü) val pencerelerinde alanla özdeştir (her val dosyası tek kaynaktan
+gelir). Aile büyüklüğü 11'de KALIR (V5: aile büyüklüğü hesaplanabilen test sayısından alınamaz); D10
+"ölçülemedi", D11 "D9 ile eşdoğrusal" olarak raporlanır.
+
+**S7 — 2026-09-19: V8'in "prob gerçek tepeyi az gösteriyor" açıklaması yanlış sebebe bağlanmış.**
+V8 farkı (MoE +0.90 GB, dense +0.71 GB) eval'deki `logits.float()` tensörüne bağlıyor. Ölçüldü
+(`scripts/vram_probe_foton.py`): eval tepesi eğitim tepesinin ALTINDA kalıyor. Asıl sebep eğitim döngüsünün
+`_, loss, info = model(x, y)` ataması: `_` önceki mikro-batch'in bf16 logit tensörünü (0.54 GB) bir sonraki
+forward bitene kadar canlı tutuyor. O atama taklit edilince prob gerçek koşuları üç ondalığa kadar yeniden
+üretiyor (dense 6.48 / 6.480 GB, MoE 8.03 / 8.031 GB). Dört kolda da aynı kod çalıştığı için kollar arası
+bir fark değildir ve eğitim döngüsü DEĞİŞTİRİLMEDİ (baseline'larla aynı kalsın); S1'deki dar pay için
+bilinmesi gerekir.
+
+**S8 — 2026-09-19: tag'li metinde kalan, karara girmeyen sayı/ifade artıkları.**
+V4 hâlâ ilk (maskesiz) kümenin sayılarını anıyor: "`N*` ortalaması bütçenin %80.095'i … %0.118";
+`baseline_reference.json`'dan hesaplanan değerler **%80.058 / +%0.072**'dir (L* bölümü ve V9 doğrusunu
+yazıyor); paydalar dosyadan okunduğu için etkilenmez. MİMARİ tablosunun "en uzak erişim" kolonu
+(150 / 511 / 256 / 512) gevşek yazılmış; `src/attn_patterns` 149 / 510 / 255 / 508 verir (desenler
+kendisini de görür: ofset 0 dahil). "en çok 0.33 bağlantı (%0.26)" → hesaplanan 0.3262 = %0.25;
+"128.50 ± 0.33" tek yanlıdır (128.17 … 128.50, ortalama 128.35). Raporlar hesaplanan sayıları basar.
+Sapma-S2'nin son cümlesi ("o koşu kuyruğun sonunda yeniden koşulacak") tarihseldir: `r-d-s11` yeniden
+koşuldu ve on koşunun tamamı aynı commit'i gösteriyor.
+
+**S9 — 2026-09-19: v01 EK1-B13'ün profiler kuralı M kolunda bilinen bir sayaç artefaktına takılıyor (07'de çözülecek).**
+Kurulu torch'un FLOP sayacı `_grouped_mm`'i 0, SDPA'yı maskeden bağımsız T×T sayıyor. M'in (gruplu yol)
+profiler−analitik farkı bu yüzden ~−%19, FOTON'unki ~+%7 çıkar; B13'ün "fark 5 puandan büyükse 'başarılı'
+ilan edilemez" kuralı M'e karşı harfiyen uygulanırsa FOTON'un değil sayacın kusuru yüzünden tetiklenir.
+Koşuları etkilemez (analiz); rapor aşamasında karşılaştırma bileşen bileşen ve M'in FLOP-özdeş `loop`
+yoluyla yapılır, hangi yolun kullanıldığı raporda yazılır. Her koşu ANALİTİK aktif FLOP'unu kendi
+`metrics.jsonl`'ının `meta` satırına yazar.
