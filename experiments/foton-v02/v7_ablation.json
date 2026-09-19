@@ -1,0 +1,212 @@
+{
+ "winner": "none",
+ "winner_preset": "foton-x",
+ "fallback": false,
+ "tied": [
+  "none"
+ ],
+ "reason": "(i) router_dead = 0 süzgecini geçenler: ['none', 'entropy', 'lb']; (ii) en düşük dizi-başı entropi 0.9952; kazanan: none (foton-x)",
+ "conditions": {
+  "none": {
+   "seeds": {
+    "101": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9955164051555953,
+     "entropy_marginal": 0.9920331415209128,
+     "load_cv": 0.10741097282598314,
+     "margin": 0.09694164220230046,
+     "final_counts": [
+      254,
+      227,
+      351
+     ]
+    },
+    "102": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9943776790343778,
+     "entropy_marginal": 0.9861942814898322,
+     "load_cv": 0.1540457776615009,
+     "margin": 0.11010997870029546,
+     "final_counts": [
+      306,
+      289,
+      237
+     ]
+    },
+    "103": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9956374029135423,
+     "entropy_marginal": 0.991487755721703,
+     "load_cv": 0.10904702020174077,
+     "margin": 0.08276856956901131,
+     "final_counts": [
+      286,
+      386,
+      160
+     ]
+    }
+   },
+   "passes_dead_filter": true,
+   "mean_dead": 0.0,
+   "entropy_per_seq": 0.9951771623678384
+  },
+  "entropy": {
+   "seeds": {
+    "101": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9973053373846054,
+     "entropy_marginal": 0.9934496543281526,
+     "load_cv": 0.10889876632253546,
+     "margin": 0.0767167135210701,
+     "final_counts": [
+      244,
+      341,
+      247
+     ]
+    },
+    "102": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9956091432026688,
+     "entropy_marginal": 0.9873463755620735,
+     "load_cv": 0.14173505372460662,
+     "margin": 0.0974480584776882,
+     "final_counts": [
+      255,
+      158,
+      419
+     ]
+    },
+    "103": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9985595498665486,
+     "entropy_marginal": 0.9948021142104617,
+     "load_cv": 0.09374118935727357,
+     "margin": 0.05523355050838038,
+     "final_counts": [
+      310,
+      208,
+      314
+     ]
+    }
+   },
+   "passes_dead_filter": true,
+   "mean_dead": 0.0,
+   "entropy_per_seq": 0.9971580101512743
+  },
+  "lb": {
+   "seeds": {
+    "101": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9975740597174537,
+     "entropy_marginal": 0.9993145702067155,
+     "load_cv": 0.036030194393796344,
+     "margin": 0.07168002946036203,
+     "final_counts": [
+      302,
+      251,
+      279
+     ]
+    },
+    "102": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9973749323202568,
+     "entropy_marginal": 0.9986454007245941,
+     "load_cv": 0.049786810681629635,
+     "margin": 0.07470840338822249,
+     "final_counts": [
+      244,
+      280,
+      308
+     ]
+    },
+    "103": {
+     "last_step": 2188,
+     "window_rows": 21,
+     "max_dead": 0,
+     "mean_dead": 0.0,
+     "entropy_per_seq": 0.9990143322228494,
+     "entropy_marginal": 0.9995503122357343,
+     "load_cv": 0.027978325967957716,
+     "margin": 0.04592929995540297,
+     "final_counts": [
+      254,
+      283,
+      295
+     ]
+    }
+   },
+   "passes_dead_filter": true,
+   "mean_dead": 0.0,
+   "entropy_per_seq": 0.9979877747535199
+  }
+ },
+ "selection_reads_val_loss": false,
+ "rule": {
+  "window_steps": 500,
+  "tie_tol": 0.001,
+  "order": [
+   "none",
+   "entropy",
+   "lb"
+  ]
+ },
+ "early_warning": {
+  "none": {
+   "101": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ],
+   "102": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ],
+   "103": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ]
+  },
+  "entropy": {
+   "101": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ],
+   "102": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ],
+   "103": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ]
+  },
+  "lb": {
+   "101": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ],
+   "102": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ],
+   "103": [
+    "ÖĞRENMİYOR: dizi başına entropi (450, 475, 500) adımlarının üçünde de > 0.9"
+   ]
+  }
+ }
+}

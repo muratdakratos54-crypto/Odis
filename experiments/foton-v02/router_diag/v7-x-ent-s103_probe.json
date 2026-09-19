@@ -1,0 +1,37 @@
+{
+ "what": "en iyi modül router'ın girdisinden öngörülebilir mi (teşhis; karar kuralı DEĞİL)",
+ "run": "checkpoints/foton-v02-tarama/v7-x-ent-s103",
+ "step": 2188,
+ "pca_components": 64,
+ "recomputed_router_vs_dump": {
+  "max_abs_logit_diff": 0.002245187759399414,
+  "choice_agreement": 0.996875
+ },
+ "pooled_input_geometry": {
+  "common_mode_norm": 18.366956999362905,
+  "per_sequence_deviation_norm_mean": 18.798879898568007,
+  "variance_explained_by_first_components": [
+   0.1855756515787001,
+   0.073672231622828,
+   0.04874821504038128,
+   0.04665300809437344,
+   0.03540998546796986
+  ]
+ },
+ "probe_best_module": {
+  "cv_accuracy": 0.3765625,
+  "majority_baseline": 0.38125,
+  "permutation_null_mean": 0.346015625,
+  "permutation_null_max": 0.37109375,
+  "permutation_p": 0.047619047619047616,
+  "n": 1280
+ },
+ "probe_domain_sanity": {
+  "cv_accuracy": 0.96875,
+  "majority_baseline": 0.3390625,
+  "permutation_null_mean": 0.33718750000000003,
+  "permutation_null_max": 0.35859375,
+  "permutation_p": 0.16666666666666666,
+  "n": 1280
+ }
+}

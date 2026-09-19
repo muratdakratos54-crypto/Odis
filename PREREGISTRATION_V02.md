@@ -2051,3 +2051,34 @@ ilan edilemez" kuralı M'e karşı harfiyen uygulanırsa FOTON'un değil sayacı
 Koşuları etkilemez (analiz); rapor aşamasında karşılaştırma bileşen bileşen ve M'in FLOP-özdeş `loop`
 yoluyla yapılır, hangi yolun kullanıldığı raporda yazılır. Her koşu ANALİTİK aktif FLOP'unu kendi
 `metrics.jsonl`'ının `meta` satırına yazar.
+
+**S10 — 2026-09-19: V7 taramasında V6 erken uyarısı 9 koşunun 9'unda ateşlendi; koşular DURDURULMADI; çare çevrimi başlatılmadı.**
+V7 taraması (kol X, üç koşul × seed {101, 102, 103}, `--stop_step 2188`; `checkpoints/foton-v02-tarama/`, tek oturum
+`2026-09-19T02:46:37`, dokuz koşuda da aynı `src/` özeti `f94e548d211a`) tamamlandı. Mekanik V7 seçimi
+(`experiments/foton-v02/v7_ablation.json`): üç koşul da `router_dead = 0` süzgecini geçti; dizi-başı entropinin pencere
+ortalaması **0.9952 (yok) / 0.9972 (entropi bonusu) / 0.9980 (load-balancing aux)**; kazanan **regularizasyon yok** —
+`foton-h` / `foton-x` preset'leri DEĞİŞMEDİ. Ama V6'nın ters-arıza uyarısı (`router_entropy_per_seq > 0.9`, adım
+450 / 475 / 500'ün üçünde de) **dokuz koşunun dokuzunda** ateşlendi; entropi hiçbir koşuda, hiçbir log aralığında 0.98'in
+altına inmedi (en düşük değer 0.9890), yani uyarı Sapma-S4'teki okuma seçimine duyarlı değildir.
+* **Sapma.** V6 "tarama koşusu durdurulur ve sebep incelenir" diyor. Koşular durdurulmadı: tarama koşuları karar verisi
+  değildir, durdurmanın amacı GPU tasarrufudur, ve sebep incelemesinin verisi tam eğridir (router sonradan öğreniyor
+  mu; üç koşul ayrışıyor mu). Sahibin kapı raporu için istediği V7 çıktısı da ancak böyle tamdır. Bu tarama, V6'nın
+  "en çok 3 tarama çevrimi"nin **1. çevrimi** olarak sayılır ve koşu defterinde 9 satırdır. İki koşunun
+  (`v7-x-ent-s101`, `v7-x-lb-s101`) `code_dirty` alanı True'dur: başladıkları anda henüz commit'lenmemiş TEŞHİS betikleri
+  (`scripts/router_*diag.py`) vardı; `src/` özeti dokuz koşuda aynıdır.
+* **Sebep incelemesi** (salt-okunur teşhis; `scripts/router_diag.py`, `router_grad_diag.py`, `router_probe_diag.py`;
+  çıktılar `experiments/foton-v02/v7_router_diag.json` ve `router_diag/`). Uygulama hatası BULUNMADI:
+  (i) donmuş gate'in router'a verdiği tek sinyal `dL/dg` fp32'de dizilerin %77–95'inde EN İYİ modülü gösteriyor
+  (şans %33); (ii) eğitimin bf16 yolu bu sinyali bozmuyor (CUDA'da fp32 ile korelasyon 0.9999, argmin uyumu %99.2);
+  (iii) router'ın girdisi ALANI taşıyor (doğrusal prob %97), ama EN İYİ MODÜLÜ taşımıyor (prob %33–42; permütasyon
+  null'ı %34–39) — bu girdiyle hiçbir doğrusal router en iyi modülü öğrenemezdi; (iv) öğrenilecek hedef durağan
+  değil: aynı val dizisinin en iyi modülünün ardışık eval noktalarında AYNI kalma oranı koşunun büyük kısmında şans
+  düzeyinde (~0.33), koşu sonunda 0.43–0.47;
+  modüller arası dizi-içi kayıp yayılımı ~0.010 nat, oracle'ın router'a üstünlüğü ~0.005 nat, null'a üstünlüğü ~0.001
+  nat; (v) router'ın seçimi en iyi modülle şans düzeyinde örtüşüyor (0.32–0.37) ve sabit val dizilerinin %58–74'ü
+  ardışık eval noktaları arasında modül değiştiriyor (rastgele seçimde 0.67). Okuma: router "öğrenemiyor" değil,
+  bu bütçede ÖĞRENECEĞİ kararlı bir şey yok — üç grafik prefix'ten öngörülebilir bir uzmanlaşma üretmedi.
+* **Çare.** Sapma-S4'ün sabitlediği sınır içinde (hata düzeltmesi ya da V7 koşulu) kalan bir çare YOKTUR: hata
+  bulunmadı ve üç V7 koşulu da bu çevrimde tükendi. Donmuş düğmelere dokunan her çare sapmadır. 2. çevrim
+  BAŞLATILMADI; V10 yer tutucusu DOLDURULMADI; karar kampanyası başlatılmadı. Sonraki adım sahibin kararıdır
+  (`experiments/foton-v02/gate_report_06.md`).
