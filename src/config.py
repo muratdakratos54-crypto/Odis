@@ -198,6 +198,56 @@ PRESETS: dict[str, tuple[ModelConfig, TrainConfig]] = {
                     max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
                     loss_prefix_skip=64),
     ),
+    # V7 router regularizasyon ablasyonu (yalnızca tarama tier'ı, kol X, seed {101,102,103}, %50 bütçe).
+    # Üç koşul: `foton-x` (regularizasyon yok) | `foton-x-ent` (entropi bonusu) | `foton-x-lb` (load-balancing aux).
+    # Katsayı ön-kayıtta yazılı değildi; taramadan ÖNCE 0.01'e sabitlendi (Switch'in aux katsayısı; bu depodaki
+    # `aux_loss_coef` varsayılanı) ve "Sapmalar"a yazıldı. Kazanan koşul HEM H HEM X preset'ine uygulanır.
+    "foton-x-ent": (
+        ModelConfig(foton="x", foton_reg="entropy", foton_reg_coef=0.01),
+        TrainConfig(run_name="foton-x-ent", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-x-lb": (
+        ModelConfig(foton="x", foton_reg="lb", foton_reg_coef=0.01),
+        TrainConfig(run_name="foton-x-lb", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    # --- S1 basamağı (ön-kayıt V8: 640 x 10, n_head 10, ffn 1760, expert 440). Yalnızca sahibin "S1'e çık"
+    # kararı loglandıktan sonra koşulur (scripts/owner_decision.py); ad `-s1` ile biter ki kuyruk üreteci
+    # ölçeği KOL ADINDAN çıkarsın. FOTON'un katman bölüşümü ön-kayıtta yalnız 8 katman için yazılıydı (3+2+3);
+    # 10 katmanda 4+2+4: modül başına katman sayısı (2) donmuş eksen olduğu için o sabit kalır, paylaşılan
+    # bloklar simetrik büyür, router yine ilk paylaşılan yığının ÇIKIŞINI okur. S0 sonuçları görülmeden,
+    # burada sabitlendi ve preset hash'ine girer (sonradan seçilebilir bir serbestlik olmasın).
+    "foton-d-s1": (
+        ModelConfig(d_model=640, n_layer=10, n_head=10, ffn_hidden=1760),
+        TrainConfig(run_name="foton-d-s1", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-m-s1": (
+        ModelConfig(d_model=640, n_layer=10, n_head=10, ffn_hidden=1760, n_experts=16, top_k=3,
+                    expert_hidden=440, n_shared_experts=1, first_dense_layers=1, aux_loss_coef=0.0,
+                    router_gate="sigmoid", bias_update_rate=0.001),
+        TrainConfig(run_name="foton-m-s1", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-h-s1": (
+        ModelConfig(d_model=640, n_layer=10, n_head=10, ffn_hidden=1760, foton="h",
+                    foton_pre=4, foton_routed=2, foton_post=4),
+        TrainConfig(run_name="foton-h-s1", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-x-s1": (
+        ModelConfig(d_model=640, n_layer=10, n_head=10, ffn_hidden=1760, foton="x",
+                    foton_pre=4, foton_routed=2, foton_post=4),
+        TrainConfig(run_name="foton-x-s1", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
     "tiny-foton": (
         ModelConfig(max_seq_len=128, d_model=128, n_layer=4, n_head=4, ffn_hidden=352,
                     foton="x", foton_prefix_k=16, foton_pre=1, foton_routed=2, foton_post=1),

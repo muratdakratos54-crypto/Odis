@@ -94,7 +94,7 @@ def test_evaluate_mask_is_a_prefix_not_a_suffix(setup):
     assert evaluate(model, ds, cfg, ctx)["primary"] != pytest.approx(tot / 2, abs=1e-6)
 
 
-@pytest.mark.parametrize("preset", ["foton-d", "foton-m"])
+@pytest.mark.parametrize("preset", ["foton-d", "foton-m", "foton-h", "foton-x", "foton-x-ent", "foton-x-lb"])
 def test_frozen_baseline_presets_match_the_preregistration(preset):
     """Ön-kayıt V1/V2'nin sayıları: bunlarla türetilen `L*` başka değerlerle taşınamaz."""
     mcfg, tcfg = PRESETS[preset]
@@ -116,6 +116,55 @@ def test_foton_m_is_the_preregistered_moe_baseline():
     assert (m.aux_loss_coef, m.router_gate, m.bias_update_rate, m.moe_impl) == (0.0, "sigmoid", 0.001, "grouped")
     assert m.expert_hidden % 8 == 0, "8'in katı değilse _grouped_mm sessizce döngü yoluna düşer"
     assert PRESETS["foton-d"][0].n_experts == 0
+
+
+S0_ARMS = ["foton-d", "foton-m", "foton-h", "foton-x", "foton-x-ent", "foton-x-lb"]
+S1_ARMS = ["foton-d-s1", "foton-m-s1", "foton-h-s1", "foton-x-s1"]
+
+
+def test_closed_v2_list_is_identical_in_every_campaign_preset():
+    """Ön-kayıt V2'nin KAPALI listesi: dört kolda (ve S1'de, ve V7 koşullarında) TrainConfig BİREBİR aynı.
+
+    Tek fark `run_name`. Bir kolun derleyici bayrağı, VRAM sınırı ya da log aralığı farklı olsaydı
+    `quality/sec` bir ayarla oynatılabilirdi ("başarılı" -> "güçlü başarı")."""
+    from dataclasses import asdict
+    ref = {k: v for k, v in asdict(PRESETS["foton-d"][1]).items() if k != "run_name"}
+    for name in S0_ARMS + S1_ARMS:
+        got = {k: v for k, v in asdict(PRESETS[name][1]).items() if k != "run_name"}
+        assert got == ref, f"{name}: {[k for k in ref if got[k] != ref[k]]}"
+        assert PRESETS[name][1].run_name == name
+        assert PRESETS[name][1].budget_mult == 1 and PRESETS[name][0].dropout == 0.0
+        assert PRESETS[name][0].moe_impl == "grouped" and PRESETS[name][0].tie_embeddings is True
+
+
+def test_foton_arms_differ_from_the_dense_baseline_only_in_the_foton_fields():
+    """H ve X, D ile AYNI boyutlarda (d 512, 8 katman, 8 head, ffn 1408, MoE yok): fark yalnızca yönlendirmede."""
+    from dataclasses import asdict
+    d = asdict(PRESETS["foton-d"][0])
+    for name, arm, reg in (("foton-h", "h", "none"), ("foton-x", "x", "none"),
+                           ("foton-x-ent", "x", "entropy"), ("foton-x-lb", "x", "lb")):
+        m = asdict(PRESETS[name][0])
+        assert {k for k in m if m[k] != d[k]} <= {"foton", "foton_reg"}, name
+        assert (m["foton"], m["foton_reg"], m["foton_reg_coef"]) == (arm, reg, 0.01)
+        assert (m["foton_prefix_k"], m["foton_pre"], m["foton_routed"], m["foton_post"]) == (64, 3, 2, 3)
+        assert m["n_experts"] == 0
+    assert asdict(PRESETS["foton-d"][0])["foton"] == "" and asdict(PRESETS["foton-m"][0])["foton"] == ""
+    # H ile X'in tek farkı `foton` alanı (aynı regularizasyon): birincil-2 yalnızca heterojenliği izole eder
+    h, x = asdict(PRESETS["foton-h"][0]), asdict(PRESETS["foton-x"][0])
+    assert {k for k in h if h[k] != x[k]} == {"foton"}
+
+
+def test_s1_presets_are_the_preregistered_640x10_step_with_a_4_2_4_split():
+    for name in S1_ARMS:
+        m = PRESETS[name][0]
+        assert (m.d_model, m.n_layer, m.n_head, m.ffn_hidden, m.max_seq_len) == (640, 10, 10, 1760, 512)
+    m = PRESETS["foton-m-s1"][0]
+    assert (m.n_experts, m.top_k, m.expert_hidden, m.n_shared_experts, m.first_dense_layers) == (16, 3, 440, 1, 1)
+    assert (m.aux_loss_coef, m.router_gate, m.bias_update_rate) == (0.0, "sigmoid", 0.001) and m.expert_hidden % 8 == 0
+    for name, arm in (("foton-h-s1", "h"), ("foton-x-s1", "x")):
+        m = PRESETS[name][0]
+        assert (m.foton, m.foton_pre, m.foton_routed, m.foton_post, m.foton_prefix_k) == (arm, 4, 2, 4, 64)
+        assert m.foton_routed == PRESETS["foton-x"][0].foton_routed, "modül başına katman sayısı donmuş eksen"
 
 
 def test_ref_batch_is_the_frozen_literal_16(setup):
