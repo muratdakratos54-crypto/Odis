@@ -25,6 +25,11 @@ Her guard önce BOZULMAMIŞ hâlde koşulur ve GEÇMEK zorundadır — yoksa "mu
 anlamsızdır (zaten kırık olan bir guard her şeyi "yakalar").
 
 Çıkış kodu: hayatta kalan mutant varsa 1. Kayıt: `experiments/foton-v02-prereg/mutation_log.md`.
+
+İKİ SINAV (`--suite`). `prereg` (varsayılan): tag'li ön-kaydın guard'ları; kaydı `foton-v02-prereg` tag'iyle
+DONMUŞTUR, yeniden koşmak o dosyayı ezer — tag'den sonra yalnızca `--only` ile (kayda yazmadan) koşulur.
+`06`: tag'den SONRA, FOTON uygulamasıyla yazılan guard'lar (`scripts/mutation_catalog_06.py`); kaydı
+`experiments/foton-v02/mutation_log_06.md`.
 """
 from __future__ import annotations
 
@@ -173,8 +178,13 @@ MUTANTS: list[dict] = [
 ]
 
 
+EXTRA_ENV: dict[str, str] = {}
+EXTRA_DIRS: list[str] = []
+TITLE = "# Mutasyon sınavı kaydı (ön-kayıt V13)"
+
+
 def run(cmd: list[str], cwd: str) -> tuple[int, str]:
-    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1")
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1", **EXTRA_ENV)
     p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
                        errors="replace", env=env, timeout=600)
     tail = (p.stdout + p.stderr).strip().split("\n")
@@ -204,16 +214,30 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="", help="virgüllü kimlik önekleri (ör. E,B,O0): HIZLI yineleme içindir, "
                                                 "kayıt dosyasına YAZMAZ — kayıt yalnızca tam koşumdan çıkar")
+    ap.add_argument("--suite", choices=("prereg", "06"), default="prereg",
+                    help="prereg: tag'li ön-kaydın sınavı (kaydı DONMUŞ); 06: FOTON uygulamasının guard'ları")
     args = ap.parse_args()
     only = tuple(x.strip() for x in args.only.split(",") if x.strip())
-    global MUTANTS
+    global MUTANTS, LOG, TITLE
+    if args.suite == "06":
+        from mutation_catalog_06 import MUTANTS_06
+        MUTANTS = [{**m, "guard": PYTEST(m["guard"])} for m in MUTANTS_06]
+        LOG = "experiments/foton-v02/mutation_log_06.md"
+        TITLE = "# Mutasyon sınavı kaydı — 06 (FOTON uygulaması) guard'ları (ön-kayıt V13)"
+        # Geçici kopyada `.git` yok; iki guard tag'li sürümle KARŞILAŞTIRIR (D/M bit-özdeşliği, donmuş gövde) ve
+        # tag'e erişemezse `skip` eder — atlanan test hiçbir mutantı yakalamaz. Salt-okunur git erişimi verilir.
+        EXTRA_ENV["GIT_DIR"] = os.path.join(ROOT, ".git")
+        EXTRA_DIRS.append("docs")                 # tests/test_flops.py docs/flops.md tablolarını koddan yeniden üretir
+    elif not only:
+        sys.exit("`--suite prereg` kaydı foton-v02-prereg tag'iyle DONMUŞTUR; tam koşum onu ezer. "
+                 "Yeniden sınamak için `--only <önek>` kullan (kayda yazmaz).")
     if only:
         MUTANTS = [m for m in MUTANTS if m["id"].startswith(only)]
     tmp = tempfile.mkdtemp(prefix="foton_mut_")
     rows, survivors = [], []
     pins_tmp = os.path.join(ROOT, "experiments", "foton-v02-prereg", "_mutant_pins.json")
     try:
-        for d in ("src", "tests", "scripts"):
+        for d in ("src", "tests", "scripts", *EXTRA_DIRS):
             shutil.copytree(os.path.join(ROOT, d), os.path.join(tmp, d),
                             ignore=shutil.ignore_patterns("__pycache__"))
         for f in (PREREG, "PREREGISTRATION.md"):
@@ -278,7 +302,7 @@ def main() -> None:
 
     # 3) kayıt
     n_eq = sum(1 for m, c, _ in rows if not c and "equivalent" in m)
-    out = ["# Mutasyon sınavı kaydı (ön-kayıt V13)", "",
+    out = [TITLE, "",
            "Her satır: bir guard'ın koruduğu şey KASTEN bozuldu ve guard koşuldu. \"Bozdum, yakaladı\".",
            "Bütün guard'lar önce bozulmamış hâlde koşuldu ve geçti. Gerçek depo değiştirilmedi.", "",
            f"**{len(rows)} mutant: {len(rows) - len(survivors) - n_eq} yakalandı, {n_eq} kanıtlı eşdeğer, "
@@ -296,6 +320,7 @@ def main() -> None:
         if "equivalent" in m and not caught:
             out += ["", f"**{m['id']} neden eşdeğer:** {m['equivalent']}"]
     if not only:                              # kısmi koşum (`--only`) kaydı EZMEZ
+        os.makedirs(os.path.dirname(os.path.join(ROOT, LOG)), exist_ok=True)
         with open(os.path.join(ROOT, LOG), "w", encoding="utf-8", newline="\n") as f:
             f.write("\n".join(out) + "\n")
     print(f"\n{len(rows)} mutant: {len(rows) - len(survivors) - n_eq} yakalandı, {n_eq} kanıtlı eşdeğer, "

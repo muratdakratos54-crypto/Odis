@@ -1,0 +1,444 @@
+{
+ "what": "O-X1 modül düzeyi mikrobenchmark (PREREGISTRATION_V02.md 'O-X1'); birim = eğitilen 2 katmanlı modül",
+ "warnings": [
+  "sıra dengesi tam değil: 5 tekrar 4 modülle tam Latin karesi kurmaz (bkz. order_position_counts); medyan bu yüzden kullanılıyor"
+ ],
+ "reportable": true,
+ "honest_note": "GATHER YOK: yoğun SDPA + boolean maske ile maskelenen (i, j) çiftleri hesaptan atlanmaz, çekirdek T x T skorun tamamını üretir. Bu ölçüm 'gather bedeli' DEĞİL, eşit algoritmik bağlantıda MASKELİ-ATTENTION çekirdek yolunun nedensel hızlı yola (is_causal) karşı bedelidir; 'yavaşlama maske yolundan mı, FOTON'un kendisinden mi' sorusunu ayırır. Router ve index_select/index_copy bedeli bu ölçümün DIŞINDADIR.",
+ "stale_ox1_text": "Ön-kaydın O-X1 paragrafındaki modül listesi (A bitişik 256 / B dilated 256 / C 128+128) BAYATTIR: nedensel maske altında 192.25 / 128.50 / 88.31 bağlantı verir (reddedilen compute confound). Burada ölçülen DONMUŞ tasarımdır ve üç kilitle pinlenmiştir (sabitler, sayılmış bağlantı, maske özdeşliği).",
+ "protocol_pinned": {
+  "batch": 16,
+  "T": 512,
+  "warmup_iters": 10,
+  "repeats": 5,
+  "iters": 30,
+  "device": "cuda",
+  "autocast": "bfloat16",
+  "pass": "ileri + geri, loss = çıktının toplamı",
+  "optimizer": "YOK (AdamW dahil değil)",
+  "sync": "torch.cuda.synchronize, zamanlanan dilimin iki yanında",
+  "statistic": "tekrarlar üzerinden tok/s medyanı + min/max",
+  "tokens_per_iter": 8192,
+  "order": "tekrar r'de temel sıra (A,B,C,full) r kadar sola döner",
+  "peak_memory": "dilim başına sıfırlanan torch.cuda.max_memory_allocated; dört modülün ağırlıkları da bellekte durur (dilim başı taban: repeats.*.segments.*.base_gb)"
+ },
+ "protocol_realized": {
+  "batch": 16,
+  "T": 512,
+  "warmup_iters": 10,
+  "repeats": 5,
+  "iters": 30,
+  "device": "cuda",
+  "autocast": "bfloat16",
+  "tokens_per_iter": 8192
+ },
+ "protocol_deviations": {},
+ "frozen_spec": {
+  "expected": {
+   "A_LOCAL_W": 150,
+   "B_DILATION_R": 2,
+   "B_BUDGET_W": 256,
+   "C_LOCAL_W": 256,
+   "C_STRIDE_S": 4,
+   "C_STRIDE_W": 256
+  },
+  "found_in_attn_patterns": {
+   "A_LOCAL_W": 150,
+   "B_DILATION_R": 2,
+   "B_BUDGET_W": 256,
+   "C_LOCAL_W": 256,
+   "C_STRIDE_S": 4,
+   "C_STRIDE_W": 256
+  }
+ },
+ "frozen_dims": {
+  "expected": {
+   "d_model": 512,
+   "n_head": 8,
+   "ffn_hidden": 1408,
+   "max_seq_len": 512,
+   "n_experts": 0,
+   "dropout": 0.0,
+   "foton_pre": 3,
+   "foton_routed": 2
+  },
+  "found_in_preset": {
+   "d_model": 512,
+   "n_head": 8,
+   "ffn_hidden": 1408,
+   "max_seq_len": 512,
+   "n_experts": 0,
+   "dropout": 0.0,
+   "foton_pre": 3,
+   "foton_routed": 2
+  },
+  "preset": "foton-x"
+ },
+ "connection_target": {
+  "target": 128.4,
+  "tol": 0.4,
+  "applies_to": [
+   "A",
+   "B",
+   "C"
+  ]
+ },
+ "modules": {
+  "A": {
+   "pattern": "yerel W=150",
+   "connections_counted": 128.173828125,
+   "connections_per_layer": {
+    "layer3": 128.173828125,
+    "layer4": 128.173828125
+   },
+   "connections_source": "ölçülen Block'un attn_mask buffer'ı: mask.sum() / (n_head * T)",
+   "tok_per_sec_median": 603620.5443329306,
+   "tok_per_sec_min": 598613.5140318237,
+   "tok_per_sec_max": 606810.0202753488,
+   "tok_per_sec_by_repeat": {
+    "r0": 606810.0202753488,
+    "r1": 603620.5443329306,
+    "r2": 604239.115100201,
+    "r3": 601324.2051384756,
+    "r4": 598613.5140318237
+   },
+   "peak_gb": 0.693144576,
+   "peak_gb_by_repeat": {
+    "r0": 0.693144576,
+    "r1": 0.693144576,
+    "r2": 0.693144576,
+    "r3": 0.693144576,
+    "r4": 0.693144576
+   },
+   "sdpa_ops": [
+    "aten::_scaled_dot_product_efficient_attention",
+    "aten::_scaled_dot_product_efficient_attention_backward"
+   ],
+   "tok_per_sec_vs_full": 0.9416315930463433
+  },
+  "B": {
+   "pattern": "dilated r=2 W=256",
+   "connections_counted": 128.5,
+   "connections_per_layer": {
+    "layer3": 128.5,
+    "layer4": 128.5
+   },
+   "connections_source": "ölçülen Block'un attn_mask buffer'ı: mask.sum() / (n_head * T)",
+   "tok_per_sec_median": 602179.8144563851,
+   "tok_per_sec_min": 600493.7653663735,
+   "tok_per_sec_max": 603963.3620588825,
+   "tok_per_sec_by_repeat": {
+    "r0": 603963.3620588825,
+    "r1": 602179.8144563851,
+    "r2": 601690.3444573899,
+    "r3": 602776.2142272084,
+    "r4": 600493.7653663735
+   },
+   "peak_gb": 0.693144576,
+   "peak_gb_by_repeat": {
+    "r0": 0.693144576,
+    "r1": 0.693144576,
+    "r2": 0.693144576,
+    "r3": 0.693144576,
+    "r4": 0.693144576
+   },
+   "sdpa_ops": [
+    "aten::_scaled_dot_product_efficient_attention",
+    "aten::_scaled_dot_product_efficient_attention_backward"
+   ],
+   "tok_per_sec_vs_full": 0.9393840937166108
+  },
+  "C": {
+   "pattern": "yerel W=256 + strided s=4 W=256",
+   "connections_counted": 128.375,
+   "connections_per_layer": {
+    "layer3": 128.375,
+    "layer4": 128.375
+   },
+   "connections_source": "ölçülen Block'un attn_mask buffer'ı: mask.sum() / (n_head * T)",
+   "tok_per_sec_median": 604182.9639645274,
+   "tok_per_sec_min": 600412.3437794166,
+   "tok_per_sec_max": 604506.7929739304,
+   "tok_per_sec_by_repeat": {
+    "r0": 604506.7929739304,
+    "r1": 600412.3437794166,
+    "r2": 604182.9639645274,
+    "r3": 604183.5581054657,
+    "r4": 602541.3830200993
+   },
+   "peak_gb": 0.693144576,
+   "peak_gb_by_repeat": {
+    "r0": 0.693144576,
+    "r1": 0.693144576,
+    "r2": 0.693144576,
+    "r3": 0.693144576,
+    "r4": 0.693144576
+   },
+   "sdpa_ops": [
+    "aten::_scaled_dot_product_efficient_attention",
+    "aten::_scaled_dot_product_efficient_attention_backward"
+   ],
+   "tok_per_sec_vs_full": 0.9425089523387548
+  },
+  "full": {
+   "pattern": "tam nedensel, is_causal hızlı yolu (D/M katmanlarının yolu)",
+   "connections_counted": 256.5,
+   "connections_per_layer": {
+    "twin": 256.5
+   },
+   "connections_source": "ölçülen blok is_causal hızlı yolundadır ve maske TUTMAZ; sayı, aynı ağırlıklı ikiz Block(pattern='full')'un attn_mask buffer'ından. İki attention çıktısının göreli farkı 0.000e+00 (eşik 0.0001)",
+   "tok_per_sec_median": 641036.8436981945,
+   "tok_per_sec_min": 640826.3990861818,
+   "tok_per_sec_max": 645245.3066396562,
+   "tok_per_sec_by_repeat": {
+    "r0": 641002.9024821577,
+    "r1": 640826.3990861818,
+    "r2": 641036.8436981945,
+    "r3": 645245.3066396562,
+    "r4": 641644.8834358375
+   },
+   "peak_gb": 0.684755968,
+   "peak_gb_by_repeat": {
+    "r0": 0.684755968,
+    "r1": 0.684755968,
+    "r2": 0.684755968,
+    "r3": 0.684755968,
+    "r4": 0.684755968
+   },
+   "sdpa_ops": [
+    "aten::_scaled_dot_product_efficient_attention",
+    "aten::_scaled_dot_product_efficient_attention_backward"
+   ],
+   "tok_per_sec_vs_full": 1.0
+  }
+ },
+ "h_arm": {
+  "pattern": "A",
+  "n_modules": 3,
+  "note": "H kolunun üç modülü de A desenidir (ayrı ağırlık, aynı maske): A satırı H için de geçerlidir, ayrıca ölçülmedi."
+ },
+ "repeats": {
+  "r0": {
+   "order": [
+    "A",
+    "B",
+    "C",
+    "full"
+   ],
+   "segments": {
+    "A": {
+     "seconds": 0.4050031999940984,
+     "tok_per_sec": 606810.0202753488,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "B": {
+     "seconds": 0.4069121000356972,
+     "tok_per_sec": 603963.3620588825,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "C": {
+     "seconds": 0.4065462999860756,
+     "tok_per_sec": 604506.7929739304,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "full": {
+     "seconds": 0.38339919998543337,
+     "tok_per_sec": 641002.9024821577,
+     "peak_gb": 0.684755968,
+     "base_gb": 0.150634496
+    }
+   }
+  },
+  "r1": {
+   "order": [
+    "B",
+    "C",
+    "full",
+    "A"
+   ],
+   "segments": {
+    "B": {
+     "seconds": 0.4081173000158742,
+     "tok_per_sec": 602179.8144563851,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "C": {
+     "seconds": 0.4093186999671161,
+     "tok_per_sec": 600412.3437794166,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "full": {
+     "seconds": 0.3835047999746166,
+     "tok_per_sec": 640826.3990861818,
+     "peak_gb": 0.684755968,
+     "base_gb": 0.150634496
+    },
+    "A": {
+     "seconds": 0.40714319999096915,
+     "tok_per_sec": 603620.5443329306,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    }
+   }
+  },
+  "r2": {
+   "order": [
+    "C",
+    "full",
+    "A",
+    "B"
+   ],
+   "segments": {
+    "C": {
+     "seconds": 0.4067642000154592,
+     "tok_per_sec": 604182.9639645274,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "full": {
+     "seconds": 0.38337890000548214,
+     "tok_per_sec": 641036.8436981945,
+     "peak_gb": 0.684755968,
+     "base_gb": 0.150634496
+    },
+    "A": {
+     "seconds": 0.406726399960462,
+     "tok_per_sec": 604239.115100201,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "B": {
+     "seconds": 0.4084492999827489,
+     "tok_per_sec": 601690.3444573899,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    }
+   }
+  },
+  "r3": {
+   "order": [
+    "full",
+    "A",
+    "B",
+    "C"
+   ],
+   "segments": {
+    "full": {
+     "seconds": 0.3808783999993466,
+     "tok_per_sec": 645245.3066396562,
+     "peak_gb": 0.684755968,
+     "base_gb": 0.150634496
+    },
+    "A": {
+     "seconds": 0.4086980000138283,
+     "tok_per_sec": 601324.2051384756,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "B": {
+     "seconds": 0.40771349996794015,
+     "tok_per_sec": 602776.2142272084,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "C": {
+     "seconds": 0.4067638000124134,
+     "tok_per_sec": 604183.5581054657,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    }
+   }
+  },
+  "r4": {
+   "order": [
+    "A",
+    "B",
+    "C",
+    "full"
+   ],
+   "segments": {
+    "A": {
+     "seconds": 0.4105487000197172,
+     "tok_per_sec": 598613.5140318237,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "B": {
+     "seconds": 0.409263200010173,
+     "tok_per_sec": 600493.7653663735,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "C": {
+     "seconds": 0.40787240001372993,
+     "tok_per_sec": 602541.3830200993,
+     "peak_gb": 0.693144576,
+     "base_gb": 0.150634496
+    },
+    "full": {
+     "seconds": 0.38301559997489676,
+     "tok_per_sec": 641644.8834358375,
+     "peak_gb": 0.684755968,
+     "base_gb": 0.150634496
+    }
+   }
+  }
+ },
+ "order_position_counts": {
+  "A": {
+   "0": 2,
+   "1": 1,
+   "2": 1,
+   "3": 1
+  },
+  "B": {
+   "0": 1,
+   "1": 2,
+   "2": 1,
+   "3": 1
+  },
+  "C": {
+   "0": 1,
+   "1": 1,
+   "2": 2,
+   "3": 1
+  },
+  "full": {
+   "0": 1,
+   "1": 1,
+   "2": 1,
+   "3": 2
+  }
+ },
+ "environment": {
+  "torch": "2.14.0+cu130",
+  "torch_cuda": "13.0",
+  "python": "3.13.14",
+  "host": "Windows-11-10.0.26200-SP0",
+  "device": "cuda",
+  "device_name": "NVIDIA GeForce RTX 4070 SUPER",
+  "git_head": "dfa95ca8f06c7d8babc9813cd4cc15e65fe4caf4",
+  "git_status": [
+   "?? scripts/mutation_catalog_06.py"
+  ],
+  "sha256": {
+   "src/attn_patterns.py": "79396cf29e555bc082faae9800b6e9c36f23998f700030376eb834ff92629405",
+   "src/model.py": "ad94820e9f63e33419a49b31860adc8e9b897f66f70e494492f29db47b984e9b",
+   "src/config.py": "5c8967224355285ebfea4260a1bbbf85ca232d3892bc4397eb78320e72a25f03",
+   "scripts/ox1_microbench.py": "9db0bf4cf1a3d9d653bdf934077ab4b8a4957751d529b0385312f482e1ff8b75"
+  },
+  "gpu_memory_at_start": {
+   "free_gb": 11.386486784,
+   "total_gb": 12.878086144,
+   "used_gb": 1.49159936,
+   "reserved_by_this_process_gb": 0.17825792,
+   "note": "used_gb = aygıtın TAMAMINDA dolu bellek (bu sürecin CUDA bağlamı ve ayırdıkları dahil, modüller kurulduktan sonra okundu). Başka bir süreç (ör. eğitim kuyruğu) GPU'yu kullanıyorsa tok/s ölçümü GEÇERSİZDİR: used_gb bu sürecin payını ve masaüstünü belirgin aşıyorsa GPU boşken yinele."
+  }
+ },
+ "written_at": "2026-09-19T02:33:52+0200"
+}

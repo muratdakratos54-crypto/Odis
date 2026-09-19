@@ -200,6 +200,23 @@ def test_foton_run_logs_oracle_curves_router_fields_meta_and_raw_dumps(run_foton
     assert rec["train"][0]["router_switch_rate"] is None and rec["train"][1]["router_switch_rate"] is not None
 
 
+def test_oracle_null_uses_the_same_pinned_permutation_at_every_eval_and_leaves_the_global_rng_alone(run_foton, monkeypatch):
+    """Null'ın permütasyonu SABİT tohumdan (54321) gelir: her eval noktasında, her koşuda AYNI çekim. Global RNG'den
+    çekilseydi (a) null eğrisi eval'den eval'e başka bir permütasyonla kurulur, (b) eval eğitimin RNG akışını
+    tüketir — yani FOTON kollarının eğitimi, eval yapılıp yapılmadığına bağlı hâle gelirdi."""
+    seen, real = [], train.oracle_stats
+
+    def spy(ce_tok, choice, k, perm_idx):
+        seen.append(perm_idx.cpu().clone())
+        return real(ce_tok, choice, k, perm_idx)
+
+    monkeypatch.setattr(train, "oracle_stats", spy)
+    run_foton("n", "--max_steps", "20", "--eval_interval", "10", "--log_interval", "5", "--warmup_steps", "5")
+    want = torch.randint(6, (16, 64), generator=torch.Generator().manual_seed(train.ORACLE_NULL_SEED))
+    assert train.ORACLE_NULL_SEED == 54321 and len(seen) == 3
+    assert all(torch.equal(p, want) for p in seen)
+
+
 def test_baseline_arms_get_a_meta_row_but_no_foton_fields(run_foton):
     rec = run_foton("d", "--max_steps", "10", "--eval_interval", "10", "--log_interval", "5", "--warmup_steps", "5",
                     preset="tiny")

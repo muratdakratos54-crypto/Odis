@@ -1,0 +1,144 @@
+{
+ "out_dir": "checkpoints/foton-v02-tarama",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "v7-x-s101",
+   "args": [
+    "--preset",
+    "foton-x",
+    "--seed",
+    "101",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s101",
+   "_arm": "x"
+  },
+  {
+   "name": "v7-x-ent-s101",
+   "args": [
+    "--preset",
+    "foton-x-ent",
+    "--seed",
+    "101",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s101",
+   "_arm": "x-ent"
+  },
+  {
+   "name": "v7-x-lb-s101",
+   "args": [
+    "--preset",
+    "foton-x-lb",
+    "--seed",
+    "101",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s101",
+   "_arm": "x-lb"
+  },
+  {
+   "name": "v7-x-ent-s102",
+   "args": [
+    "--preset",
+    "foton-x-ent",
+    "--seed",
+    "102",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s102",
+   "_arm": "x-ent"
+  },
+  {
+   "name": "v7-x-lb-s102",
+   "args": [
+    "--preset",
+    "foton-x-lb",
+    "--seed",
+    "102",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s102",
+   "_arm": "x-lb"
+  },
+  {
+   "name": "v7-x-s102",
+   "args": [
+    "--preset",
+    "foton-x",
+    "--seed",
+    "102",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s102",
+   "_arm": "x"
+  },
+  {
+   "name": "v7-x-lb-s103",
+   "args": [
+    "--preset",
+    "foton-x-lb",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s103",
+   "_arm": "x-lb"
+  },
+  {
+   "name": "v7-x-s103",
+   "args": [
+    "--preset",
+    "foton-x",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s103",
+   "_arm": "x"
+  },
+  {
+   "name": "v7-x-ent-s103",
+   "args": [
+    "--preset",
+    "foton-x-ent",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v7-s103",
+   "_arm": "x-ent"
+  }
+ ],
+ "_scale": "S0",
+ "_owner_decision": null,
+ "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
+ "_blocks": [
+  [
+   "v7-x-s101",
+   "v7-x-ent-s101",
+   "v7-x-lb-s101"
+  ],
+  [
+   "v7-x-ent-s102",
+   "v7-x-lb-s102",
+   "v7-x-s102"
+  ],
+  [
+   "v7-x-lb-s103",
+   "v7-x-s103",
+   "v7-x-ent-s103"
+  ]
+ ]
+}

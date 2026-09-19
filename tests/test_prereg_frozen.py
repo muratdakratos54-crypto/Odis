@@ -27,6 +27,11 @@ def test_unchanged_and_appended_documents_pass():
 def test_filling_the_single_v10_placeholder_is_the_only_allowed_body_edit():
     filled = TAGGED.replace("    __DOLDURULACAK: FOTON config SHA-256__   (preset'ler henüz yazılmadı)", FILLED_LINE)
     assert cf.check(TAGGED, filled) == [] and cf.check(TAGGED, filled + "\n**S3 — ek.**\n") == []
+    # doldurulmuş satır TEKTİR: sona ("Sapmalar") ikinci bir hash satırı eklenemez — hangisinin bağlayıcı olduğu
+    # belirsizleşirdi (gövde farkı bunu yakalamaz: ek, izinli bölgededir; yakalayan satır SAYIMIDIR)
+    other = FILLED_LINE.replace(HASH, "b" * 64)
+    assert cf.check(TAGGED, filled + "\n**S3 — hash güncellendi.**\n" + other + "\n")
+    assert cf.check(TAGGED, TAGGED + "\n" + FILLED_LINE + "\n")
     # yer tutucu satırı SİLİNEMEZ ve serbest metinle doldurulamaz
     assert cf.check(TAGGED, TAGGED.replace("    __DOLDURULACAK: FOTON config SHA-256__   (preset'ler henüz yazılmadı)\n", ""))
     assert cf.check(TAGGED, TAGGED.replace("    __DOLDURULACAK: FOTON config SHA-256__", "    hash sonra yazılacak"))

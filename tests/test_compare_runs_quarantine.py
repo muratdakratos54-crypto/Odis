@@ -46,10 +46,17 @@ def test_foton_paths_are_refused(path):
     {"model": {}, "train": {"data_dir": "data/x", "loss_prefix_skip": 64}},         # prefix maskeli ölçüt
     {"model": {"foton": "x"}, "train": {"data_dir": "data/x"}},                     # FOTON kolu
 ])
-def test_foton_runs_are_refused_even_under_an_innocent_directory_name(tmp_path, config):
-    """Dizin yeniden adlandırılsa da koşunun KENDİ config'i FOTON'u ele verir."""
-    with pytest.raises(SystemExit, match="KARANTİNA"):
-        cr.load(_run_dir(tmp_path, "dense-tok-s11", config))
+def test_runs_are_refused_by_their_own_config_even_under_an_innocent_directory_name(tmp_path, config):
+    """Dizin yeniden adlandırılsa da koşunun KENDİ config'i FOTON'u ele verir.
+
+    Testin ADI bilerek "foton" içermez: pytest `tmp_path`'i test adından türetir ve ilk hâlde yolun kendisi
+    "foton" içerdiği için karantinanın YOL bacağı ateşleniyor, config bacağı hiç sınanmıyordu (mutant K02
+    hayatta kaldı). Aşağıdaki ilk assertion bu tuzağın geri gelmesini engeller."""
+    run_dir = _run_dir(tmp_path, "dense-tok-s11", config)
+    assert "foton" not in run_dir.lower()
+    with pytest.raises(SystemExit, match="KARANTİNA") as e:
+        cr.load(run_dir)
+    assert "yol FOTON'u gösteriyor" not in str(e.value)
 
 
 def test_main_refuses_foton_arguments_before_doing_anything(monkeypatch, tmp_path):

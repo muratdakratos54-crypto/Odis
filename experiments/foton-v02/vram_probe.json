@@ -1,0 +1,99 @@
+{
+ "gpu": "NVIDIA GeForce RTX 4070 SUPER",
+ "total_gb": 12.878086144,
+ "vram_limit_frac": 0.92,
+ "usable_gb": 11.84783925248,
+ "torch": "2.14.0+cu130",
+ "steps": 6,
+ "eval_iters": 3,
+ "arms": {
+  "foton-d": {
+   "preset": "foton-d",
+   "params_total": 42476032,
+   "params_active": 42476032,
+   "flops_train_per_token": 267411456,
+   "batch_size": 16,
+   "grad_accum": 4,
+   "tok_per_sec_probe": 90583.31252201751,
+   "peak_train_gb": 6.482836992,
+   "peak_after_eval_gb": 6.482836992,
+   "peak_gb": 6.482837504,
+   "peak_reserved_gb": 7.132413952,
+   "eval_keys": [
+    "full",
+    "primary"
+   ],
+   "margin_gb": 5.36500174848
+  },
+  "foton-m": {
+   "preset": "foton-m",
+   "params_total": 91734528,
+   "params_active": 42533376,
+   "flops_train_per_token": 267755520,
+   "batch_size": 16,
+   "grad_accum": 4,
+   "tok_per_sec_probe": 68269.544417327,
+   "peak_train_gb": 8.033530368,
+   "peak_after_eval_gb": 8.033530368,
+   "peak_gb": 8.03353088,
+   "peak_reserved_gb": 10.185867264,
+   "eval_keys": [
+    "full",
+    "primary"
+   ],
+   "margin_gb": 3.8143083724799993
+  },
+  "foton-h": {
+   "preset": "foton-h",
+   "params_total": 55326720,
+   "params_active": 42477568,
+   "flops_train_per_token": 265834602,
+   "batch_size": 16,
+   "grad_accum": 4,
+   "tok_per_sec_probe": 88475.9857563848,
+   "peak_train_gb": 6.76674304,
+   "peak_after_eval_gb": 6.76674304,
+   "peak_gb": 6.76674304,
+   "peak_reserved_gb": 8.394899456,
+   "eval_keys": [
+    "full",
+    "oracle",
+    "oracle_null",
+    "primary",
+    "routed_check"
+   ],
+   "foton_connections_counted": {
+    "M0:A": 128.173828125,
+    "M1:A": 128.173828125,
+    "M2:A": 128.173828125
+   },
+   "margin_gb": 5.08109621248
+  },
+  "foton-x": {
+   "preset": "foton-x",
+   "params_total": 55326720,
+   "params_active": 42477568,
+   "flops_train_per_token": 265838610,
+   "batch_size": 16,
+   "grad_accum": 4,
+   "tok_per_sec_probe": 88107.43255805848,
+   "peak_train_gb": 6.807123968,
+   "peak_after_eval_gb": 6.807123968,
+   "peak_gb": 6.807123968,
+   "peak_reserved_gb": 8.411676672,
+   "eval_keys": [
+    "full",
+    "oracle",
+    "oracle_null",
+    "primary",
+    "routed_check"
+   ],
+   "foton_connections_counted": {
+    "M0:A": 128.173828125,
+    "M1:B": 128.5,
+    "M2:C": 128.375
+   },
+   "margin_gb": 5.04071528448
+  }
+ }
+}
