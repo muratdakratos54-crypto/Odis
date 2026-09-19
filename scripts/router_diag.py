@@ -9,6 +9,8 @@ router seçimi / olasılıkları / logit'leri, alan kimliği). Val pencereleri S
 
 * `flip_rate`: ardışık iki eval noktası arasında AYNI dizinin modül değiştirme oranı (ön-kaydın V6'da istediği
   "aynı dizinin modül değiştirmesi" — eğitim pencereleri tekrar etmediği için orada tanımsızdı; Sapma-S4).
+* `best_same_as_prev`, `advantage_corr_prev`: router'ın öğrenmesi gereken HEDEF durağan mı — aynı dizinin en iyi
+  modülü ardışık eval noktalarında aynı kalıyor mu (şans ~1/3), modül avantajları korele mi.
 * `router_is_best`: router'ın seçtiği modülün o dizide GERÇEKTEN en düşük kayıplı modül olma oranı (şans = 1/3).
 
 Sorulan soru: router neden kararsız / neden öğrenmiyor? İki aday sebep ayrışır:
@@ -76,6 +78,8 @@ def snapshot(raw: dict) -> dict:
         "margin": float((top2[:, 1] - top2[:, 0]).mean()),
         "max_prob": float(probs.max(1).mean()),
         "_choice": choice,
+        "_best": best,
+        "_adv": sm - sm.mean(1, keepdims=True),
     }
 
 
@@ -83,7 +87,7 @@ def run_diag(run_dir: str) -> list[dict]:
     files = sorted(glob.glob(os.path.join(run_dir, "eval_raw", "step_*.npz")))
     if not files:
         raise ValueError(f"{run_dir}: eval_raw dökümü yok (FOTON koşusu değil mi?)")
-    out, prev = [], None
+    out, prev, prev_best, prev_adv = [], None, None, None
     for f in files:
         with np.load(f) as z:
             snap = snapshot({k: z[k] for k in ("seq_masked", "choice", "logits", "probs", "domain")})
@@ -92,6 +96,14 @@ def run_diag(run_dir: str) -> list[dict]:
         # aynı sabit val dizilerinin bir önceki eval noktasına göre modül değiştirme oranı
         snap["flip_rate"] = None if prev is None or len(prev) != len(choice) else float((prev != choice).mean())
         prev = choice
+        # ÖĞRENİLECEK HEDEF durağan mı: aynı dizinin en iyi modülü bir önceki eval noktasındakiyle aynı mı (şans ~1/3),
+        # ve modül avantajları (loss_m - üç modülün ortalaması) ardışık eval noktaları arasında korele mi
+        best, adv = snap.pop("_best"), snap.pop("_adv")
+        same_n = prev_best is not None and len(prev_best) == len(best)
+        snap["best_same_as_prev"] = float((prev_best == best).mean()) if same_n else None
+        defined = same_n and adv.std() > 0 and prev_adv.std() > 0       # sabit avantajda korelasyon tanımsız (NaN yazma)
+        snap["advantage_corr_prev"] = float(np.corrcoef(adv.ravel(), prev_adv.ravel())[0, 1]) if defined else None
+        prev_best, prev_adv = best, adv
         out.append({"step": step, **snap})
     return out
 
@@ -117,7 +129,8 @@ def main() -> None:
         print(f"{name:16s} adım {last['step']:5d} | routed {last['routed']:.4f} oracle {last['oracle']:.4f} | "
               f"yayılım {last['spread']:.4f} | router=en iyi {last['router_is_best']:.3f} | "
               f"I(alan;seçim) {last['choice_mi_domain_bits']:.3f} bit | I(alan;en iyi) {last['best_module_mi_domain_bits']:.4f} bit "
-              f"(yanlılık {last['mi_bias_bits']:.4f}) | değiştirme {last['flip_rate']} | maks p {last['max_prob']:.3f}")
+              f"(yanlılık {last['mi_bias_bits']:.4f}) | değiştirme {last['flip_rate']} | maks p {last['max_prob']:.3f} | "
+              f"en iyi modül aynı kaldı {last['best_same_as_prev']} | avantaj kor. {last['advantage_corr_prev']}")
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(res, f, indent=1, ensure_ascii=False)

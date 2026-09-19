@@ -59,6 +59,24 @@ def test_flip_rate_is_measured_on_the_same_fixed_sequences_between_consecutive_e
     out = rd.run_diag(str(tmp_path))
     assert [o["step"] for o in out] == [0, 250, 500]
     assert [o["flip_rate"] for o in out] == [None, 0.25, 0.0]
+    assert all("_choice" not in o and "_best" not in o and "_adv" not in o for o in out)
+
+
+def test_target_stationarity_between_consecutive_evals(tmp_path):
+    """En iyi modül ardışık eval noktalarında aynıysa 1.0 ve avantaj korelasyonu +1; tersine dönmüşse 0.0 ve -1."""
+    n = 30
+    dom = np.tile(np.arange(3), n // 3)
+    a = np.full((n, 3), 4.0)
+    a[np.arange(n), dom] = 3.0                              # en iyi modül = alan
+    b = np.full((n, 3), 3.0)
+    b[np.arange(n), dom] = 4.0                              # avantajlar tam tersine dönmüş: en iyi modül artık alan DEĞİL
+    os.makedirs(tmp_path / "eval_raw")
+    for step, sm in ((0, a), (250, a), (500, b)):
+        np.savez_compressed(tmp_path / "eval_raw" / f"step_{step:05d}.npz", step=step, **_raw(sm, dom, dom))
+    out = rd.run_diag(str(tmp_path))
+    assert out[0]["best_same_as_prev"] is None and out[0]["advantage_corr_prev"] is None
+    assert out[1]["best_same_as_prev"] == 1.0 and out[1]["advantage_corr_prev"] == pytest.approx(1.0)
+    assert out[2]["best_same_as_prev"] == 0.0 and out[2]["advantage_corr_prev"] == pytest.approx(-1.0)
     with pytest.raises(ValueError):
         rd.run_diag(str(tmp_path / "yok"))
 
