@@ -3,7 +3,7 @@
 Her satır: bir guard'ın koruduğu şey KASTEN bozuldu ve guard koşuldu. "Bozdum, yakaladı".
 Bütün guard'lar önce bozulmamış hâlde koşuldu ve geçti. Gerçek depo değiştirilmedi.
 
-**67 mutant: 67 yakalandı, 0 kanıtlı eşdeğer, 0 hayatta kaldı.**
+**68 mutant: 68 yakalandı, 0 kanıtlı eşdeğer, 0 hayatta kaldı.**
 
 Eşdeğer mutant = kodu değiştiren ama DAVRANIŞI değiştirmeyen mutant; hiçbir test öldüremez.
 Sessizce atlanmaz: kanıtıyla birlikte aşağıda durur ve her koşumda yeniden denenir (bir gün
@@ -74,6 +74,7 @@ yakalanırsa kanıt yanlış demektir).
 | Y04 | sıkı kuyruk git okunamadığında (None) kodu 'temiz' sayıyor | `-m pytest tests/test_run_queue.py` | **yakaladı** | queue_refuses_to_start_with_uncommitted_code_and_touches_nothing[None-git durumu okunamad\u0131] / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failure |
 | Y05 | sıkı kuyruk commit'siz kodla BAŞLIYOR | `-m pytest tests/test_run_queue.py` | **yakaladı** | t_queue_refuses_to_start_with_uncommitted_code_and_touches_nothing[ M src/model.py-src/model.py] / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failure |
 | Y06 | sıkı kuyruk sürerken src/ değişse de sıradaki koşu başlıyor | `-m pytest tests/test_run_queue.py` | **yakaladı** | ueue.py::test_strict_queue_stops_before_the_next_run_when_src_changes_and_loose_queue_only_warns / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failure |
+| Y11 | sıkı kuyruk code_dirty'yi yalnızca BAŞTA denetliyor (kuyruk sürerken kirlenen kodla koşu başlıyor) | `-m pytest tests/test_run_queue.py` | **yakaladı** | ests/test_run_queue.py::test_strict_queue_rechecks_code_dirty_before_every_run_not_only_at_start / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failure |
 | Y07 | code_dirty tests/ ve docs/ altını kod saymıyor | `-m pytest tests/test_run_queue.py` | **yakaladı** | FAILED tests/test_run_queue.py::test_code_dirty_sees_every_code_path[?? tests/test_yeni.py] / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!! |
 | Y08 | yinelenen koşu adı kabul ediliyor (ikinci koşu 'zaten bitmiş' diye atlanır) | `-m pytest tests/test_run_queue.py` | **yakaladı** | FAILED tests/test_run_queue.py::test_plan_refuses_duplicate_names_and_inconsistent_or_missing_state / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 fail |
 | Y09 | blok kimliği katmanlar arasında tekil değil (tarama ve S1 blokları da `s<seed>`) | `-m pytest tests/test_campaign_queue.py` | **yakaladı** | FAILED tests/test_campaign_queue.py::test_block_ids_do_not_collide_between_tiers / !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!! |

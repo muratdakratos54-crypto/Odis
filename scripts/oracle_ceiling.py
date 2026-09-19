@@ -105,6 +105,26 @@ def ceiling(sm: np.ndarray, choice: np.ndarray, dom: np.ndarray, n_split: int = 
     return out
 
 
+def token_level_raw(ce_tok: np.ndarray, k: int) -> dict:
+    """HAM token-düzeyi "her pozisyonda en iyi modül" minimumu. ce_tok: [N, M, T]; ölçüt pozisyonları k..T-1.
+
+    BİR TAVAN DEĞİLDİR ve tek başına raporlanmamalıdır: (i) neredeyse tamamı seçim gürültüsüdür ve v02'nin B11 null'ı bu
+    düzeyde DEJENEREDİR (pozisyon-başı permütasyon pozisyon-başı minimumu değiştirmez: null ≡ oracle — `null_gain` bu
+    yüzden kurgu gereği 0 okur ve burada bunu GÖSTERMEK için hesaplanır); (ii) kayıplar dizinin TAMAMI tek modüle
+    zorlanarak ölçüldü — dizi ortasında modül değiştirmek sonraki gizli durumları değiştirir, yani gerçekleştirilemez bir
+    karşı-olgusaldır. v03 notlarının Yön 3'ü için: "mevcut dökümden ucuz bir token-düzeyi ön-sınav" YOKTUR.
+    """
+    x = np.asarray(ce_tok[:, :, k:], dtype=np.float64)
+    fixed = x.mean(axis=(0, 2))
+    tok_min = x.min(axis=1)
+    rng = np.random.default_rng(0)
+    perm = rng.permuted(x, axis=1)                         # modül kayıpları her (dizi, pozisyon)'da kendi aralarında karışır
+    return {"best_fixed": float(fixed.min()), "token_oracle": float(tok_min.mean()),
+            "raw_gap_vs_best_fixed": float(fixed.min() - tok_min.mean()),
+            "per_token_module_spread": float((x.max(axis=1) - tok_min).mean()),
+            "null_gain": float(perm.min(axis=1).mean() - tok_min.mean())}
+
+
 def local_slope(val_rows: list[dict], k: int = 3) -> float:
     """Koşunun kendi val eğrisinin son k eval noktasındaki d(val)/d(ln token) eğimi (en küçük kareler)."""
     rows = [r for r in val_rows if r["tokens"] > 0][-k:]
@@ -132,8 +152,21 @@ def run_ceiling(run_dir: str) -> dict:
         c["oracle_null"] = v["val_loss_oracle_null"]
         c["structured_gain_over_null"] = v["val_loss_oracle_null"] - c["oracle"]
         steps.append({"step": step, "tokens": v["tokens"], **c})
+    # SEYİR PUAN CİNSİNDEN: her eval noktasında koşunun kendi val eğrisinin o noktaya kadarki yerel eğimiyle (son üç
+    # nokta). Nat cinsinden küçülen bir tavan, eğri düzleştiği için puan cinsinden küçülmüyor olabilir.
+    ordered = [val[s] for s in sorted(val) if val[s]["tokens"] > 0]
+    for st in steps:
+        upto = [r for r in ordered if r["step"] <= st["step"]]
+        if len(upto) >= 2:
+            sl = local_slope(upto)
+            st["own_local_slope_here"] = sl
+            st["ceiling_points_own_slope"] = points(max(st["ceiling_vs_best_fixed"], 0.0), sl)
+            st["structured_points_own_slope"] = points(max(st["structured_gain_over_null"], 0.0), sl)
     slope = local_slope([val[s] for s in sorted(val)])
     last = steps[-1]
+    with np.load(files[-1]) as z:
+        if "ce_tok" in z.files:
+            last["token_level_raw"] = token_level_raw(z["ce_tok"], int(val[last["step"]].get("loss_prefix_skip", 0)))
     conv = {}
     for name, sl in (("lstar_local_-0.3346", SLOPE_LSTAR_LOCAL), ("late_secant_-0.2385", SLOPE_LATE_SECANT),
                      (f"own_local_{slope:.4f}", slope)):
@@ -142,6 +175,31 @@ def run_ceiling(run_dir: str) -> dict:
                        "domain_gain_vs_best_fixed_in_sample")}
         conv[name]["ceiling_vs_best_fixed_ci95"] = [points(max(v, 0.0), sl) for v in last["ceiling_vs_best_fixed_ci95"]]
     return {"own_local_slope": slope, "final_step_points": conv, "steps": steps}
+
+
+def best_module_agreement(best: dict[str, np.ndarray]) -> dict:
+    """Aynı sabit val dizilerinde, FARKLI koşuların "en iyi modül"ü ne kadar örtüşüyor — koşu ADIYLA anahtarlı.
+
+    Maske kaynaklı, koşudan koşuya TEKRARLANAN bir tercih varsa (ör. "bu dizi hep dilated'i sever") örtüşme, iki koşunun
+    marjinal dağılımlarından beklenen şans düzeyinin üstünde olur. Şans düzeyindeyse dizi başına "en iyi modül" seçim
+    gürültüsüdür — B11 null'ının okumasına dayanmayan, bağımsız bir sağlama.
+    """
+    names = sorted(best)
+    pairs = []
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            x, y = best[a], best[b]
+            if len(x) != len(y):
+                raise ValueError(f"{a} / {b}: dizi sayıları farklı ({len(x)} / {len(y)})")
+            m = int(max(x.max(), y.max())) + 1
+            px, py = np.bincount(x, minlength=m) / len(x), np.bincount(y, minlength=m) / len(y)
+            pairs.append({"a": a, "b": b, "agreement": float((x == y).mean()), "expected_if_independent": float(px @ py)})
+    return {"n_pairs": len(pairs), "mean_agreement": float(np.mean([p["agreement"] for p in pairs])),
+            "mean_expected_if_independent": float(np.mean([p["expected_if_independent"] for p in pairs])), "pairs": pairs}
+
+
+def seed_of(run_name: str) -> str:
+    return run_name.rsplit("-s", 1)[-1]
 
 
 def main() -> None:
@@ -177,6 +235,34 @@ def main() -> None:
             v = [r["final_step_points"][conv][k] for r in res["runs"].values()]
             summary[conv][k] = {"mean": float(np.mean(v)), "min": float(np.min(v)), "max": float(np.max(v)), "n_runs": len(v)}
     res["summary_points_final_step"] = summary
+    # 9 koşu = 3 seed x 3 koşul: aynı seed'in koşuları init'i ve veri sırasını paylaşır -> BAĞIMSIZ tekrar sayısı seed sayısıdır
+    by_seed: dict[str, list[float]] = {}
+    for name, r in res["runs"].items():
+        by_seed.setdefault(seed_of(name), []).append(r["final_step_points"]["lstar_local_-0.3346"]["ceiling_vs_best_fixed"])
+    seed_means = {s: float(np.mean(v)) for s, v in sorted(by_seed.items())}
+    res["ceiling_points_by_seed"] = {"means": seed_means, "n_independent": len(seed_means),
+                                     "sd_of_seed_means": float(np.std(list(seed_means.values()), ddof=1)) if len(seed_means) > 1 else None,
+                                     "note": "aynı seed'in koşuları init ve veri sırasını paylaşır; [min, maks] betimleyicidir, güven aralığı değildir"}
+    traj = {}
+    for i, st in enumerate(next(iter(res["runs"].values()))["steps"]):
+        rows = [r["steps"][i] for r in res["runs"].values()]
+        if any(x["step"] != st["step"] for x in rows):
+            raise ValueError("koşuların eval adımları aynı değil")
+        traj[str(st["step"])] = {k: float(np.mean([x[k] for x in rows])) for k in
+                                 ("ceiling_vs_best_fixed", "structured_gain_over_null", "ceiling_points_own_slope",
+                                  "structured_points_own_slope", "own_local_slope_here") if all(k in x for x in rows)}
+    res["trajectory_mean_over_runs"] = traj
+    best = {}
+    for d in dirs:
+        with np.load(sorted(glob.glob(os.path.join(d, "eval_raw", "step_*.npz")))[-1]) as z:
+            best[os.path.basename(d)] = z["seq_masked"].argmin(1)
+    agree = best_module_agreement(best)
+    same = [p for p in agree["pairs"] if seed_of(p["a"]) == seed_of(p["b"])]
+    diff = [p for p in agree["pairs"] if seed_of(p["a"]) != seed_of(p["b"])]
+    for label, grp in (("same_seed", same), ("different_seed", diff)):
+        agree[label] = {"n_pairs": len(grp), "mean_agreement": float(np.mean([p["agreement"] for p in grp])) if grp else None,
+                        "mean_expected_if_independent": float(np.mean([p["expected_if_independent"] for p in grp])) if grp else None}
+    res["cross_run_best_module_agreement_final_step"] = agree
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(res, f, indent=1, ensure_ascii=False)

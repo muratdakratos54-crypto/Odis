@@ -185,6 +185,8 @@ MUTANTS_06 = [
     dict(id="Y06", guard=G_RUNQ, file=RQ, what="sıkı kuyruk sürerken src/ değişse de sıradaki koşu başlıyor",
          old="                if strict:\n                    # Koşu BAŞLATILMADAN dur",
          new="                if False:\n                    # Koşu BAŞLATILMADAN dur"),
+    dict(id="Y11", guard=G_RUNQ, file=RQ, what="sıkı kuyruk code_dirty'yi yalnızca BAŞTA denetliyor (kuyruk sürerken kirlenen kodla koşu başlıyor)",
+         old="                refusal = strict_refusal(prov)\n                if refusal:", new="                refusal = None\n                if refusal:"),
     dict(id="Y07", guard=G_RUNQ, file=RQ, what="code_dirty tests/ ve docs/ altını kod saymıyor",
          old='CODE_DIRS = ("src/", "scripts/", "tests/", "docs/")', new='CODE_DIRS = ("src/", "scripts/")'),
     dict(id="Y08", guard=G_RUNQ, file=RQ, what="yinelenen koşu adı kabul ediliyor (ikinci koşu 'zaten bitmiş' diye atlanır)",

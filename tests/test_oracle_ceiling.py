@@ -92,3 +92,62 @@ def test_run_ceiling_cross_checks_the_dump_against_the_logged_curves(tmp_path):
     (tmp_path / "metrics.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
     with pytest.raises(ValueError):
         oc.run_ceiling(str(tmp_path))
+
+
+def test_cross_run_agreement_separates_a_repeated_preference_from_selection_noise():
+    """Koşudan koşuya TEKRARLANAN bir tercih (maske kaynaklı) örtüşmeyi şansın üstüne çıkarır; bağımsız gürültü çıkarmaz."""
+    rng = np.random.default_rng(0)
+    n = 6000
+    shared = rng.integers(0, 3, n)
+    noisy = {f"v7-x-s{s}": np.where(rng.random(n) < 0.5, shared, rng.integers(0, 3, n)) for s in (101, 102, 103)}
+    rep = oc.best_module_agreement(noisy)
+    assert rep["n_pairs"] == 3 and rep["mean_agreement"] > rep["mean_expected_if_independent"] + 0.15
+    indep = oc.best_module_agreement({f"v7-x-s{s}": rng.integers(0, 3, n) for s in (101, 102, 103)})
+    assert abs(indep["mean_agreement"] - indep["mean_expected_if_independent"]) < 0.02
+    skew = oc.best_module_agreement({"a-s1": np.zeros(n, dtype=int), "b-s2": np.zeros(n, dtype=int)})
+    assert skew["mean_agreement"] == 1.0 == skew["mean_expected_if_independent"]      # tek modül hep kazanıyorsa "örtüşme" bilgi değil
+    # ÇARPIK ama BAĞIMSIZ etiketler (bir modül çoğu dizide kazanıyor): örtüşme 1/3'ün çok üstünde, ama şans düzeyi de öyle.
+    # Şans düzeyi 1/M alınsaydı bu, sahte bir "tekrarlanan tercih" okurdu (mutant Z21).
+    lopsided = {f"v7-x-s{s}": rng.choice(3, size=n, p=[0.8, 0.1, 0.1]) for s in (101, 102)}
+    lop = oc.best_module_agreement(lopsided)
+    assert lop["mean_agreement"] > 0.6 and abs(lop["mean_agreement"] - lop["mean_expected_if_independent"]) < 0.02
+    with pytest.raises(ValueError):
+        oc.best_module_agreement({"a-s1": np.zeros(5, dtype=int), "b-s2": np.zeros(6, dtype=int)})
+    assert oc.seed_of("v7-x-ent-s102") == "102" and oc.seed_of("v7-x-s101") == "101"
+
+
+def test_trajectory_in_points_uses_the_local_slope_at_each_eval_point(tmp_path):
+    """Sabit bir nat tavanı, eğri düzleştikçe DAHA ÇOK puan eder: seyir yalnızca nat cinsinden okunmamalı."""
+    n = 30
+    dom = np.tile(np.arange(3), n // 3)
+    base = np.full((n, 3), 4.0, dtype=np.float32)
+    base[np.arange(n), dom] = 3.97                          # tavan her adımda aynı: 0.02 nat
+    choice = np.zeros(n, dtype=np.int64)
+    os.makedirs(tmp_path / "eval_raw")
+    rows = []
+    for step, tok, shift in ((250, 1e6, 1.0), (500, 2e6, 0.5), (750, 3e6, 0.3), (1000, 4e6, 0.25)):   # düzleşen eğri
+        s = base + np.float32(shift)
+        np.savez_compressed(tmp_path / "eval_raw" / f"step_{step:05d}.npz", step=step, seq_masked=s, choice=choice, domain=dom)
+        rows.append({"type": "val", "step": step, "tokens": int(tok), "val_loss": float(s[np.arange(n), choice].mean()),
+                     "val_loss_oracle": float(s.min(1).mean()), "val_loss_oracle_null": float(s.min(1).mean())})
+    (tmp_path / "metrics.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    steps = oc.run_ceiling(str(tmp_path))["steps"]
+    assert "ceiling_points_own_slope" not in steps[0]                                  # tek noktadan eğim çıkmaz
+    nat = [s["ceiling_vs_best_fixed"] for s in steps]
+    assert max(nat) - min(nat) < 1e-5
+    pts = [s["ceiling_points_own_slope"] for s in steps[1:]]
+    assert pts[0] < pts[1] < pts[2]                                                    # aynı nat, artan puan
+    assert steps[-1]["ceiling_points_own_slope"] == pytest.approx(oc.points(nat[-1], steps[-1]["own_local_slope_here"]))
+
+
+def test_token_level_raw_gap_is_selection_noise_and_the_b11_null_is_degenerate_there():
+    """Üç modül istatistiksel olarak AYNI olsa bile token-düzeyi minimum büyük bir "kazanç" okur; pozisyon-başı permütasyon
+    null'ı bu düzeyde hiçbir şeyi düzeltemez (null = oracle). Sayı bu yüzden tek başına raporlanmaz."""
+    rng = np.random.default_rng(0)
+    ce = 3.0 + rng.normal(0, 0.1, (200, 3, 96))
+    t = oc.token_level_raw(ce, k=32)
+    assert t["raw_gap_vs_best_fixed"] == pytest.approx(0.1 * 0.846, abs=0.01)         # saf gürültüden gelen "tavan"
+    assert t["null_gain"] == 0.0                                                       # dejenere: null = oracle
+    assert t["per_token_module_spread"] == pytest.approx(0.1 * 1.693, abs=0.01)        # E[max - min of 3 N(0,1)] = 1.693
+    ce[:, :, :32] += 5.0                                                               # prefix pozisyonları ölçüte GİRMEZ
+    assert oc.token_level_raw(ce, k=32)["token_oracle"] == pytest.approx(t["token_oracle"])

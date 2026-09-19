@@ -32,6 +32,8 @@ queue.json:
       commit'li olup olmadığını söyler. git okunamadıysa `None` (bilinmiyor) — temiz SAYILMAZ.
 * SIKI kuyruk (`"_strict": true`; karar ve S1 kuyrukları): `code_dirty` False DEĞİLSE kuyruk HİÇ başlamaz (hiçbir
   klasöre dokunmadan çıkar), ve kuyruk başladığından beri src/ özeti değiştiyse sıradaki koşu BAŞLATILMADAN durur.
+  `code_dirty` her koşudan ÖNCE yeniden denetlenir: kuyruk sürerken bir KOD yolu (scripts/, tests/, docs/, ön-kayıt)
+  kirlenirse sıradaki koşu başlatılmaz — karar koşularında `code_dirty = False` zorunlu, istisnasız.
   Sıkı olmayan kuyruk eskisi gibi yalnızca queue.log'a uyarı yazar. Çıkış kodları: `EXIT_*` sabitleri.
 * Koşu defteri: her DENEME için `scripts/run_ledger.py`'nin sabit defterine bir satır eklenir — hem biten/çöken koşu
   için, hem de kenara alınan koşu için (o klasör silinince denemenin tek izi defter olur). Defter yazılamazsa
@@ -58,7 +60,8 @@ CODE_DIRS = ("src/", "scripts/", "tests/", "docs/")
 CODE_GLOBS = ("PREREGISTRATION*.md",)
 
 # Kuyruğun KENDİ çıkış kodları. Eğitim sürecinin kodlarıyla (1 = hata, 2 = argparse) karışmasın diye yüksek seçildi.
-EXIT_STRICT_DIRTY = 90            # sıkı kuyruk: kod commit'siz (ya da git okunamadı) -> hiç başlamadı
+EXIT_STRICT_DIRTY = 90            # sıkı kuyruk: kod commit'siz (ya da git okunamadı) -> hiç başlamadı, ya da kuyruk
+                                  # sürerken kirlendi -> sıradaki koşu başlatılmadı (her koşudan ÖNCE yeniden denetlenir)
 EXIT_STRICT_SRC_CHANGED = 91      # sıkı kuyruk: kuyruk sürerken src/ değişti -> sıradaki koşu başlatılmadı
 EXIT_BAD_QUEUE = 92               # kuyruk dosyası tutarsız (yinelenen koşu adı, bool olmayan `_strict`, ...)
 EXIT_SET_ASIDE_FAILED = 93        # klasör kenara alınamadı (Windows'ta açık dosya kilidi): üzerine yazılmaz
@@ -413,6 +416,15 @@ def execute(q: dict, label: str, *, ledger_path: str | None, launch=launch_subpr
                          f"{run['name']} başlatılmadı")
                     return EXIT_STRICT_SRC_CHANGED
                 note(f"[uyarı] kuyruk başladığından beri src/ değişti: {change}")
+            if strict:
+                # Kural: karar koşularında `code_dirty = False` ZORUNLU, istisnasız. Başlangıçtaki ret yetmez: kuyruk
+                # SÜRERKEN scripts/ ya da tests/ altına yazılan commit'siz bir dosya src/ özetini değiştirmez ama
+                # sıradaki koşunun provenance'ını kirletir (V7 taramasında iki koşuda tam bu oldu; rapor 07, bölüm 6).
+                refusal = strict_refusal(prov)
+                if refusal:
+                    note(f"hata: SIKI kuyruk durduruldu — {refusal}; {run['name']} başlatılmadı "
+                         "(kuyruk sürerken kod yolu kirlendi)")
+                    return EXIT_STRICT_DIRTY
             os.makedirs(run_dir)                          # var olan klasörün üzerine ASLA yazılmaz (FileExistsError)
             with open(os.path.join(run_dir, "provenance.json"), "w", encoding="utf-8") as f:
                 json.dump(prov, f, indent=2, ensure_ascii=False)

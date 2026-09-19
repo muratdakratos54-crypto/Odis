@@ -140,3 +140,14 @@ veriyi görüyor ve genelci kalıyor), ama grafiklerin KENDİ farkı da alan dü
 * Sapmalar S3–S10 belgenin sonunda; tag'li gövde değişmedi. Bilinmesi gerekenler: korpusta EOS yok (S6: D10 ölçülemez,
   D11 alanla eşdoğrusal), "H önce" ile V11a çelişkisinde V11a geçerli (S5), oracle null'ının okuması tartışılabilir
   olduğu için ham dökümler diskte (S4).
+
+---
+
+**07'den not (2026-09-19, bu rapor sahibin kararına dayanak olduktan SONRA eklendi; yukarıdaki metin değiştirilmedi).**
+Sahibin kararı: (A). Sonuç raporu `REPORT_07.md`'dir ve bu rapordaki üç ifadeyi daraltır: (i) bölüm 4'teki "+%1.04"
+bir ÜST SINIRDIR (yönlendirilen 2 katman yoğun T×T sayılırsa; `docs/flops.md` §8.5); (ii) bölüm 5–6'daki "seçim fiilen
+rastgele" yerine doğrusu "seçim kararsız ve en iyi modülle ilişkisiz"dir — seçim herhangi bir anda alanla ilişkilidir
+(I(alan; seçim) adım 2188'de 0.025–0.215 bit), ama bu ilişki zamanda tutunmaz; (iii) bölüm 6 madde 3'teki "hiçbir
+doğrusal router en iyi modülü öğrenemezdi" cümlesi ölçülenden geniştir: ölçülen, BU modüllerle ve bu girdiyle PCA-64 + L2
+doğrusal probun en iyi modülü çoğunluk tabanının üstünde öngörememesidir. Bölüm 8'deki "SIKI kuyruk" tarifi de eksikti:
+o tarihte `code_dirty` yalnızca kuyruk başında denetleniyordu; 07 ile birlikte her koşudan önce denetlenir.

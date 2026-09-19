@@ -29,7 +29,8 @@ anlamsızdır (zaten kırık olan bir guard her şeyi "yakalar").
 İKİ SINAV (`--suite`). `prereg` (varsayılan): tag'li ön-kaydın guard'ları; kaydı `foton-v02-prereg` tag'iyle
 DONMUŞTUR, yeniden koşmak o dosyayı ezer — tag'den sonra yalnızca `--only` ile (kayda yazmadan) koşulur.
 `06`: tag'den SONRA, FOTON uygulamasıyla yazılan guard'lar (`scripts/mutation_catalog_06.py`); kaydı
-`experiments/foton-v02/mutation_log_06.md`.
+`experiments/foton-v02/mutation_log_06.md`. `07`: 07 raporunun sayılarını üreten teşhis betikleri
+(`scripts/mutation_catalog_07.py`); kaydı `experiments/foton-v02/mutation_log_07.md`.
 """
 from __future__ import annotations
 
@@ -214,7 +215,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="", help="virgüllü kimlik önekleri (ör. E,B,O0): HIZLI yineleme içindir, "
                                                 "kayıt dosyasına YAZMAZ — kayıt yalnızca tam koşumdan çıkar")
-    ap.add_argument("--suite", choices=("prereg", "06"), default="prereg",
+    ap.add_argument("--suite", choices=("prereg", "06", "07"), default="prereg",
                     help="prereg: tag'li ön-kaydın sınavı (kaydı DONMUŞ); 06: FOTON uygulamasının guard'ları")
     args = ap.parse_args()
     only = tuple(x.strip() for x in args.only.split(",") if x.strip())
@@ -228,6 +229,11 @@ def main() -> None:
         # tag'e erişemezse `skip` eder — atlanan test hiçbir mutantı yakalamaz. Salt-okunur git erişimi verilir.
         EXTRA_ENV["GIT_DIR"] = os.path.join(ROOT, ".git")
         EXTRA_DIRS.append("docs")                 # tests/test_flops.py docs/flops.md tablolarını koddan yeniden üretir
+    elif args.suite == "07":
+        from mutation_catalog_07 import MUTANTS_07
+        MUTANTS = [{**m, "guard": PYTEST(m["guard"])} for m in MUTANTS_07]
+        LOG = "experiments/foton-v02/mutation_log_07.md"
+        TITLE = "# Mutasyon sınavı kaydı — 07 raporunun sayılarını üreten teşhis betikleri (ön-kayıt V13)"
     elif not only:
         sys.exit("`--suite prereg` kaydı foton-v02-prereg tag'iyle DONMUŞTUR; tam koşum onu ezer. "
                  "Yeniden sınamak için `--only <önek>` kullan (kayda yazmaz).")

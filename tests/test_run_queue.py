@@ -637,6 +637,33 @@ def test_strict_queue_starts_when_only_campaign_outputs_are_dirty(env):
     assert launch.launched == [r["name"] for r in runs] and "| SIKI |" in env.log().splitlines()[0]
 
 
+def test_strict_queue_rechecks_code_dirty_before_every_run_not_only_at_start(env):
+    """Kural: karar koşularında `code_dirty = False` zorunlu, İSTİSNASIZ. V7 taramasında kuyruk temiz başladı, ama
+    kuyruk SÜRERKEN scripts/ altına commit'siz bir teşhis betiği yazıldı: src/ özeti değişmedi, yine de sonraki iki
+    koşunun provenance'ı `code_dirty = True` oldu. Sıkı kuyruk bunu başlangıçta DEĞİL her koşudan önce denetlemeli."""
+    runs = make_runs(blocks=("s11",))
+    launch = Launcher()
+    state = {"status": CAMPAIGN_OUTPUT}
+    git = lambda args, cwd: fake_git(state["status"])(args, cwd)          # noqa: E731 — durum koşular arasında değişir
+
+    def write_a_script(name):
+        if name == "d-s11":
+            state["status"] = CAMPAIGN_OUTPUT + "\n?? scripts/yeni_teshis.py"
+    launch.on_launch = write_a_script
+    run = lambda q: rq.execute(q, "test-kuyruğu.json", ledger_path=env.ledger, launch=launch, cmd=git,   # noqa: E731
+                               echo=lambda *a, **k: None)
+    assert run(env.queue(runs, _strict=True)) == rq.EXIT_STRICT_DIRTY
+    assert launch.launched == ["d-s11"] and env.dirs() == ["d-s11"]       # m-s11'in klasörü bile açılmadı
+    assert "SIKI kuyruk durduruldu" in env.log() and "scripts/yeni_teshis.py" in env.log() and "m-s11 başlatılmadı" in env.log()
+    assert env.prov("d-s11")["code_dirty"] is False
+
+    launch.launched.clear()                                # sıkı OLMAYAN kuyruk eskisi gibi koşar ve kirliliği KAYDEDER
+    launch.on_launch = None
+    loose = make_runs(blocks=("s22",))
+    assert run(env.queue(loose)) == 0 and launch.launched == [r["name"] for r in loose]
+    assert all(env.prov(r["name"])["code_dirty"] is True for r in loose)
+
+
 def test_strict_queue_stops_before_the_next_run_when_src_changes_and_loose_queue_only_warns(env):
     """Kuyruk sürerken src/ değişirse sonraki kollar FARKLI kodla koşar. Sıkı kuyruk sıradaki koşuyu
     BAŞLATMADAN durur (klasörü bile açmaz); yarıda kalan blok sonraki başlatmada V11a(iii) ile baştan koşulur."""

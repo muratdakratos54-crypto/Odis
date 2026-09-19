@@ -2082,3 +2082,30 @@ altına inmedi (en düşük değer 0.9890), yani uyarı Sapma-S4'teki okuma seç
   bulunmadı ve üç V7 koşulu da bu çevrimde tükendi. Donmuş düğmelere dokunan her çare sapmadır. 2. çevrim
   BAŞLATILMADI; V10 yer tutucusu DOLDURULMADI; karar kampanyası başlatılmadı. Sonraki adım sahibin kararıdır
   (`experiments/foton-v02/gate_report_06.md`).
+
+**S11 — 2026-09-19: SAHİBİN KAPI KARARI — (A): karar kampanyası KOŞULMAYACAK.**
+Sıra (doğrulanabilir olan budur): karar, kapı raporundan (commit `8d52689`) SONRA ve oracle tavanı hesabından ÖNCE verildi —
+o hesabı aynı mesaj istedi (commit `0be7044`). Bu girdi tavan hesaplandıktan ve 07 raporu yazıldıktan sonra yazıldı; kayıt
+anı, bu girdiyi ekleyen commit'in zaman damgasıdır.
+Kapı raporu (`experiments/foton-v02/gate_report_06.md`) üç seçenek sunmuştu; rapor tarama koşularının val loss'unu
+içermiyordu, yani karar birincil ölçüte KÖR verildi. Sahibin kararı ve gerekçesi, kendi cümleleriyle: **"KARAR: (A).
+Kampanya koşulmayacak. Gerekçe tek cümle: ön-kaydı, cevap hoşumuza gitmediğinde bile bağlasın diye kurduk. İlk olumsuz
+sonuçta saparsak geçen haftanın tamamı tiyatro olur."** (B) kampanyayı yine de koşmak reddedildi: "V6-G gereği çıkacak
+'başarı' satırı zaten yönlendirme iddiası olarak kurulamaz. 19 GPU saati, kullanılması yasak bir sonuç için harcanır."
+(C) donmuş bir düğmeye dokunan çare reddedildi: "kendi teşhisin eksik olanın router kapasitesi değil modüllerin ayrışması
+olduğunu söylüyor. Router'a dokunmak yanlış hedefe nişan alır." Sahibi Sapma-S10'u (erken uyarıda koşuların
+durdurulmaması) onayladı.
+* **Sonuç.** V6'nın yazdığı yol: **"router bu tasarımda eğitilemedi"** — FOTON aleyhine bir sonuç. 2. ve 3. çare çevrimi
+  koşulmadı (Sapma-S4'ün sınırı içinde meşru içerikleri kalmamıştı: hata bulunmadı, üç V7 koşulu tükendi). Karar
+  tablosundan satır adı ÇIKMADI: `decide_primary()` ve `abandon()` hiç çağrılmadı; H, D, M ve X'in karar koşuları, zorunlu
+  2× koşular ve S1 ölçeği koşulmadı; sahibin ölçek hakkı doğmadığı için `owner_decisions.jsonl` yazılmadı (o defter ölçek
+  hakkı seçimi içindir; kapı kararının kaydı bu girdidir). V10'un yer tutucusu DOLDURULMADI ve doldurulmayacak: hash'in
+  koruyacağı karar koşusu yok.
+* **İddianın kapsamı (sahibin koyduğu sınır):** "bu tasarımda, bu bütçede, prefix-tanınabilir yönlendirme öğrenilemedi".
+  Daha geniş iddia kurulmaz. Rapor: `experiments/foton-v02/REPORT_07.md`. Karardan SONRA, mevcut tarama verisinden
+  hesaplanan oracle tavanı (`oracle_ceiling.json`): mükemmel dizi-düzeyi seçimin en iyi sabit tek modüle üstünlüğü
+  ön-kaydın L* yerel eğimiyle ortalama **1.34 puan** (3 seed × 3 koşul = 9 koşu: 1.10–1.58; eğim ve taban seçimine göre
+  0.95–2.17; başarı eşiği +5), seçim gürültüsünü (B11 null'ı) aşan kısmı en çok 0.28 puan. Tavan yalnızca BU koşuların
+  (rastgeleye yakın yönlendirmeyle eğitilmiş, %50 bütçe) modülleri için bir sınırdır; +5 eşiğiyle aynı nicelik değildir. Bu hesap bir TEŞHİSTİR; kararı değiştirmedi ve değiştiremezdi (karardan sonra yapıldı).
+* **v03** için notlar ayrı dosyadadır (`experiments/foton-v02/v03_design_notes.md`); hipotezdir, karara bağlanmamıştır,
+  v03 ön-kaydı yazılmamıştır.
