@@ -128,3 +128,11 @@ karşı-olgusaldır. Ham sayı tek başına raporlanmamalıdır.
 sahibinin kendi hatasıydı ve öyle kayda geçmesini istedi. Kurulduğu hâliyle mimari: `docs/ARCHITECTURE_AS_BUILT.md`.
 Bölüm 3'teki "açık kalan" madde kapatıldı: `make_campaign_queue.py`'de sıkılık artık VARSAYILAN, karar / S1 kuyruğunda
 `--loose` reddedilir. Sahibinin şartı: `ARCHITECTURE_AS_BUILT.md` okunup onaylanmadan bu dosyaya tasarım eklenmez.
+
+**Kayıt (2026-09-20):** (1) HATA KAYDI, ortak: `src/model.py` başlığındaki "Modüller aynı `Block`'tur; TEK fark attention
+maskesi" yorumu (asistanın yazdığı) yanıltıcıydı VE sahibi onu doğrulamadan olgu diye söyledi. İkisi de hatadır; yorum
+düzeltildi, mimari artık kurulan modelden sayılıyor (`docs/ARCHITECTURE_AS_BUILT.md`, onaylandı). (2) M toplam 91.7M, FOTON
+55.3M parametre; aktif eşit (~42.5M), toplam kapasite M'nin %60'ı. X'in M'nin gerisinde kalmasının bir kısmı bu olabilir;
+v03'te M karşılaştırması bu farkı ya kapatmalı (modül sayısı / boyutu) ya da açıkça taşımalı. Karar yok, kayıt var.
+(3) X-rand KALDIRILDI (eğitimde pencereler tekrar etmediği için "kararlı rastgele" = "rastgele"); yerine X-iid. Adım 1'in
+kolları ve karar kuralı: `experiments/foton-v03-step1/decision_rule.md`.

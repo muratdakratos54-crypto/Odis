@@ -283,3 +283,5 @@ V10 yer tutucusu DOLDURULMADI: karar koşusu olmadığı için preset hash'i yaz
 * **Bölüm 6'daki açık madde KAPATILDI** (sahibi: "guard ertelenmez"): `make_campaign_queue.py` artık her kuyruğa
   `"_strict": true` yazar (varsayılan); gevşek kuyruk yalnızca etiketli bir S0 tarama kuyruğu için ve açıkça `--loose`
   istenirse üretilir; etiketsiz (karar) ve S1 kuyruklarında `--loose` REDDEDİLİR. Test + mutantlar Y10, Y12–Y14.
+* **Hata kaydı, ortak (2026-09-20, sahibinin düzeltmesiyle):** yukarıdaki madde eksikti. `src/model.py`'deki yorum
+  (asistanın yazdığı) yanıltıcıydı VE sahibi onu doğrulamadan olgu diye söyledi — ikisi de hatadır.
