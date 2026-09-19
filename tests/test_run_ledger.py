@@ -438,3 +438,37 @@ def test_attempt_identity_ignores_the_directory_name():
     assert rl.attempt(a) == rl.attempt(b)
     assert rl.key(a) == rl.key(b)                          # durum aynıysa anahtar da aynı
     assert rl.key({**b, "status": "iptal"}) != rl.key(a)   # durum değişikliği yeni satır hak eder
+
+
+# --- V11a(iii): kesilen bloğun koşuları `.blok-iptal-<n>` diye kenara alınır -----------------------------------
+
+def test_block_cancel_suffix_is_recognised_so_reconstruction_does_not_invent_run_names(tmp_path):
+    """`d-s11.blok-iptal-1` YENİ bir koşu değildir: `d-s11`'in kenara alınmış denemesidir.
+
+    Ek tanınmazken ölçüldü (2 blok, tek çökme, yeniden başlatma): yeniden kurulum toplamı 13'ten 16'ya,
+    koşu adı sayısını 8'den 11'e çıkarıyordu — V11'in zorunlu kıldığı sayılar şişiyordu."""
+    assert rl.base_run_name("d-s11") == "d-s11"
+    assert rl.base_run_name("d-s11.blok-iptal-1") == "d-s11" == rl.base_run_name("d-s11.yarim-2")
+    assert rl.base_run_name("d-s11.yarim-1.blok-iptal-3") == "d-s11"          # iç içe kenara alma
+    assert rl.base_run_name("v7-x-ent-s101.blok-iptal-12") == "v7-x-ent-s101"
+    assert rl.base_run_name("d-s11.blok-iptal-x") == "d-s11.blok-iptal-x"    # sayı değilse ek DEĞİL
+    assert rl.is_set_aside("m-s11.blok-iptal-1") and not rl.is_set_aside("m-s11")
+    base = tmp_path / "ck"
+    make_run(base, "d-s11.blok-iptal-1", session(0, 1000, 0.0, 0.0), done=True, end=True, preset="foton-d")
+    make_run(base, "d-s11", session(0, 1000, 5.0, 0.0), done=True, end=True, preset="foton-d")
+    recs, _ = rl.reconstruct(str(base), blocks={"d-s11": "s11"})
+    assert {r["run"] for r in recs} == {"d-s11"} and [r["block"] for r in recs] == ["s11", "s11"]
+    assert sorted(r["dir"] for r in recs) == ["d-s11", "d-s11.blok-iptal-1"]
+
+
+def test_attempts_of_a_cancelled_block_are_not_wall_clock_admissible():
+    """Defter append-only: kesilen bloğun BİTMİŞ koşusunun "bitti" satırı kalır, yanına `blok-iptal` kanıtlı bir
+    durum-değişikliği satırı gelir. O deneme duvar saati ölçütüne GİREMEZ (bloğu kesintisiz koşmadı)."""
+    first = rl.blank(run="d-s11", status="bitti", block="s11", started="2026-10-01T10:00:00", evidence="DONE")
+    cancel = rl.blank(run="d-s11", status="iptal", block="s11", started="2026-10-01T10:00:00", evidence="blok-iptal")
+    rerun = rl.blank(run="d-s11", status="bitti", block="s11", started="2026-10-01T14:00:00", evidence="DONE")
+    other = rl.blank(run="m-s11", status="bitti", block="s11", started="2026-10-01T14:40:00", evidence="DONE")
+    c = rl.counts([first, cancel, rerun, other])
+    assert c["duvar_saati_uygun"] == 2 and c["blok_iptal"] == 1          # ilk deneme uygun DEĞİL, yeniden koşum uygun
+    assert c["bitti"] == 3 and c["iptal"] == 1 and c["toplam"] == 4      # satırlar olduğu gibi sayılır (durum değişikliği)
+    assert rl.counts([first, rerun, other])["duvar_saati_uygun"] == 3    # iptal satırı yoksa üçü de uygun

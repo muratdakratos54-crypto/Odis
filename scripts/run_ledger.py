@@ -156,6 +156,28 @@ def damaged(path: str = LEDGER) -> list[tuple[int, str]]:
     return bad
 
 
+SET_ASIDE_SUFFIXES = (".yarim-", ".blok-iptal-")     # `run_queue.py`'nin kenara alma ekleri: <ad>.yarim-<n>, <ad>.blok-iptal-<n>
+
+
+def base_run_name(dirname: str) -> str:
+    """Kenara alınmış bir klasör adından KOŞU adını verir (`d-s11.blok-iptal-1` -> `d-s11`).
+
+    `.blok-iptal-` eki V11a(iii) ile geldi (kesilen bloğun TAMAMI yeniden koşulur; bitmiş koşuları da kenara
+    alınır). Bu ek tanınmazken ölçüldü: yeniden kurulum aynı denemeyi `d-s11.blok-iptal-1` diye YENİ bir koşu
+    adıyla ikinci kez yazıyordu (2 blokluk bir senaryoda toplam 13 -> 16 satır, koşu adı 8 -> 11) — V11'in
+    zorunlu kıldığı sayılar şişiyordu.
+    """
+    for suf in SET_ASIDE_SUFFIXES:
+        head, sep, tail = dirname.rpartition(suf)
+        if sep and tail.isdigit():
+            return base_run_name(head)
+    return dirname
+
+
+def is_set_aside(dirname: str) -> bool:
+    return base_run_name(dirname) != dirname
+
+
 def attempt(rec: dict) -> tuple:
     """Bir DENEMENİN kimliği: (koşu adı, başlangıç anı). Klasör adı kimliğe GİRMEZ.
 
@@ -341,8 +363,8 @@ def scan_run_dir(run_dir: str, block: str | None = None, exit_code: int | None =
     NaN en önde: NaN'lı ama "bitmiş" bir koşu karar hesabına girmemeli.
     """
     d = os.path.basename(os.path.normpath(run_dir))
-    run = d.split(".yarim-")[0]
-    set_aside = ".yarim-" in d
+    run = base_run_name(d)
+    set_aside = is_set_aside(d)
     if not os.path.isdir(run_dir):
         # Klasör hiç oluşmamış (süreç açılışta öldü) ya da sonradan silinmiş. "Kanıt yok"tan AYRI bir
         # kanıt: klasör yoksa koşu tek satır bile yazamamıştır, varsa yazdı ama bitmedi demektir.
@@ -428,7 +450,7 @@ def reconstruct(ckpt_dir: str, blocks: dict[str, str] | None = None,
         run_dir = os.path.join(ckpt_dir, name)
         if not os.path.isdir(run_dir):
             continue
-        block = (blocks or {}).get(name.split(".yarim-")[0])
+        block = (blocks or {}).get(base_run_name(name))
         rec = scan_run_dir(run_dir, block=block, running_grace_sec=running_grace_sec)
         (recs.append(rec) if rec is not None else skipped.append(name))
     recs.sort(key=lambda r: (r["started"] or "", r["dir"]))
@@ -448,12 +470,18 @@ def counts(records: list[dict]) -> dict:
     """V11'in istediği sayılar. `toplam` DENEME sayısıdır, koşu sayısı değil: aynı koşu adı bir
     iptal + bir bitti olarak iki satır olabilir ve V10(iii) tam olarak bunu istiyor."""
     per = {s: sum(1 for r in records if r.get("status") == s) for s in STATUSES}
+    # V11a(iii): kesilen bloğun BİTMİŞ koşuları da kenara alınır ve o denemeye `evidence = "blok-iptal"` taşıyan
+    # bir durum-değişikliği satırı eklenir (defter append-only: eski "bitti" satırı geri alınamaz). Öyle bir
+    # deneme duvar saati ölçütüne GİREMEZ — bloğu kesintisiz koşmadı. Bu dışlama yokken ölçüldü: 2 blokluk,
+    # tek çökmeli bir senaryoda "uygun" 10 okunuyordu, doğrusu 8.
+    cancelled = {attempt(r) for r in records if r.get("evidence") == "blok-iptal"}
     admissible = [r for r in records                      # duvar saati ölçütüne girebilen satırlar
-                  if r.get("status") == "bitti" and not r.get("resumed") and r.get("block")]
+                  if r.get("status") == "bitti" and not r.get("resumed") and r.get("block")
+                  and attempt(r) not in cancelled]
     return {"toplam": len(records), **per, "çöken": sum(per[s] for s in CRASHED),
             "sürdürülen": sum(1 for r in records if r.get("resumed")),
             "blok_bilinmeyen": sum(1 for r in records if not r.get("block")),
-            "duvar_saati_uygun": len(admissible),
+            "duvar_saati_uygun": len(admissible), "blok_iptal": len(cancelled),
             "koşu_adı_sayısı": len({r.get("run") for r in records})}
 
 

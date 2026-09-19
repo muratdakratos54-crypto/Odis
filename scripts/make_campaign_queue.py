@@ -13,6 +13,10 @@ başlayan yavaşlık s22'nin ilk dört dilimine taşındı (~40 dk'lık girişim
 aştı). Kol bloğu hâlinde koşmak böyle bir pencerenin TEK kola düşmesine yol açar ve %9 oturum
 gürültüsüyle n=5'te duvar saati farkının GA yarı-genişliği ±11.2 puan olur — ölçüt işlevsiz kalır.
 Seed bloğu aynı pencereyi dört kolun paylaşmasını sağlar. Maliyeti sıfır.
+
+Her koşu `_block` kimliğini taşır; `scripts/run_queue.py` V11a(iii)'ü ("blok yarıda kesilirse TAMAMI yeniden
+koşulur") bu kimlikle uygular ve koşu defterine bu kimliği yazar. Kimlik katmanlar arasında tekildir
+(`block_id`). Karar ve S1 kuyrukları `--strict` ile üretilir (`"_strict": true`).
 """
 from __future__ import annotations
 
@@ -41,8 +45,34 @@ def scale_of(arms: list[str]) -> str:
     return "S1" if all(s1) and arms else "S0"
 
 
+def block_id(seed: int, scale: str = "S0", tag: str = "") -> str:
+    """Blok kimliği KATMANLAR ARASINDA tekildir: etiketsiz S0 -> `s11`, tarama -> `screen-s101`, S1 -> `s1-s11`.
+
+    Önek, koşu adının önekiyle aynı kuraldan gelir. Neden: blok kimliği koşu defterine yazılıyor ve duvar
+    saati karşılaştırması YALNIZCA aynı blok içinde geçerli (V11a-ii). Kimlik yalnızca `s<seed>` olsaydı S0
+    kararının `s11` bloğu ile S1'in (ya da bir taramanın) `s11` bloğu defterde TEK blok gibi görünür, farklı
+    oturumlarda ve farklı ölçekte koşmuş koşular "aynı blok" diye yan yana konabilirdi. Etiketsiz S0 kimliği
+    bilerek `s<seed>` kaldı: commit'li karar kuyruğu (`queues/decision.json`) koşu listesini birebir
+    yeniden üretmek zorunda."""
+    return f"{S1_PREFIX if scale == 'S1' else ''}{tag + '-' if tag else ''}s{seed}"
+
+
+def blocks_of(runs: list[dict]) -> dict[str, list[dict]]:
+    """{blok kimliği: koşular}, kuyruk sırasıyla. Bloklar `_block` alanından OKUNUR, seed'den yeniden
+    türetilmez: kimliğin biçimi (önek) tek yerde, `block_id`'de tanımlı kalsın."""
+    out: dict[str, list[dict]] = {}
+    for r in runs:
+        out.setdefault(r["_block"], []).append(r)
+    return out
+
+
 def build_runs(arms: list[str], seeds: list[int], tag: str = "", stop_step: int = 0) -> list[dict]:
     """Seed bloğu × Latin kare sırasıyla koşu listesi. Saf fonksiyon: testler ve mutasyon sınavı için."""
+    scale = scale_of(arms)                # karışık ölçek burada da hata: bir bloğun TEK kimliği olur
+    if scale == "S0" and (tag + "-").startswith(S1_PREFIX):
+        # `--tag s1` S0 koşularına `s1-` öneki verirdi: adlar S1 koşusu gibi görünür (`owner_decision.verify_order`
+        # öneke bakıyor) ve blok kimlikleri S1'inkilerle ÇAKIŞIRDI.
+        raise ValueError(f"etiket '{tag}' S1 önekiyle ('{S1_PREFIX}') çakışıyor: S0 kuyruğu S1 gibi adlandırılamaz")
     runs = []
     for bi, s in enumerate(seeds):        # DIŞ döngü seed: blok = bir seed'in bütün kolları
         # Blok İÇİ sıra her blokta KAYDIRILIR (Latin kare). Sabit sıra (her blokta D,M,H,X)
@@ -56,14 +86,14 @@ def build_runs(arms: list[str], seeds: list[int], tag: str = "", stop_step: int 
             cmd = ["--preset", a, "--seed", str(s)]
             if stop_step:
                 cmd += ["--stop_step", str(stop_step)]
-            runs.append({"name": name, "args": cmd, "_block": f"s{s}", "_arm": short(a)})
+            runs.append({"name": name, "args": cmd, "_block": block_id(s, scale, tag), "_arm": short(a)})
     return runs
 
 
 def positions(runs: list[dict], arms: list[str], seeds: list[int]) -> dict[str, list[int]]:
     pos: dict[str, list[int]] = {short(a): [] for a in arms}
-    for s in seeds:
-        for i, r in enumerate([r for r in runs if r["_block"] == f"s{s}"]):
+    for block in blocks_of(runs).values():
+        for i, r in enumerate(block):
             pos[r["_arm"]].append(i)
     return pos
 
@@ -80,9 +110,13 @@ def check_balance(runs: list[dict], arms: list[str], seeds: list[int]) -> None:
     guard, guard değildir.
     """
     shorts = [short(a) for a in arms]
-    for s in seeds:
-        block = [r["_arm"] for r in runs if r["_block"] == f"s{s}"]
-        assert sorted(block) == sorted(shorts), f"blok s{s} kol kümesi bozuk: {block}"
+    blocks = blocks_of(runs)
+    # Blok sayısı = seed sayısı. İki seed aynı blok kimliğini alsaydı (kimlik çakışması) blok sayısı düşer,
+    # kuyruk yürütücüsü de iki seed'i TEK blok sayıp V11a(iii)'ü yanlış blokta uygulardı.
+    assert len(blocks) == len(seeds), f"blok sayısı {len(blocks)}, seed sayısı {len(seeds)}: {list(blocks)}"
+    for b, members in blocks.items():
+        block = [r["_arm"] for r in members]
+        assert sorted(block) == sorted(shorts), f"blok {b} kol kümesi bozuk: {block}"
     pos = positions(runs, arms, seeds)
     floor = len(seeds) // len(arms)
     for a in shorts:
@@ -102,6 +136,9 @@ def main() -> None:
     p.add_argument("--stop_step", type=int, default=0, help=">0 ise kısaltılmış (tarama) koşu")
     p.add_argument("--tag", default="", help="koşu adı öneki (ör. screen)")
     p.add_argument("--owner_log", default=None, help="sahibin karar defteri (varsayılan: owner_decision.LOG)")
+    p.add_argument("--strict", action="store_true",
+                   help="kuyruğa \"_strict\": true yazar (karar ve S1 kuyrukları): run_queue.py commit'lenmemiş "
+                        "kodla BAŞLAMAZ ve kuyruk sürerken src/ değişirse sıradaki koşuyu başlatmadan DURUR")
     args = p.parse_args()
 
     arms = [a.strip() for a in args.arms.split(",")]
@@ -119,17 +156,22 @@ def main() -> None:
             sys.exit(f"HATA: {e}")
     runs = build_runs(arms, seeds, tag=args.tag, stop_step=args.stop_step)
     check_balance(runs, arms, seeds)
+    blocks = blocks_of(runs)
     q = {"out_dir": args.out_dir, "cwd": ".", "python": ".venv/Scripts/python.exe", "runs": runs,
          "_scale": scale, "_owner_decision": decision,
          "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
-         "_blocks": [[r["name"] for r in runs if r["_block"] == f"s{s}"] for s in seeds]}
+         "_blocks": [[r["name"] for r in members] for members in blocks.values()]}
+    if args.strict:
+        # Anahtar yalnızca istenince yazılır ki bayraksız çıktı eskisiyle aynı kalsın; yürütücü anahtarın
+        # YOKLUĞUNU "sıkı değil" sayar, bool olmayan değeri ise reddeder.
+        q["_strict"] = True
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(q, f, indent=1, ensure_ascii=False)
-    print(f"{len(runs)} koşu, {len(seeds)} seed bloğu x {len(arms)} kol -> {args.out}")
-    for i, s in enumerate(seeds):
-        block = [r["name"] for r in runs if r["_block"] == f"s{s}"]
-        print(f"  blok {i+1} (s{s}): " + ", ".join(block))
+    print(f"{len(runs)} koşu, {len(seeds)} seed bloğu x {len(arms)} kol -> {args.out}"
+          + (" | SIKI (_strict)" if args.strict else ""))
+    for i, (b, members) in enumerate(blocks.items()):
+        print(f"  blok {i+1} ({b}): " + ", ".join(r["name"] for r in members))
     pos = positions(runs, arms, seeds)
     print("kontrol: her blokta her kol tam bir kez; Latin kare dengesi assertion'dan geçti — OK")
     print("kol -> gördüğü blok-içi pozisyonlar:")
