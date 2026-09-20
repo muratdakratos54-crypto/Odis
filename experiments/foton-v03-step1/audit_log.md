@@ -84,6 +84,11 @@ eklendi; Ö2 ve Ö3'ün ulaşılabilirlik tabloları assertion'larıyla `reachab
 * **Kalan 8 koşu: TAMAMI koşulacak, kuyruk kısaltılmayacak.** Sahibin gerekçesi: D-102 ve D-103'ün karar değeri kalmadı ama
   teşhis değeri var (yeni D koşuları genel olarak mı kaymış, yoksa yalnız 101 mi); ayrıca veriyi gördükten sonra kuyruk
   kompozisyonunu değiştirmek başlı başına bir sapmadır.
+* **Teşhis koşusu SONUCU (22:03): KOD SAĞLAM.** Ön koşullar temiz (takvim 87/87 birebir, adım 0 farkı 0.0, seed 11, dense).
+  Pencere ortalaması +0.002636 (sınır 0.004), maks_TÜM 0.007549 (sınır 0.012), pencerede işaretler karışık. D-101'in
+  anomalisi +0.025295 ve her adımda pozitifti: yaklaşık 10 kat büyük ve desen olarak farklı. Teşhis koşusu, seed 101'in
+  düştüğü denetimi geçiyor (adım 2000 sapması −0.004443). **Sonuç: bugünkü kod dondurulmuş dense referansını aynı seed'de
+  yeniden üretiyor; D-101'in sapması seed çekimidir.** Kayıt: `dcheck_result.json`, `dcheck_rule.md` bölüm 5b.
 * **Yakın-kaçış dersi** (sahibin yazdırdığı): kapı atanmış kontrol noktasında sınırı yalnızca %1.1 aştı, oysa eğri adım
   1500'de z = +9.6 ile tamamen dışarıdaydı — tek noktalı akla-yatkınlık denetimi bu anomaliyi neredeyse kaçırıyordu ve
   kirli veriyle (b) okunabilirdi. Gelecekteki akla-yatkınlık kapıları EĞRİ BOYUNCA tanımlanacak. Kayıt:

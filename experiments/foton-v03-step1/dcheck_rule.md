@@ -86,6 +86,32 @@ P4 iki koşu da bitmiş, ortak eval adımları tam ve sonlu.
 
 **İkincil, BAĞLAYICI DEĞİL:** eğitim CE'sinin PENCERE farkı (kodun hesapladığı beş eval adımında; aynı-kod çiftinde +0.000670).
 
+## 5b. SONUÇ (koşu 2026-09-20 22:03'te bitti; ölçüt yukarıda, koşu görülmeden yazılmıştı)
+
+**KOD SAĞLAM.** Ön koşulların dördü de temiz: takvim 87 ortak adımda birebir aynı, adım 0 farkı TAM 0, ayarlar ve seed
+(11) doğru, kol gerçekten dense. Ölçülen: **pencere ortalaması +0.002636** (sınır 0.004), **maks_TÜM |d| 0.007549**
+(adım 250; sınır 0.012), pencerede işaretler KARIŞIK (+, +, −, +, +) — sistematik kayma deseni yok.
+
+| adım | teşhis d(s) | D-101 anomalisi | aile sd (n=5) |
+|---|---|---|---|
+| 250 | −0.007549 | −0.001072 | 0.008674 |
+| 500 | +0.004777 | +0.025814 | 0.032150 |
+| 750 | +0.004853 | +0.032920 | 0.007588 |
+| 1000 | +0.003044 | +0.028352 | 0.007500 |
+| 1250 | −0.000340 | +0.021949 | 0.005470 |
+| 1500 | +0.005336 | +0.021571 | 0.002240 |
+| 1750 | +0.000286 | +0.021684 | 0.002161 |
+| 2000 | −0.000489 | +0.012152 | 0.002733 |
+| **pencere ort.** | **+0.002636** | **+0.025295** | — |
+
+Teşhis koşusu, seed 101'in düştüğü denetimi rahatça geçiyor: adım 2000'de dondurulmuş referanstan sapması **−0.004443**
+(D akla-yatkınlık sınırı ±0.012). Yani bugünkü kod seed 11'de referansı yeniden üretiyor; **D-101'in +0.0253'lük
+sapması SEED ÇEKİMİDİR**, kod farkı değildir.
+
+Not: ölçülen maks_TÜM (0.007549) aynı-kod çapasının (0.007758) hemen altında. İlk yazdığım eşik 0.008 olsaydı bu koşu
+sınırın %94'üne dayanırdı; koşudan önceki inceleme turunun eşiği 0.012'ye çekmesi sonucu değiştirmedi ama payı
+%63'e indirdi. Ders kayda değer: gürültü zarfı AYNI KODLA koşmuş çiftten ölçülmeli.
+
 ## 6. SONRAKİ ADIM (sahibin talimatı, koşu görülmeden)
 
 Beş hâlde de **kalan 8 koşu koşulur; kuyruk kısaltılmaz.** D-102 ve D-103'ün karar değeri kalmadı ama teşhis değeri var:

@@ -1,0 +1,86 @@
+{
+ "what": "v03 adım 1 — dense teşhis koşusu (ölçüt koşu görülmeden yazıldı: scripts/v03_dcheck.py)",
+ "new": "checkpoints\\foton-v03-dcheck\\dcheck-d-s11",
+ "ref": "checkpoints\\foton-v02r\\r-d-s11",
+ "preconditions": {
+  "P1_schedule": {
+   "common_steps": 87,
+   "mismatched_steps": [],
+   "identical": true
+  },
+  "P2_init": {
+   "diff": 0.0,
+   "tol": 1e-06
+  },
+  "P3_config": {
+   "model_unexpected": [],
+   "train_unexpected": [],
+   "same_seed": true,
+   "dense_arm": true,
+   "ok": true
+  },
+  "clean": true
+ },
+ "train_ce_window_diff_NOT_binding": {
+  "steps": [
+   750,
+   1000,
+   1250,
+   1500,
+   1750
+  ],
+  "per_step": {
+   "750": 0.002352294921874609,
+   "1000": 0.002481384277343679,
+   "1250": 0.0019921874999999645,
+   "1500": -0.00022064208984406974,
+   "1750": 0.0024383544921877665
+  },
+  "mean": 0.0018087158203123899,
+  "anchor_same_code_pair": 0.00067
+ },
+ "per_step_nat": {
+  "250": -0.007549208402633845,
+  "500": 0.004777178168296814,
+  "750": 0.004853412508964539,
+  "1000": 0.0030438214540478015,
+  "1250": -0.000339981913566767,
+  "1500": 0.0053355574607847345,
+  "1750": 0.00028571188449832974,
+  "2000": -0.0004886984825134277
+ },
+ "window_mean_nat": 0.0026357042789457276,
+ "max_abs_nat": 0.007549208402633845,
+ "max_abs_window_nat": 0.0053355574607847345,
+ "window_all_positive": false,
+ "window_all_negative": false,
+ "thresholds": {
+  "sane_window_mean": 0.004,
+  "sane_max_abs": 0.012,
+  "guilty_window_mean": 0.012648
+ },
+ "anchors": {
+  "same_code_pair": {
+   "runs": "foton-v02r/r-m-s11 ↔ foton-v02r.kirli-src-iptal/r-m-s11 (ikisi de src b645ec94)",
+   "window_mean": 0.001133,
+   "max_abs_all": 0.007758,
+   "max_abs_window": 0.005055,
+   "init_diff": -8.3e-08,
+   "train_ce_window_mean": 0.00067
+  },
+  "other_code_pair": {
+   "runs": "foton-v02r/r-d-s11 ↔ foton-v02r.kirli-src-iptal/r-d-s11 (b645ec94 / d1b93ff0)",
+   "window_mean": -0.000177,
+   "max_abs_all": 0.005801,
+   "max_abs_window": 0.002575,
+   "init_diff": 0.0,
+   "train_ce_window_mean": -0.001576
+  },
+  "d101_anomaly": {
+   "window_mean": 0.025295,
+   "all_positive": true
+  }
+ },
+ "outcome": "kod_saglam",
+ "next_step": "KOD SAĞLAM: bugünkü kod dondurulmuş referansı aynı seed'de yeniden üretti; D-101'in sapması seed çekimidir. Kayda geçer, kalan 8 koşu (sahibin onayıyla) koşulur. (b) bu turda yine OKUNMAZ."
+}
