@@ -9,8 +9,16 @@ Kuralın TEK kopyası koddadır: `scripts/v03_step1_decision.py` (ulaşılabilir
 > sonra zorlanmış yolun iki bağımsız incelemesi kuralda dört açık buldu; aşağıda **[ÖNERİ 1–4]** etiketiyle yazılı dört ek
 > **sahibince ONAYLANDI, dördü de** (veri görülmeden). Hiçbiri iki eşiğe ve δ / δ_D tanımına dokunmaz. Ö1, Ö2 ve Ö4 "karar
 > okunmaz" durumlarını ÇOĞALTIR (Ö4 bunu haritanın tek bir hücresini değiştirerek yapar — haritayı değiştiren tek ek budur);
-> Ö3 yalnızca bir TEŞHİS etiketini sıkılaştırır, karara ve haritaya dokunmaz. **12 koşu onaylandı**; yürütme talimatı belgenin
-> sonundadır. İnceleme turlarının kaydı: `audit_log.md` (bu klasörde).
+> Ö3 yalnızca bir TEŞHİS etiketini sıkılaştırır, karara ve haritaya dokunmaz. **Dört önerinin DÖRDÜ DE sahibince ONAYLANDI
+> (2026-09-20).** 12 koşu onaylandı ve başlatıldı; yürütme talimatı belgenin sonundadır. İnceleme turlarının kaydı:
+> `audit_log.md` (bu klasörde).
+>
+> **KOŞU DURUMU (2026-09-20 19:32): seed 101 kapısı AŞILDI, kuyruk durdu, kalan 8 koşu başlatılmadı, δ hesaplanmadı.**
+> Ön koşulun seed-başı bacağı TEMİZ (mean_fixed farkı −0.00255 nat, tavan farkı +0.108 puan). D akla-yatkınlık bacağı
+> AŞILDI: adım 2000 sapması +0.012132 nat, sınır 0.012. Sahibin kararı: tolerans gevşetilmez, **(b) kapısı bu turda
+> OKUNMAZ** ve haritanın "(b) okunamadı" hücresi geçerlidir; bu karar veriyi gördükten sonra tartışmaya açılmaz. Sahibi
+> ayrıca bir TEŞHİS koşusu onayladı (D, seed 11, 2188 adım; ölçütü koşudan önce yazıldı: `dcheck_rule.md`) ve kalan 8
+> koşunun TAMAMININ koşulmasını, kuyruğun kısaltılmamasını istedi.
 
 ## Kollar — 12 koşu: 4 kol × seed {101, 102, 103}; T = 512; tarama bütçesi (adım 2188, LR takvimi tam bütçe üzerinden)
 

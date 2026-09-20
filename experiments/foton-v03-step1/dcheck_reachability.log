@@ -1,0 +1,35 @@
+Ulaşılabilirlik — beş hâl (benzetim; adım-başı gürültü sd 0.0035235, iki tekrar çiftinden; 40000 çekim/hücre)
+eşikler: sağlam |ort| ≤ 0.004 ve maks_TÜM ≤ 0.012 | suçlu ort ≥ 0.012648
+
+komşu adım ilişkisi rho = 0.0
+  gerçek etki +0.000000 -> kod_saglam 0.984, kod_sapiyor_kismi 0.003, okunmaz 0.009, ters_yonde_sapma 0.004
+  gerçek etki +0.004000 -> kod_saglam 0.480, kod_sapiyor_kismi 0.369, okunmaz 0.151
+  gerçek etki +0.008000 -> kod_saglam 0.003, kod_sapiyor_kismi 0.941, kod_suclu 0.002, okunmaz 0.054
+  gerçek etki +0.012648 -> kod_sapiyor_kismi 0.499, kod_suclu 0.500, okunmaz 0.001
+  gerçek etki +0.020000 -> kod_suclu 1.000
+  gerçek etki +0.025295 -> kod_suclu 1.000
+  gerçek etki -0.008000 -> kod_saglam 0.004, okunmaz 0.057, ters_yonde_sapma 0.940
+  gerçek etki -0.025295 -> ters_yonde_sapma 1.000
+
+komşu adım ilişkisi rho = 0.3
+  gerçek etki +0.000000 -> kod_saglam 0.959, kod_sapiyor_kismi 0.014, okunmaz 0.014, ters_yonde_sapma 0.013
+  gerçek etki +0.004000 -> kod_saglam 0.484, kod_sapiyor_kismi 0.404, okunmaz 0.112, ters_yonde_sapma 0.000
+  gerçek etki +0.008000 -> kod_saglam 0.012, kod_sapiyor_kismi 0.931, kod_suclu 0.008, okunmaz 0.049
+  gerçek etki +0.012648 -> kod_sapiyor_kismi 0.497, kod_suclu 0.502, okunmaz 0.001
+  gerçek etki +0.020000 -> kod_sapiyor_kismi 0.000, kod_suclu 1.000
+  gerçek etki +0.025295 -> kod_suclu 1.000
+  gerçek etki -0.008000 -> kod_saglam 0.012, okunmaz 0.052, ters_yonde_sapma 0.936
+  gerçek etki -0.025295 -> ters_yonde_sapma 1.000
+
+GEÇTİ  rho=0.0: etki 0 -> P(SAĞLAM) >= %90
+GEÇTİ  rho=0.0: etki 0 -> P(SUÇLU) <= %0.1 ve P(KISMİ) <= %5
+GEÇTİ  rho=0.0: etki = anomalinin tamamı -> P(SUÇLU) >= %95
+GEÇTİ  rho=0.0: etki +0.008 -> P(SUÇLU ya da KISMİ) >= %80
+GEÇTİ  rho=0.0: etki -0.025295 -> P(TERS YÖNDE) >= %95
+GEÇTİ  rho=0.0: etki tam suçlu eşiğinde -> P(SUÇLU) %40-60 (eşikte yazı-tura, dürüstlük notu)
+GEÇTİ  rho=0.3: etki 0 -> P(SAĞLAM) >= %90
+GEÇTİ  rho=0.3: etki 0 -> P(SUÇLU) <= %0.1 ve P(KISMİ) <= %5
+GEÇTİ  rho=0.3: etki = anomalinin tamamı -> P(SUÇLU) >= %95
+GEÇTİ  rho=0.3: etki +0.008 -> P(SUÇLU ya da KISMİ) >= %80
+GEÇTİ  rho=0.3: etki -0.025295 -> P(TERS YÖNDE) >= %95
+GEÇTİ  rho=0.3: etki tam suçlu eşiğinde -> P(SUÇLU) %40-60 (eşikte yazı-tura, dürüstlük notu)

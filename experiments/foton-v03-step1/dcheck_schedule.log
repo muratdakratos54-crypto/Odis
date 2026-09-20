@@ -1,0 +1,4 @@
+Yeni koşunun LOGLAYACAĞI lr (koddan, preset foton-d, --stop_step 2188) ile referans r-d-s11 (tam bütçe) karşılaştırması
+ortak loglanan adım: 87 | birebir aynı: True | ayrışan adım: []
+örnek: adım 25 lr 0.000125 | adım 2000 lr 0.00064692484506831491 | adım 2175 lr 0.00058838607141288037
+not: `stop_step` takvime girmez; takvim max_steps = 4375 üzerinden hesaplanır.

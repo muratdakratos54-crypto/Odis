@@ -26,6 +26,14 @@ kendi sağlamalarına da sorulur.
 
 | 3 (15 ajan; 5 çürütme ajanı kota sınırına takıldı, bulguları yine de tek tek incelendi) | sahibin onayından sonra yazılan seed-101 kapısı, kampanya sürücüsü, bölünmüş kuyruklar, LR denetimi, rapor sırası | HIGH yok; 12 bulgu (2 MEDIUM, 10 LOW). LR takvimi iddiası bağımsız doğrulandı (ortak loglanan 87 adımın tamamında bit-özdeş LR; 3.1198 ± 0.0027 yeniden hesaplandı). Bulgular: kuyruk ikiye bölününce "kampanya boyunca TEK src özeti" güvencesi iki kuyruğun ARASINDA kalmıyordu; kapı çıktısı X-iid-101'in `val_atanan`'ını toplamsal kaydırmayla sızdırıyordu ve "hiçbir kolun val kaybı yok (testle kilitli)" iddiası YANLIŞTI (test yalnız literal dizgi arıyordu); kapı dar bir istisna kümesi yakalıyordu; sürücü bayat kapı çıktısını silmiyor ve "running" durumu yazmıyordu; rapor okunmaz durumda da GEÇTİ / GEÇMEDİ hükmü basıyordu; çelişki bayraklarının rapordaki yeri belgede iki türlü yazılıydı; sentetik veri mean_fixed ≡ best_fixed ≡ val olduğu için ön koşulun hangi niceliği okuduğu kanıtsızdı |
 
+| 4 (28 ajan; biri API hatasıyla düştü) | dense TEŞHİS koşusunun ölçütü (koşudan ÖNCE): başarısız olabilir mi, ulaşılabilir mi, sahibin iki şartına uyuyor mu | HIGH yok; bulguların en ağırı: **gürültü çapası iki FARKLI kod sürümünden alınmıştı** ve diskte AYNI kodla koşmuş gerçek bir tekrar çifti vardı (`r-m-s11`; zarfı daha geniş: pencere ort +0.001133, maks 0.007758 — seçilen çapanın 6.4 / 1.34 katı). Eşikler o yüzden fazla sıkıydı: kod özdeşken bile P(SAĞLAM) ≈ %80–88. Ayrıca: "suçlu" eşiği tam tespit etmek istediği etkiye konmuştu (%50 güç), ölçüt TERS yöne kördü ve o hâlde olgusal olarak YANLIŞ bir gerekçe basıyordu, ikincil CE çapası belgede kodun hesapladığından başka bir küme üzerinden yazılmıştı |
+
+Tur 4'ten sonra: çapa AYNI KODLA koşmuş çiftten alındı (üçüncü kanıt: `v2-speed` üçlüsü, aynı src ve seed, eğitim CE'sinde
+bit-özdeş DEĞİL); eşikler 0.004 / 0.012'ye genişletildi; karar ÜÇ hâlden BEŞ hâle çıkarıldı (kısmi sapma ve ters yönde sapma
+ayrı hâller, ikisi de "dense farkı ayrı iş olarak açılır"a bağlanıyor); OKUNMAZ gerekçesi artık ölçülen sayılardan üretiliyor;
+takvim tahmini eğitimin kendi `token_budget()` yardımcısını kullanıyor; ulaşılabilirlik benzetimle ölçülüp assertion'a
+bağlandı (`dcheck_reachability.log`: kod özdeşken P(SAĞLAM) %96–98, anomalinin tamamında P(SUÇLU) %100).
+
 **Tur 3'ün en pahalı bulgusu kodda değil, BENDEYDİ ve başlatmadan önce denenerek bulundu:** kampanya sürücüsü bağımsız
 süreç olarak koşarken stdout dosyaya yönlenir ve Windows'ta cp1252 olur; ilk Türkçe günlük satırı `UnicodeEncodeError` ile
 sürücüyü öldürecekti — kuyruk hiç başlamadan, durum dosyası da yazılmadan. Düzeltildi (`sys.stdout.reconfigure`, günlük önce
@@ -51,6 +59,7 @@ eklendi; Ö2 ve Ö3'ün ulaşılabilirlik tabloları assertion'larıyla `reachab
 | 2 (tur 1 düzeltmeleri) | 84 | 83 yakalandı; **U19 hayatta kaldı** (kimlik denetimi eklenince val satırındaki atama-kuralı etiketini tek başına bozan test kalmamıştı) → test eklendi |
 | 3 (tur 2 düzeltmeleri) | 119 | 119 yakalandı (tur 2'nin 13 sonda mutantı kataloğa girdi: N40–N67, R09–R12, D09–D11) |
 | 4 (seed-101 kapısı + sürücü + LR denetimi + tur 3'ün bulguları) | 146 | 146 yakalandı (yeni: G01–G23 kapı / sürücü, N68–N69, P01–P03) |
+| 5 (dense teşhis ölçütü; tur 4'ün bulguları) | 170 | 170 yakalandı (yeni: E01–E24) |
 
 06 sınavı (FOTON uygulamasının guard'ları) `src/train.py` / `src/model.py` her değiştiğinde yeniden koşuldu: 71 / 71.
 
@@ -64,3 +73,18 @@ eklendi; Ö2 ve Ö3'ün ulaşılabilirlik tabloları assertion'larıyla `reachab
 * "δ'nın işareti neredeyse hep pozitif" notu raporda açıkça yazılacak: büyüklük eşiği testi taşır, işaret yalnızca tutarlılık.
 * 12 koşu ONAYLANDI. Yürütme talimatı: `decision_rule.md`, "YÜRÜTME" bölümü (seed 101 kapısı; 12 koşu bitmeden δ yok; kuyruk
   bitince ön koşul → (a) → (b) → harita hücresi; yorum yok).
+* **Seed 101 kapısı AŞILDI (19:32).** Ön koşulun seed-başı bacağı TEMİZ (mean_fixed farkı −0.00255 nat, tavan farkı +0.108
+  puan); D akla-yatkınlık bacağı AŞILDI (adım 2000 sapması +0.012132, sınır 0.012). Kuyruk durdu, kalan 8 koşu başlatılmadı,
+  δ hesaplanmadı. Sahibin kararı: **"+0.012132 > 0.012. Kıl payı olması bir şey değiştirmiyor; z = +9.6 zaten kıl payı
+  olmadığını söylüyor. (b) bu turda OKUNMAZ, haritanın '(b) okunamadı' hücresi geçerli. Bu kararı veriyi gördükten sonra
+  tartışmaya açmıyoruz."** Tolerans gevşetilmedi ve gevşetilmeyecek.
+* **Teşhis koşusu ONAYLANDI** (D, seed 11, 2188 adım) iki şartla: başarı ölçütü koşudan ÖNCE yazılacak (tek nokta değil,
+  eğri boyunca) ve takvim eşleşmesi açıkça teyit edilecek. İkisi de yapıldı: `dcheck_rule.md`, `scripts/v03_dcheck.py`,
+  `dcheck_schedule.log` (87 ortak adımda birebir aynı, koşudan önce koddan), `dcheck_reachability.log`.
+* **Kalan 8 koşu: TAMAMI koşulacak, kuyruk kısaltılmayacak.** Sahibin gerekçesi: D-102 ve D-103'ün karar değeri kalmadı ama
+  teşhis değeri var (yeni D koşuları genel olarak mı kaymış, yoksa yalnız 101 mi); ayrıca veriyi gördükten sonra kuyruk
+  kompozisyonunu değiştirmek başlı başına bir sapmadır.
+* **Yakın-kaçış dersi** (sahibin yazdırdığı): kapı atanmış kontrol noktasında sınırı yalnızca %1.1 aştı, oysa eğri adım
+  1500'de z = +9.6 ile tamamen dışarıdaydı — tek noktalı akla-yatkınlık denetimi bu anomaliyi neredeyse kaçırıyordu ve
+  kirli veriyle (b) okunabilirdi. Gelecekteki akla-yatkınlık kapıları EĞRİ BOYUNCA tanımlanacak. Kayıt:
+  `experiments/foton-v02/v03_design_notes.md`, bölüm 3.

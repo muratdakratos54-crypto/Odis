@@ -118,6 +118,10 @@ karşı-olgusaldır. Ham sayı tek başına raporlanmamalıdır.
 * SIKI kuyruk `code_dirty`'yi artık her koşudan önce denetliyor (v02'de yalnızca kuyruk başında denetliyordu; 07'de
   kapatıldı). Açık kalan: `make_campaign_queue.py` karar/S1 kuyruğunda `_strict`'i ZORUNLU kılsın (v02'de `--strict` isteğe
   bağlıydı) ve tarama kuyrukları da SIKI üretilsin.
+* **Gürültülü eğrilerde TEK NOKTA kontrolü kırılgandır; akla-yatkınlık kapıları EĞRİ BOYUNCA tanımlansın.** Yakın kaçış
+  (v03 adım 1, 2026-09-20): D akla-yatkınlık kapısı atanmış kontrol noktasında (adım 2000) sınırı yalnızca %1.1 aştı
+  (+0.012132 / 0.012), oysa aynı koşu adım 1500'de z = +9.6 ile referans ailesinin tamamen dışındaydı. Tek noktalı denetim
+  bu anomaliyi neredeyse kaçırıyordu ve kirli veriyle (b) kapısı okunabilirdi.
 * Rapor yazıldıktan sonra bağımsız bir doğrulama turu (kör yeniden hesap + sayı denetimi + düşmanca hakem) koşulsun: v02'nin
   07 raporunda bu tur bir aşırı iddiayı ("öğrenilecek bir şey yoktu"), birime bağlı bir eğilim cümlesini ("tavan küçülüyor")
   ve FOTON lehine yanıltıcı bir parantezi ("fark kapanıyor") yakaladı.

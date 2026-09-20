@@ -1,0 +1,14 @@
+{
+ "_purpose": "TEŞHİS koşusu, karar koşusu DEĞİL: bugünkü kod dondurulmuş dense referansını aynı seed'de yeniden üretiyor mu (D-101 sapması kod mu, seed mi). Ölçüt koşu görülmeden yazıldı: experiments/foton-v03-step1/dcheck_rule.md, scripts/v03_dcheck.py",
+ "_not_a_decision_run": "Çıktı checkpoints/foton-v03-dcheck altındadır; karar kampanyasının klasörü (checkpoints/foton-v03-step1) DEĞİL. Analiz ve seed-101 kapısı bu koşuyu hiçbir koşulda görmez.",
+ "out_dir": "checkpoints/foton-v03-dcheck",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "_strict": true,
+ "runs": [
+  {
+   "name": "dcheck-d-s11",
+   "args": ["--preset", "foton-d", "--seed", "11", "--stop_step", "2188"]
+  }
+ ]
+}
