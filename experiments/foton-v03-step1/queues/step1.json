@@ -4,19 +4,6 @@
  "python": ".venv/Scripts/python.exe",
  "runs": [
   {
-   "name": "v03s1-d-s101",
-   "args": [
-    "--preset",
-    "foton-d",
-    "--seed",
-    "101",
-    "--stop_step",
-    "2188"
-   ],
-   "_block": "v03s1-s101",
-   "_arm": "d"
-  },
-  {
    "name": "v03s1-x-dom-s101",
    "args": [
     "--preset",
@@ -56,17 +43,17 @@
    "_arm": "x-iid"
   },
   {
-   "name": "v03s1-x-dom-s102",
+   "name": "v03s1-d-s101",
    "args": [
     "--preset",
-    "foton-x-dom",
+    "foton-d",
     "--seed",
-    "102",
+    "101",
     "--stop_step",
     "2188"
    ],
-   "_block": "v03s1-s102",
-   "_arm": "x-dom"
+   "_block": "v03s1-s101",
+   "_arm": "d"
   },
   {
    "name": "v03s1-h-dom-s102",
@@ -108,17 +95,17 @@
    "_arm": "d"
   },
   {
-   "name": "v03s1-h-dom-s103",
+   "name": "v03s1-x-dom-s102",
    "args": [
     "--preset",
-    "foton-h-dom",
+    "foton-x-dom",
     "--seed",
-    "103",
+    "102",
     "--stop_step",
     "2188"
    ],
-   "_block": "v03s1-s103",
-   "_arm": "h-dom"
+   "_block": "v03s1-s102",
+   "_arm": "x-dom"
   },
   {
    "name": "v03s1-x-iid-s103",
@@ -158,6 +145,19 @@
    ],
    "_block": "v03s1-s103",
    "_arm": "x-dom"
+  },
+  {
+   "name": "v03s1-h-dom-s103",
+   "args": [
+    "--preset",
+    "foton-h-dom",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "h-dom"
   }
  ],
  "_scale": "S0",
@@ -165,22 +165,22 @@
  "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
  "_blocks": [
   [
-   "v03s1-d-s101",
    "v03s1-x-dom-s101",
    "v03s1-h-dom-s101",
-   "v03s1-x-iid-s101"
+   "v03s1-x-iid-s101",
+   "v03s1-d-s101"
   ],
   [
-   "v03s1-x-dom-s102",
    "v03s1-h-dom-s102",
    "v03s1-x-iid-s102",
-   "v03s1-d-s102"
+   "v03s1-d-s102",
+   "v03s1-x-dom-s102"
   ],
   [
-   "v03s1-h-dom-s103",
    "v03s1-x-iid-s103",
    "v03s1-d-s103",
-   "v03s1-x-dom-s103"
+   "v03s1-x-dom-s103",
+   "v03s1-h-dom-s103"
   ]
  ],
  "_strict": true

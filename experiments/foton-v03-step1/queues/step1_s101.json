@@ -1,0 +1,71 @@
+{
+ "out_dir": "checkpoints/foton-v03-step1",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "v03s1-x-dom-s101",
+   "args": [
+    "--preset",
+    "foton-x-dom",
+    "--seed",
+    "101",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s101",
+   "_arm": "x-dom"
+  },
+  {
+   "name": "v03s1-h-dom-s101",
+   "args": [
+    "--preset",
+    "foton-h-dom",
+    "--seed",
+    "101",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s101",
+   "_arm": "h-dom"
+  },
+  {
+   "name": "v03s1-x-iid-s101",
+   "args": [
+    "--preset",
+    "foton-x-iid",
+    "--seed",
+    "101",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s101",
+   "_arm": "x-iid"
+  },
+  {
+   "name": "v03s1-d-s101",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "101",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s101",
+   "_arm": "d"
+  }
+ ],
+ "_scale": "S0",
+ "_owner_decision": null,
+ "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
+ "_blocks": [
+  [
+   "v03s1-x-dom-s101",
+   "v03s1-h-dom-s101",
+   "v03s1-x-iid-s101",
+   "v03s1-d-s101"
+  ]
+ ],
+ "_strict": true
+}

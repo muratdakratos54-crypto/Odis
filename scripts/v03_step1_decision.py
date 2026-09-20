@@ -39,8 +39,31 @@ MASK_VS_WEIGHT_NAT = 0.005        # teşhis: |val(H-dom) − val(X-dom)| bunun a
 # (b) kapısı bütünüyle YENİ D koşularına dayanır; onların akla-yatkınlık denetimi: dondurulmuş D referansı (seed 11..55, n = 5)
 # adım 2000'de 3.1198 ± 0.0027. Yeni D koşuları (seed 101..103) başka seed ve veri sırası görür: eşli değil, akla-yatkınlık.
 D_REF_STEP, D_REF_VAL, D_REF_TOL = 2000, 3.1198, 0.012     # 0.012 = 4 · 0.0027 · sqrt(1 + 1/5)
+# AYNI TAKVİM KESRİ: referans D koşuları tam bütçeli, yeni D'ler tarama bütçeli — ama `stop_step` yalnızca koşuyu KESER; LR takvimi
+# iki durumda da max_steps = 4375 üzerinden hesaplanır. Adım 2000'de loglanan LR referans koşularda da tarama koşularında da
+# bit düzeyinde aynıdır (aşağıdaki sabit); analiz bunu 12 koşunun her birinde VERİDEN denetler. Tolerans takvim farkı İÇERMEZ.
+LR_AT_D_REF_STEP = 0.0006469248450683149
 D_REF_MEAN_TOL = 0.006            # üç yeni D'nin İŞARETLİ ortalama sapması: 3 · 0.0027 · sqrt(1/3 + 1/5). Seed-başı bacak tek başına
 #                                   0.010 nat'lık sistematik bir D kaymasını (kapıyı 0.010 nat şişirir / söndürür) ~%46 "akla yatkın" sayardı.
+
+
+def _num(v, name: str) -> float:
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+        raise ValueError(f"{name} sonlu bir sayı olmalı, verilen {v!r}")
+    return float(v)
+
+
+def precondition_seed_leg(mean_fixed_diff_nat, ceiling_diff_points) -> bool:
+    """Ön koşulun SEED-BAŞI bacağı — TEK kopya: hem `precondition()` (üç seed + işaretli ortalama) hem de seed 101 bittiğinde
+    bakılan geçerlilik kapısı (`v03_step1_gate.py`) BUNU çağırır."""
+    dm, dc = _num(mean_fixed_diff_nat, "mean_fixed farkı"), _num(ceiling_diff_points, "tavan farkı")
+    return abs(dm) <= PRE_MEAN_FIXED_NAT and abs(dc) <= PRE_CEILING_POINTS
+
+
+def d_sanity_seed_leg(val_d_at_ref_step) -> bool:
+    """D akla-yatkınlık denetiminin SEED-BAŞI bacağı — TEK kopya (`d_sanity()` ve seed-101 kapısı)."""
+    dev = _num(val_d_at_ref_step, f"val(D, adım {D_REF_STEP})") - D_REF_VAL
+    return abs(dev) <= D_REF_TOL
 
 
 def _by_seed(x, name: str) -> dict[int, float]:
@@ -86,7 +109,7 @@ def precondition(mean_fixed_iid, mean_fixed_v02, ceiling_points_iid, ceiling_poi
     dm = paired_difference(mean_fixed_iid, mean_fixed_v02, "mean_fixed")
     dc = paired_difference(ceiling_points_iid, ceiling_points_v02, "oracle tavanı")
     shift = sum(dm.values()) / len(dm)                       # İŞARETLİ: pozitif = X-iid, v02-X'ten kötü (delta'yı şişirir)
-    ok = all(abs(v) <= PRE_MEAN_FIXED_NAT for v in dm.values()) and all(abs(v) <= PRE_CEILING_POINTS for v in dc.values())
+    ok = all(precondition_seed_leg(dm[s], dc[s]) for s in SEEDS)
     ok = ok and abs(shift) <= PRE_MEAN_SHIFT_NAT
     return {"mean_fixed_diff_nat": dm, "mean_shift_nat": shift, "ceiling_diff_points": dc,
             "limits": [PRE_MEAN_FIXED_NAT, PRE_MEAN_SHIFT_NAT, PRE_CEILING_POINTS], "clean": bool(ok)}
@@ -98,7 +121,7 @@ def d_sanity(val_d_at_ref_step) -> dict:
     v = _by_seed(val_d_at_ref_step, f"val(D, adım {D_REF_STEP})")
     dev = {s: v[s] - D_REF_VAL for s in SEEDS}
     mean_dev = sum(dev.values()) / len(dev)
-    ok = all(abs(x) <= D_REF_TOL for x in dev.values()) and abs(mean_dev) <= D_REF_MEAN_TOL
+    ok = all(d_sanity_seed_leg(v[s]) for s in SEEDS) and abs(mean_dev) <= D_REF_MEAN_TOL
     return {"deviation_nat": dev, "mean_deviation_nat": mean_dev, "reference": [D_REF_STEP, D_REF_VAL, D_REF_TOL, D_REF_MEAN_TOL],
             "clean": bool(ok)}
 

@@ -1,15 +1,16 @@
-# v03 ADIM 1 — KARAR KURALI (veri görülmeden yazıldı; 2026-09-20; sahibi onayladı + dört ek; KOŞU YOK)
+# v03 ADIM 1 — KARAR KURALI (veri görülmeden yazıldı; 2026-09-20; sahibi onayladı: kural + dört ek + dört öneri; 12 KOŞU ONAYLANDI)
 
 **Tek soru:** prefix router'ın GÖREBİLDİĞİ en iyi bölümleme (alan) ile yönlendirme ZORLANIRSA modüller, işe yarar biçimde
 ayrışıyor mu? Hayırsa hiçbir prefix router kazanamaz (eğitim dinamiğinden bağımsız). Evetse "öğrenilmiş router devralabilir
 mi" SONRAKİ deneydir. "Kararlılık mı, alan hizası mı" bu adımda cevaplanmaz. Mimari olguları: `docs/ARCHITECTURE_AS_BUILT.md`.
 Kuralın TEK kopyası koddadır: `scripts/v03_step1_decision.py` (ulaşılabilirlik sınavı ve analiz onu çağırır).
 
-> **ONAY DURUMU.** İki eşik (3 puan / 5 puan), δ ve δ_D'nin tanımı, n = 3 kuralı ve harita sahibince ONAYLANDI. Onaydan sonra
-> zorlanmış yolun bağımsız incelemesi (3 ajan) kuralda dört açık buldu; bunlar aşağıda **[ÖNERİ]** etiketiyle yazılıdır, kodda
-> uygulanmıştır ve **sahibin onayını bekler**. Hiçbiri iki eşiğe ve δ / δ_D tanımına dokunmaz. Ö1, Ö2 ve Ö4 "karar okunmaz"
-> durumlarını ÇOĞALTIR (Ö4 bunu haritanın tek bir hücresini değiştirerek yapar); Ö3 yalnızca bir TEŞHİS etiketini sıkılaştırır,
-> karara ve haritaya dokunmaz. Veri görülmedi; reddedilen öneri tek satırla geri alınır.
+> **ONAY DURUMU (2026-09-20).** İki eşik (3 puan / 5 puan), δ ve δ_D'nin tanımı, n = 3 kuralı ve harita sahibince ONAYLANDI. Onaydan
+> sonra zorlanmış yolun iki bağımsız incelemesi kuralda dört açık buldu; aşağıda **[ÖNERİ 1–4]** etiketiyle yazılı dört ek
+> **sahibince ONAYLANDI, dördü de** (veri görülmeden). Hiçbiri iki eşiğe ve δ / δ_D tanımına dokunmaz. Ö1, Ö2 ve Ö4 "karar
+> okunmaz" durumlarını ÇOĞALTIR (Ö4 bunu haritanın tek bir hücresini değiştirerek yapar — haritayı değiştiren tek ek budur);
+> Ö3 yalnızca bir TEŞHİS etiketini sıkılaştırır, karara ve haritaya dokunmaz. **12 koşu onaylandı**; yürütme talimatı belgenin
+> sonundadır. İnceleme turlarının kaydı: `audit_log.md` (bu klasörde).
 
 ## Kollar — 12 koşu: 4 kol × seed {101, 102, 103}; T = 512; tarama bütçesi (adım 2188, LR takvimi tam bütçe üzerinden)
 
@@ -100,7 +101,11 @@ iki-yol sağlaması — yukarıda.)
   → eşli değil, yalnızca akla-yatkınlık. Aşılırsa **yalnızca (b) OKUNMAZ**; (a) okunur. Ulaşılabilirlik (aşağıda): D'nin 0.010
   nat'lık sistematik kaymasını — kapıyı 0.010 nat şişirir ya da söndürür — seed-başı bacak tek başına %45 / %33 / %27 "akla
   yatkın" sayardı; ortalama bacağıyla %0.5 / %4 / %8. Bedeli: kayma yokken yanlış alarm %0 / %1.6 / %12 (sd = 0.0027 / 0.004 /
-  0.0055) — sonucu "(b) okunmaz, D incelenir"dir, yanlış karar değil.
+  0.0055) — sonucu "(b) okunmaz, D incelenir"dir, yanlış karar değil. **LR takvimi (sahibin notu):** tolerans takvim farkı
+  İÇERMEZ ve içermesi gerekmez — referans D koşuları tam bütçeli, yeni D'ler tarama bütçelidir ama `stop_step` koşuyu yalnızca
+  KESER; takvim iki durumda da max_steps = 4375 üzerinden hesaplanır. Adım 2000'de loglanan LR referans D koşularında
+  (`r-d-s11..55`) da tarama koşularında (`v7-x-s101`) da bit düzeyinde aynıdır: 0.0006469248450683149. Karşılaştırma AYNI takvim
+  kesrindedir; analiz ve seed-101 kapısı bunu 12 koşunun her birinde VERİDEN denetler (tutmazsa karar üretilmez).
 * **Maske mi ağırlık mı (teşhis, karar değil):** `val_atanan(H-dom) − val_atanan(X-dom)`. Pozitif = (A, B, C) maske kümesi, BU
   eşlemeyle (code→A, math→B, nl→C), (A, A, A)'dan iyi. **"Heterojenlik yararlı" diye OKUNAMAZ:** fark = [val(H-iid) −
   val(X-iid)] + [δ_X − δ_H] ve ilk terim bilinmiyor (H hiç koşmadı; v02'nin genelci modüllerinde maske A ≈0.001 nat daha
@@ -118,7 +123,8 @@ iki-yol sağlaması — yukarıda.)
   δ'nın 3 puanı aşıp aşmadığıdır. "Üç seed'de δ > 0" şartı bu yüzden bir tutarlılık koşuludur, kanıt değil.
 * **δ, tanım gereği ≥ 0 olan küçük bir bileşen içerir:** X-iid'in kaybı üç modülün ORTALAMASIDIR; `mean_fixed − best_fixed`
   v02'de 0.0007–0.0011 nat (≈ 0.2–0.3 puan). Analiz bu yüzden bağlayıcı OLMAYAN `δ_best = best_fixed(X-iid) − val(X-dom)`'u
-  da raporlar; (a)'nın cevabıyla çelişirse çelişki raporun başında yazılır (karar değişmez).
+  da raporlar; (a)'nın cevabıyla çelişirse çelişki HARİTA HÜCRESİNİN HEMEN ARDINDAN, okuma notlarından önce yazılır
+  (karar değişmez).
 * **`over_null` X-dom / H-dom'da totolojiktir;** v02'deki değeri ortalama 0.28 puan, aralık 0.22–0.36 (9 koşu).
 
 **PUAN ÇEVİRİMİ — tek ve tutarlı:** `puan = 100·(1 − exp(−Δ/0.3346))`; ön-kaydın V9'da çivilediği L* yerel eğimi. v02'nin
@@ -128,7 +134,9 @@ koşularında −0.44 … −0.49): aynı nat farkı o noktada daha AZ compute e
 "yerel puan". Yani nat eşikleri adlarından GEVŞEKTİR (FOTON lehine). Bu yüzden analiz, eğim GEREKTİRMEYEN doğrudan okumayı da
 raporlar: X-dom, karşı kolun adım 2188'deki kaybına kaç adımda ulaştı → `100·(1 − N/2188)` (bağlayıcı DEĞİL). **Çelişkinin
 ölçütü önceden yazılıdır: İŞARET.** Nat farkının üç-seed ortalaması pozitifken doğrudan okumanın ortalaması ≤ 0 ise (ya da
-tersi), ya da bir seed'de okuma yapılamıyorsa, analiz bayrak kaldırır ve bu raporun başında yazılır; karar değişmez. (Büyüklük
+tersi), ya da bir seed'de okuma yapılamıyorsa, analiz bayrak kaldırır ve bu, HARİTA HÜCRESİNİN HEMEN ARDINDAN, okuma
+notlarından önce yazılır; karar değişmez. (Bayrakların yeri koşulardan önce sabitlendi ve testle kilitlendi: veri görüldükten
+sonra "nereye yazsak" sorusu kalmasın.) (Büyüklük
 için ölçüt YOKTUR: "3 puan" ile "%N token" arasındaki çevirim zaten yukarıdaki dürüstlük notunun konusudur.)
 
 ## SONRAKİ ADIM HARİTASI (veriyi görmeden)
@@ -211,6 +219,40 @@ değer değil · veri sırası parmak izi (D dahil) ya da başlangıç parmak iz
 veri sırası YA DA başlangıcı birbirinin kopyası · X-dom / H-dom atama tablosunun köşegen dışı sıfır değil ·
 X-iid'de bir alanın modül payı 1/3'ten 0.01'den fazla sapıyor · zorlanmış kolda router metriği basılmış · `code_dirty = False`
 değil ya da birden fazla `src` özeti · v02-X referansı aynı sıkılıkla denetlenir.
+
+## YÜRÜTME (sahibin talimatı, 2026-09-20; koşulardan ÖNCE yazıldı)
+
+* **Sıra:** seed blokları iç içe — seed 101 → X-dom, H-dom, X-iid, D; sonra 102; sonra 103 (blok içinde kollar dönüşümlü:
+  102 H-dom ile, 103 X-iid ile başlar — sahibin bu adımdaki mesajı kol sırasını yalnız seed 101 için yazdı; dönüşüm, önceki
+  kalıcı talimatın ve ön-kayıt V11a Latin karesinin gereğidir ve geri alınmadı. Kol sırası bu adımda hiçbir karar sayısına
+  girmez). Temiz, commit'li ağaçtan; bağımsız süreç; koşarken depoya dokunulmaz. Sürücü:
+  `scripts/v03_step1_campaign.py` (kuyruk `queues/step1_s101.json` → kapı → kuyruk `queues/step1_s102_s103.json`; ikisinin
+  birleşimi onaylı 12 koşuluk `queues/step1.json`'dur, testle kilitli).
+* **Seed 101 geçerlilik kapısı** (`scripts/v03_step1_gate.py`): seed 101'in dört kolu bitince YALNIZCA iki kapıya bakılır —
+  ön koşulun seed-başı bacağı (X-iid-101, v02-X-101'e karşı: |mean_fixed farkı| ≤ 0.015 nat, |tavan farkı| ≤ 0.4 puan) ve D
+  akla-yatkınlığın seed-başı bacağı (|val(D-101, adım 2000) − 3.1198| ≤ 0.012). Bacaklar kuyruk-sonu kuralıyla AYNI
+  fonksiyonlardır (`precondition_seed_leg`, `d_sanity_seed_leg`; tek kopya). **δ ve δ_D HESAPLANMAZ**: X-dom ve H-dom'un
+  kaybı, D'nin adım-2188 kaybı ve iki δ kapı çıktısının hiçbir yerinde yoktur (testle kilitli: JSON dosyası VE stdout, hata
+  metinleri dahil, bu sayıların birkaç ondalık biçimi için taranır). Kapı aşılırsa kuyruğun kalanı BAŞLATILMAZ, sahibe rapor
+  edilir; aşılmazsa devam edilir, ara sonuç yoktur.
+  **Kapı AŞILMADIĞINDA çıktı yalnızca iki bayraktır (`clean`), hiçbir sayı yazılmaz.** Sebebi: iki kapının kendi nicelikleri
+  masum değildir — X-iid kolunda `val_atanan` TANIM GEREĞİ `mean_fixed`'dir, dolayısıyla "mean_fixed farkı" diskteki sabit
+  v02-X-101 değeriyle toplandığında X-iid-101'in karar kaybını verirdi (D'nin adım-2000 kaybı da 3.1198 + sapma). Kuyruk
+  sürerken bunlar da görünmesin. Kapı AŞILDIĞINDA nicelikler yazılır: kampanya zaten durmuştur ve sahibin kararı için gerekir.
+  (İlk yazımda bu satırda "hiçbir kolun val kaybı yer almaz" yazıyordu ve YANLIŞTI; ikinci inceleme turu yakaladı — sızıntı
+  toplamsal bir kaydırmanın ardındaydı, literal dizgi arayan test onu göremiyordu. Aynı "başarısız olamayan ölçü" sınıfı.)
+  İşaretli-ortalama bacakları (Ö1, Ö2) üç seed ister: kuyruk bitince bakılır. **Ek (benim, sahibin talimatının ötesinde):**
+  dört koşunun BÜTÜNLÜĞÜ de analizin kendi denetimleriyle aynı anda sınanır (kimlik, bütçe, LR takvimi, iki yol, atama
+  tablosu, eşleme) ve seed-101 koşularının src özeti ŞU ANKİ ağacınkiyle karşılaştırılır (kuyruk ikiye bölündüğü için
+  `run_queue`'nun kuyruk-içi src denetimi iki kuyruğun ARASINI görmez; görmezse kalan 8 koşu başka kodla koşar ve analiz 12
+  koşudan SONRA karar üretmezdi). Bozuk bir koşu ya da src sapması da kuyruğu durdurur — bu bir ara sonuç değildir, hiçbir
+  kayıp sayısı üretmez, yalnızca DURMA yönünde çalışır. Bu üçüncü durdurma yolu sahibin "yalnızca iki kapı" talimatının
+  ötesindedir ve bu yüzden burada ve başlatma raporunda açıkça yazılıdır.
+* **12 koşu bitmeden hiçbir δ hesaplanmaz.** Analiz yalnızca sürücü `completed` yazdıktan sonra koşulur.
+* **Kuyruk bitince, bu sırayla ve belgedeki kuralla:** ön koşul (üç bacak: seed-başı mean_fixed, işaretli ortalama, seed-başı
+  tavan) → (a) → (b) → harita hücresi. Sonra sahibe rapor. Yorum eklenmez; kural konuşur. Raporda AÇIKÇA yazılır: δ'nın
+  işareti neredeyse her zaman pozitiftir — testi büyüklük eşiği taşır, işaret yalnızca tutarlılık koşuludur (analiz bu okuma
+  notlarını sonuçla birlikte basar: `reading_notes`).
 
 ## Raporlanacaklar (her kol, aynı seed'li v02-X ile yan yana; karar YALNIZCA yukarıdaki kuraldan)
 

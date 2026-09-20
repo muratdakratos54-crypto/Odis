@@ -160,12 +160,16 @@ def test_mask_vs_weight_is_a_diagnostic_with_a_measurability_floor_and_a_sign_co
 END = an.END_STEP
 DOM = np.repeat(np.arange(3), an.VAL_DOMAIN_COUNTS)
 N = len(DOM)
-ROW_STEPS = (700, 700, 788)                                  # üç "log aralığı": toplam 2188 adım x 64 dizi
+ROW_STEPS = (700, 1300, 188)                                 # üç "log aralığı" (700, 2000, 2188'de biter): toplam 2188 adım x 64 dizi
 KIND = {"d": ("foton-d", None), "x-dom": ("foton-x-dom", "domain"), "h-dom": ("foton-h-dom", "domain"),
         "x-iid": ("foton-x-iid", "iid"), "v02": ("foton-x", None)}
 LEVEL = {"x-dom": (3.100, 3.104, 3.097), "h-dom": (3.109, 3.115, 3.108), "x-iid": (3.130, 3.133, 3.128),
          "d": (3.121, 3.118, 3.123), "v02": (3.131, 3.130, 3.129)}
 NOISE_SD = {101: 0.004, 102: 0.006, 103: 0.008}              # seed'e göre tavan ~1.0 / 1.5 / 2.0 puan: seed karışırsa ön koşul kirlenir
+# Sütun düzeyleri KASTEN ayrışık ve iki tarafta FARKLI genlikte: ön koşulun mean_fixed'i mi, best_fixed'i mi, yoksa val'i mi
+# okuduğu ancak böyle ayırt edilebilir. Kaydırmalar sıfır ortalamalı: mean_fixed TAM `level` kalır (kesin assert'ler bozulmaz),
+# best_fixed = level − yayılım, v02'nin val'i (router hep modül 2'yi seçiyor) = level + yayılım.
+COL_SPREAD = {"x-iid": 0.0005, "v02": 0.001}
 DIGEST = an.VAL_WINDOWS_SHA256
 
 
@@ -185,7 +189,7 @@ def _write_run(root, name, *, kind, seed, final, sm_of_step=None, dirty=False, f
                cfg_patch=(), meta_patch=None, args=None, order_seed=None, init_seed=None, table="ok", end_step=END, drop_val=(),
                nan_check=False, nan_val=False, session=None, val_dom=None, oracle_shift=0.0, raw_step_shift=0, router_printed=False,
                no_routed_check=False, val_mode_label=None, raw_shift=0.0, check_only_shift=0.0, digest=DIGEST, digest_changes=False,
-               val_skip_label=None, drop_train_row=False, raw_inf=False, end_tokens_shift=0):
+               val_skip_label=None, drop_train_row=False, raw_inf=False, end_tokens_shift=0, lr_2000=dec.LR_AT_D_REF_STEP):
     preset, mode = KIND[kind]
     dom = {None: DOM, "permuted": np.repeat(np.arange(3), [434, 431, 415]), "reordered": DOM[::-1].copy()}[val_dom]
     d = root / name
@@ -219,7 +223,8 @@ def _write_run(root, name, *, kind, seed, final, sm_of_step=None, dirty=False, f
             rec["val_loss"] = final + shift
         else:
             sm = (_init(seed if init_seed is None else init_seed, kind) if step == 0 else sm_of_step(dom) + shift).astype(np.float32)
-            choice = np.zeros(N, dtype=np.int64)
+            # v02'de router hep modül 2'yi seçer: v02'nin `val`i mean_fixed'den de best_fixed'den de AYRI bir sayı olsun
+            choice = np.full(N, 2 if kind == "v02" else 0, dtype=np.int64)
             raw = sm + (np.float32(raw_shift) if step == 750 else np.float32(0.0))           # YALNIZ ham döküm kaymış
             if raw_inf and step == 1250:
                 raw = raw.copy()
@@ -246,7 +251,9 @@ def _write_run(root, name, *, kind, seed, final, sm_of_step=None, dirty=False, f
         rows.append(rec)
     orders = _data_order(seed if order_seed is None else order_seed)
     for i, counts in enumerate(orders[:-1] if drop_train_row else orders):
-        rec = {"type": "train", "step": sum(ROW_STEPS[:i + 1])}
+        rec = {"type": "train", "step": sum(ROW_STEPS[:i + 1]), "lr": 0.0005}
+        if rec["step"] == dec.D_REF_STEP:                                       # LR takviminin AYNI kesri: adım 2000'deki LR
+            rec["lr"] = lr_2000
         if kind == "v02":
             rec["router_domain_counts"] = [[c, 0, 0] for c in counts]           # çökmüş router: hepsi modül 0
         else:
@@ -286,7 +293,8 @@ def generalist(level, arm="x-iid", seed=101, sd=None):
     def sm(dom):
         rng = np.random.default_rng([seed, sorted(KIND).index(arm)])
         noise = rng.normal(0, NOISE_SD[seed] if sd is None else sd, (N, 3))
-        return level + noise - noise.mean(0)                                    # sütun ortalamaları TAM `level`: kesin assert'ler için
+        offset = COL_SPREAD.get(arm, 0.0) * np.array([-1.0, 0.0, 1.0])          # sıfır ortalamalı: mean_fixed TAM `level`
+        return level + offset + noise - noise.mean(0)
     return sm
 
 
@@ -335,12 +343,19 @@ def test_analysis_reads_the_assigned_loss_pairs_by_seed_and_walks_the_map(base):
     assert b["per_seed_nat"] == pytest.approx({101: 0.021, 102: 0.014, 103: 0.026}, abs=1e-6) and b["passed"] is True
     assert res["decision"]["outcome"] == [True, True] and res["precondition"]["clean"] is True and res["d_sanity"]["clean"] is True
     pre = res["precondition"]
+    # Ön koşul MEAN_FIXED farkıdır: best_fixed (level − yayılım) ya da v02'nin val'i (level + yayılım) okunsaydı bu sayılar kayardı
     assert pre["mean_fixed_diff_nat"] == pytest.approx({101: -0.001, 102: 0.003, 103: -0.001}, abs=1e-6)
+    m_iid, m_v02 = res["module_measures"]["x-iid"], res["module_measures"]["v02-x"]
+    for s, lv_i, lv_v in zip(S, LEVEL["x-iid"], LEVEL["v02"]):
+        assert m_iid[s]["mean_fixed"] == pytest.approx(lv_i, abs=1e-6) and m_v02[s]["mean_fixed"] == pytest.approx(lv_v, abs=1e-6)
+        assert m_iid[s]["best_fixed"] == pytest.approx(lv_i - COL_SPREAD["x-iid"], abs=1e-6)
+        assert m_v02[s]["best_fixed"] == pytest.approx(lv_v - COL_SPREAD["v02"], abs=1e-6)
     assert pre["mean_shift_nat"] == pytest.approx(1e-3 / 3, abs=1e-6)
     ceil_iid = {s: res["module_measures"]["x-iid"][s]["ceiling_points"] for s in S}
     ceil_v02 = {s: res["module_measures"]["v02-x"][s]["ceiling_points"] for s in S}
     assert pre["ceiling_diff_points"] == pytest.approx({s: ceil_iid[s] - ceil_v02[s] for s in S}, abs=1e-9)
-    assert ceil_v02[101] + 0.3 < ceil_v02[102] < ceil_v02[103] - 0.3 and all(abs(v) < 0.2 for v in pre["ceiling_diff_points"].values())
+    assert ceil_v02[101] + 0.3 < ceil_v02[102] < ceil_v02[103] - 0.3            # tavan seed'e göre ayrışık: seed karışırsa görünür
+    assert all(abs(v) < 0.25 for v in pre["ceiling_diff_points"].values())      # sütun yayılımı ayrışık ama sınırın (0.4) altında
     assert res["d_sanity"]["deviation_nat"] == pytest.approx({101: 3.12476 - 3.1198, 102: 3.12176 - 3.1198, 103: 3.12676 - 3.1198}, abs=1e-6)
     mw = res["mask_vs_weight"]
     assert mw["per_seed_nat"] == pytest.approx({101: 0.009, 102: 0.011, 103: 0.011}, abs=1e-6) and mw["measurable"] is True
@@ -362,14 +377,37 @@ def test_analysis_reads_the_assigned_loss_pairs_by_seed_and_walks_the_map(base):
     assert direct["x_dom_vs_d"]["contradicts_sign_of_nat_difference"] is False and set(direct["x_dom_vs_d"]["per_seed_percent"]) == set(S)
 
 
-def test_delta_against_the_best_fixed_module_is_reported_and_a_contradiction_is_flagged(tmp_path):
+def test_the_result_carries_the_reading_limits_the_report_must_state(base):
+    notes = " ".join(an.analyze(*base)["reading_notes"])
+    assert "BÜYÜKLÜK eşiği" in notes and "tutarlılık koşuludur, kanıt değildir" in notes and "TOTOLOJİK" in notes
+
+
+def test_the_lr_constant_is_the_schedule_of_the_real_presets_at_the_reference_step():
+    """`stop_step` koşuyu yalnızca KESER: adım 2000'de loglanan LR (= 1999. adımın LR'ı) takvimin max_steps üzerinden değeridir."""
+    from src import train
+    tcfg = PRESETS["foton-d"][1]
+    tps = tcfg.batch_size * tcfg.grad_accum * 512
+    lr = train.lr_at((dec.D_REF_STEP - 1) * tps, tps, tcfg.warmup_steps * tps, tcfg.max_steps * tps, tcfg)
+    assert lr == pytest.approx(dec.LR_AT_D_REF_STEP, abs=1e-15)
+    for preset in ("foton-x-dom", "foton-h-dom", "foton-x-iid", "foton-x"):
+        t = PRESETS[preset][1]
+        assert train.lr_at((dec.D_REF_STEP - 1) * tps, tps, t.warmup_steps * tps, t.max_steps * tps, t) == lr
+
+
+def test_delta_against_the_best_fixed_module_is_reported_and_a_contradiction_is_flagged(tmp_path, monkeypatch, capsys):
     """delta eşiği geçiyor, ama 'en iyi sabit modüle karşı' hâli geçmiyor (X-iid'in bir modülü ötekilerden 0.003 nat iyi:
     ortalama 3.13, en iyisi 3.128): karar DEĞİŞMEZ, çelişki bayrağı kalkar."""
     def uneven(dom):
         return generalist(3.13)(dom) + np.array([-0.002, 0.001, 0.001])
-    res = an.analyze(*campaign(tmp_path, x_dom=(3.119, 3.119, 3.119), overrides={"x-iid": {"sm_of_step": uneven}}))
+    runs, v02 = campaign(tmp_path, x_dom=(3.119, 3.119, 3.119), overrides={"x-iid": {"sm_of_step": uneven}})
+    res = an.analyze(runs, v02)
     assert res["decision"]["question_a"]["passed"] is True and res["decision"]["question_a"]["mean_nat"] == pytest.approx(0.011, abs=1e-6)
     assert res["delta_vs_best_fixed_NOT_binding"]["passed"] is False and res["delta_vs_best_fixed_NOT_binding"]["contradicts_question_a"] is True
+    # Bayrağın rapordaki YERİ koşulardan önce sabitlendi: harita hücresinin hemen ardından, okuma notlarından önce
+    monkeypatch.setattr(sys, "argv", ["analyze", "--runs", runs, "--v02", v02, "--out", str(tmp_path / "r.json")])
+    an.main()
+    text = capsys.readouterr().out
+    assert text.index("4. HARİTA HÜCRESİ") < text.index("UYARI:") < text.index("OKUMA NOTU:")
 
 
 def test_direct_reading_flags_a_sign_contradiction_with_the_nat_difference():
@@ -437,6 +475,10 @@ BROKEN = [
     ("h-dom", {"drop_val": (250,)}, "eval adımları"),
     ("x-dom", {"val_skip_label": 0}, "prefix maskeli değil"),
     ("d", {"val_skip_label": 0}, "prefix maskeli değil"),
+    # --- LR takvimi: adım 2000'de dondurulmuş D referansıyla AYNI kesir (D akla-yatkınlık toleransı takvim farkı içermez)
+    ("d", {"lr_2000": 0.00035}, "LR takvimi"),
+    ("x-dom", {"lr_2000": 0.001}, "LR takvimi"),
+    ("x-iid", {"lr_2000": None}, "LR takvimi"),
     ("x-iid", {"dirty": True}, "code_dirty"),
     ("d", {"src": "b" * 64}, "TEK src"),
     # --- kimlik: doğru ADLI klasörde yanlış koşu
@@ -508,6 +550,7 @@ V02_BROKEN = [({"cfg_patch": [("train", "seed", 101)]}, "v02-X referansı beklen
               ({"no_routed_check": True}, "öğrenilmiş-router'lı bir koşu değil"),
               ({"val_dom": "permuted"}, "dondurulmuş val kümesi"),
               ({"oracle_shift": 0.01}, "metrics.jsonl ile uyuşmuyor"),
+              ({"lr_2000": 0.00035}, "LR takvimi"),
               ({"order_seed": 999}, "veri sırası"),
               ({"init_seed": 999}, "aynı ağırlıklardan başlamamış")]
 
@@ -624,3 +667,32 @@ def test_identity_table_matches_what_the_training_code_would_log_for_the_real_pr
         tcfg = PRESETS[want["preset"]][1]
         assert (tcfg.max_steps, tcfg.batch_size * tcfg.grad_accum, tcfg.eval_interval, tcfg.loss_prefix_skip) == (an.MAX_STEPS, an.SEQS_PER_STEP, 250, 64)
         assert tcfg.batch_size * tcfg.grad_accum * mcfg.max_seq_len == an.TOKENS_PER_STEP
+
+
+@pytest.mark.parametrize("kind, dirty_a, dirty_b", [("pre", True, True), ("d", False, True)],
+                         ids=["on-kosul-kirli", "D-akla-yatkin-degil"])
+def test_the_report_prints_no_verdict_where_the_rule_says_the_decision_is_unreadable(tmp_path, monkeypatch, capsys, kind, dirty_a, dirty_b):
+    """Kural okunmaz durumda HÜKÜM vermez, yalnızca 'iki sayı yine raporlanır' der: rapor satırı da öyle basılmalı.
+    Yoksa konsoldan 'yorum eklemeden' kopyalanan raporda okunmaz bir kapı için '(b) GEÇTİ' cümlesi yer alır."""
+    kw = {"x_iid": (3.146, 3.149, 3.144)} if kind == "pre" else {"d": (3.121, 3.118, 3.20)}
+    out = tmp_path / "result.json"
+    monkeypatch.setattr(sys, "argv", ["analyze", "--runs", campaign(tmp_path, **kw)[0], "--v02", campaign(tmp_path, **kw)[1], "--out", str(out)])
+    an.main()
+    lines = {ln.split(".")[0].strip(): ln for ln in capsys.readouterr().out.splitlines() if ln[:2] in ("1.", "2.", "3.", "4.")}
+    assert ("OKUNMAZ (sayı raporlanır" in lines["2"]) is dirty_a and ("OKUNMAZ (sayı raporlanır" in lines["3"]) is dirty_b
+    assert ("GEÇTİ" in lines["2"] or "GEÇMEDİ" in lines["2"]) is not dirty_a
+    assert "nat" in lines["2"] and "nat" in lines["3"]                      # sayılar YİNE raporlanır
+    res = json.loads(out.read_text(encoding="utf-8"))
+    assert res["decision"]["outcome"] == ("blocked" if kind == "pre" else [True, None])
+
+
+def test_the_report_prints_precondition_then_a_then_b_then_the_map_cell(base, tmp_path, monkeypatch, capsys):
+    """Sahibin talimatı: kuyruk bitince ön koşul (üç bacak) -> (a) -> (b) -> harita hücresi, BU SIRAYLA; yorum yok."""
+    out = tmp_path / "result.json"
+    monkeypatch.setattr(sys, "argv", ["analyze", "--runs", base[0], "--v02", base[1], "--out", str(out)])
+    an.main()
+    text = capsys.readouterr().out
+    marks = ["1. ÖN KOŞUL", "bacak 1", "bacak 2", "bacak 3", "2. (a) MEKANİZMA", "3. (b) KAPI", "D akla yatkın mı", "4. HARİTA HÜCRESİ", "OKUMA NOTU"]
+    at = [text.index(m) for m in marks]
+    assert at == sorted(at) and "TEMİZ" in text and "[True, True]" in text and "asıl deneyi" in text
+    assert json.loads(out.read_text(encoding="utf-8"))["decision"]["outcome"] == [True, True]

@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import itertools
 import json
 import math
 import os
@@ -172,6 +173,15 @@ def _data_order(run_dir: str, rows: list[dict], field: str = "data_domain_counts
     return out
 
 
+def _check_lr(run_dir: str, rows: list[dict]) -> None:
+    """LR takviminin AYNI kesri: adım 2000'de loglanan LR, dondurulmuş tam bütçeli D referansınınkiyle aynı olmalı (`stop_step`
+    koşuyu yalnızca keser; takvim max_steps üzerinden). D akla-yatkınlık denetiminin toleransı takvim farkı içermez — bunu
+    varsaymak yerine her koşuda veriden denetleriz."""
+    lr = [r.get("lr") for r in rows if r.get("type") == "train" and r.get("step") == dec.D_REF_STEP]
+    if len(lr) != 1 or not _finite(lr[0]) or abs(lr[0] - dec.LR_AT_D_REF_STEP) > 1e-12:
+        _fail(run_dir, f"LR takvimi referansla aynı değil: adım {dec.D_REF_STEP}'de lr {lr}, beklenen {dec.LR_AT_D_REF_STEP}")
+
+
 def _raw(run_dir: str, step: int) -> tuple[np.ndarray, np.ndarray]:
     path = os.path.join(run_dir, "eval_raw", f"step_{step:05d}.npz")
     if not os.path.exists(path):
@@ -210,6 +220,7 @@ def read_run(run_dir: str, arm: str, seed: int, tag: str, ref_cfg: dict) -> dict
     """Bir karar koşusunun ölçüleri. Bitmemiş / başka bütçeli / başka kimlikli / yanlış kurallı koşu -> ValueError."""
     rows, assign_mode = _rows(run_dir), ARMS[arm]
     val = _val_rows(run_dir, rows)
+    _check_lr(run_dir, rows)
     out = {"dir": run_dir, "val_curve": {s: r["val_loss"] for s, r in val.items()}, "val": val[END_STEP]["val_loss"],
            "provenance": check_identity(run_dir, arm, seed, tag, rows, ref_cfg), "data_order": _data_order(run_dir, rows),
            "val_digest": val[END_STEP]["val_windows_sha256"]}
@@ -241,6 +252,7 @@ def read_v02(run_dir: str, seed: int) -> dict:
     """Aynı seed'li v02-X referansı (ön koşulun karşı tarafı). Karar koşularıyla AYNI sıkılıkta denetlenir."""
     rows = _rows(run_dir)
     val = _val_rows(run_dir, rows, need_digest=False)
+    _check_lr(run_dir, rows)
     cfg, prov = _json(run_dir, "config.json"), _json(run_dir, "provenance.json")
     m, t = cfg["model"], cfg["train"]
     got = {"seed": t.get("seed"), "foton": m.get("foton"), "foton_assign": m.get("foton_assign", ""), "foton_reg": m.get("foton_reg"),
@@ -282,15 +294,16 @@ def module_measures(run_dir: str, val: dict[int, dict]) -> dict:
             "best_is_domain_share": float((best == dom).mean())}
 
 
-def check_pairing(runs: dict, v02: dict) -> dict:
-    """Eşli tasarımın dayandığı üç iddia, VERİDEN (seed başına): aynı veri sırası (D dahil), aynı val kümesi, aynı başlangıç."""
+def check_pairing(runs: dict, v02: dict, seeds: tuple[int, ...] = dec.SEEDS) -> dict:
+    """Eşli tasarımın dayandığı üç iddia, VERİDEN (seed başına): aynı veri sırası (D dahil), aynı val kümesi, aynı başlangıç.
+    `seeds`: analiz üç seed'in üçünü verir; seed 101 bittiğinde bakılan geçerlilik kapısı yalnızca (101,)'i."""
     worst = 0.0
-    digests = {runs[arm][s]["val_digest"] for arm in ARMS for s in dec.SEEDS}
+    digests = {runs[arm][s]["val_digest"] for arm in ARMS for s in seeds}
     if len(digests) != 1:                                  # D dahil 12 koşu: val pencerelerinin TOKEN içeriği tek ve aynı
         raise ValueError(f"12 koşu aynı val pencerelerinde ölçülmemiş (val_windows_sha256 {len(digests)} ayrı değer) — eşleme yok")
     if digests != {VAL_WINDOWS_SHA256}:                    # kendi içinde tutarlı ama BAŞKA bir val kümesi (ör. val dosyası yeniden üretilmiş)
         raise ValueError(f"12 koşunun val kümesi koşulardan önce kaydedilen (v02'nin ölçüldüğü) val kümesi değil: {sorted(digests)}")
-    for s in dec.SEEDS:
+    for s in seeds:
         order = v02[s]["data_order"]
         for arm in ARMS:
             if runs[arm][s]["data_order"] != order:
@@ -304,7 +317,7 @@ def check_pairing(runs: dict, v02: dict) -> dict:
             worst = max(worst, diff)
             if not diff <= INIT_FINGERPRINT_TOL:
                 raise ValueError(f"seed {s}: {arm} adım 0'da v02-X ile aynı ağırlıklardan başlamamış (en büyük fark {diff:.3g})")
-    for a, b in ((101, 102), (101, 103), (102, 103)):                                # seed'ler GERÇEKTEN farklı koşular mı
+    for a, b in itertools.combinations(seeds, 2):                                    # seed'ler GERÇEKTEN farklı koşular mı
         same_init = float(np.abs(v02[a]["init_fingerprint"] - v02[b]["init_fingerprint"]).max()) <= INIT_FINGERPRINT_TOL
         if v02[a]["data_order"] == v02[b]["data_order"] or same_init:
             raise ValueError(f"seed {a} ve {b} aynı veri sırasını / başlangıcı taşıyor — koşular birbirinin kopyası")
@@ -363,6 +376,7 @@ def analyze(runs_dir: str, v02_dir: str, tag: str = "v03s1") -> dict:
     measures["v02-x"] = {s: {k: v02[s][k] for k in MEASURES if k in v02[s]} for s in dec.SEEDS}
     return {
         "what": "v03 adım 1 — zorlanmış yönlendirme: modüller ayrışıyor mu (kural veri görülmeden yazıldı)",
+        "reading_notes": READING_NOTES,
         "conversion": f"puan = 100·(1 − exp(−Δ/{abs(dec.SLOPE)})); kural NAT cinsinden bağlayıcı",
         "decision": decision, "precondition": pre, "d_sanity": d_ok,
         "delta_vs_best_fixed_NOT_binding": {**a_best, "contradicts_question_a": a_best["passed"] != decision["question_a"]["passed"]},
@@ -383,6 +397,15 @@ def analyze(runs_dir: str, v02_dir: str, tag: str = "v03s1") -> dict:
     }
 
 
+# Raporun AÇIKÇA yazacağı okuma sınırları (sahibin talimatı; veri görülmeden yazıldı, sonuçla birlikte basılır)
+READING_NOTES = [
+    "δ'nın İŞARETİ neredeyse her zaman pozitiftir: X-dom'da değerlendirilen (modül, alan) çifti X-iid'dekinin 3 katı alan-içi veri "
+    "görmüştür. Testi BÜYÜKLÜK eşiği (3 puan) taşır; 'üç seed'de δ > 0' yalnızca bir tutarlılık koşuludur, kanıt değildir.",
+    "X-dom / H-dom'da modüller arası fark, oracle tavanı, over_null, I(alan; en iyi modül) ve 'en iyi sabit tek modüle karşı puan' "
+    "tanım gereği büyüktür (TOTOLOJİK): raporlanır, kanıt sayılmaz.",
+    "H-dom − X-dom 'heterojenlik yararlı' diye okunamaz (H-iid koşulmadı); teşhistir, karara girmez.",
+]
+
 MEASURES = ("val", "val_router_UNUSED", "two_route_max_diff", "mean_fixed", "best_fixed", "spread_nat", "ceiling_nat",
             "ceiling_points", "over_null_nat", "over_null_points", "mi_domain_best_bits", "best_is_domain_share",
             "assign_table", "steps_with_gradless_module", "microbatches_missing_module")
@@ -398,19 +421,30 @@ def main() -> None:
     res = analyze(args.runs, args.v02)
     with open(args.out, "w", encoding="utf-8", newline="") as f:
         json.dump(res, f, indent=1, ensure_ascii=False)
-    d = res["decision"]
-    for name, q in (("(a) MEKANİZMA  delta", d["question_a"]), ("(b) KAPI       delta_D", d["gate_b"])):
-        print(f"{name}: ort {q['mean_nat']:+.5f} nat = {q['mean_points']:+.2f} puan | seed başına "
-              f"{ {s: round(v, 5) for s, v in q['per_seed_nat'].items()} } | eşik {q['threshold_nat']:.5f} | "
-              f"{'GEÇTİ' if q['passed'] else 'GEÇMEDİ'}")
-    print("ön koşul (X-iid null'ı temiz mi):", res["precondition"]["clean"], "| D akla yatkın mı:", res["d_sanity"]["clean"])
+    # SIRA sahibin talimatıdır: ön koşul (üç bacak) -> (a) -> (b) -> harita hücresi. Yorum yok; kural konuşur.
+    d, pre, ds = res["decision"], res["precondition"], res["d_sanity"]
+    r5 = lambda m: {s: round(v, 5) for s, v in m.items()}                                # noqa: E731
+    print(f"1. ÖN KOŞUL (X-iid, aynı seed'li v02-X'ten sapmamalı): {'TEMİZ' if pre['clean'] else 'KİRLİ — karar OKUNMAZ'}")
+    print(f"   bacak 1  mean_fixed farkı, seed başına (sınır {pre['limits'][0]} nat): {r5(pre['mean_fixed_diff_nat'])}")
+    print(f"   bacak 2  işaretli ortalama kayma       (sınır {pre['limits'][1]} nat): {pre['mean_shift_nat']:+.5f}")
+    print(f"   bacak 3  oracle tavanı farkı, seed başına (sınır {pre['limits'][2]} puan): {r5(pre['ceiling_diff_points'])}")
+    for i, (name, q, readable) in enumerate((("(a) MEKANİZMA  delta  ", d["question_a"], pre["clean"]),
+                                             ("(b) KAPI       delta_D", d["gate_b"], pre["clean"] and ds["clean"])), start=2):
+        # Karar okunmaz durumda kural HÜKÜM vermez, yalnızca "iki sayı yine raporlanır" der: etiket de öyle basılır.
+        verdict = ("GEÇTİ" if q["passed"] else "GEÇMEDİ") if readable else "OKUNMAZ (sayı raporlanır, hüküm YOK)"
+        print(f"{i}. {name}: ort {q['mean_nat']:+.5f} nat = {q['mean_points']:+.2f} puan | seed başına {r5(q['per_seed_nat'])} | "
+              f"eşik {q['threshold_nat']:.5f} | üç seed'de > 0: {q['all_seeds_positive']} | {verdict}")
+    print(f"   (b)'nin okunabilirliği — D akla yatkın mı: {'EVET' if ds['clean'] else 'HAYIR — (b) OKUNMAZ'} | adım {ds['reference'][0]} "
+          f"sapması, seed başına {r5(ds['deviation_nat'])} | ortalama {ds['mean_deviation_nat']:+.5f}")
+    print(f"4. HARİTA HÜCRESİ {d['outcome']}: {d['next_step']}")
     if res["delta_vs_best_fixed_NOT_binding"]["contradicts_question_a"]:
         print("UYARI: 'en iyi sabit modüle karşı delta' (a)'nın cevabıyla ÇELİŞİYOR — raporda öne yazılır (karar değişmez)")
     for name, r in res["direct_savings_percent_NOT_binding"].items():
         if r["contradicts_sign_of_nat_difference"] is not False:
             print(f"UYARI: doğrudan (eğimsiz) okuma {name}: ort {r['mean_percent']} — nat farkının İŞARETİYLE çelişiyor ya da "
                   "okunamadı; raporda öne yazılır (karar değişmez)")
-    print("SONRAKİ ADIM:", d["next_step"])
+    for note in res["reading_notes"]:
+        print("OKUMA NOTU:", note)
     print("->", args.out)
 
 

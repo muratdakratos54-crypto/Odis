@@ -1,0 +1,129 @@
+{
+ "out_dir": "checkpoints/foton-v03-step1",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "runs": [
+  {
+   "name": "v03s1-h-dom-s102",
+   "args": [
+    "--preset",
+    "foton-h-dom",
+    "--seed",
+    "102",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s102",
+   "_arm": "h-dom"
+  },
+  {
+   "name": "v03s1-x-iid-s102",
+   "args": [
+    "--preset",
+    "foton-x-iid",
+    "--seed",
+    "102",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s102",
+   "_arm": "x-iid"
+  },
+  {
+   "name": "v03s1-d-s102",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "102",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s102",
+   "_arm": "d"
+  },
+  {
+   "name": "v03s1-x-dom-s102",
+   "args": [
+    "--preset",
+    "foton-x-dom",
+    "--seed",
+    "102",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s102",
+   "_arm": "x-dom"
+  },
+  {
+   "name": "v03s1-x-iid-s103",
+   "args": [
+    "--preset",
+    "foton-x-iid",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "x-iid"
+  },
+  {
+   "name": "v03s1-d-s103",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "d"
+  },
+  {
+   "name": "v03s1-x-dom-s103",
+   "args": [
+    "--preset",
+    "foton-x-dom",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "x-dom"
+  },
+  {
+   "name": "v03s1-h-dom-s103",
+   "args": [
+    "--preset",
+    "foton-h-dom",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "h-dom"
+  }
+ ],
+ "_scale": "S0",
+ "_owner_decision": null,
+ "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
+ "_blocks": [
+  [
+   "v03s1-h-dom-s102",
+   "v03s1-x-iid-s102",
+   "v03s1-d-s102",
+   "v03s1-x-dom-s102"
+  ],
+  [
+   "v03s1-x-iid-s103",
+   "v03s1-d-s103",
+   "v03s1-x-dom-s103",
+   "v03s1-h-dom-s103"
+  ]
+ ],
+ "_strict": true
+}
