@@ -94,8 +94,13 @@ embedding → [S0, S1, S2] → ROUTER → seçilen modül m'in [m.0, m.1] blokla
 * **Çalışmayan modül / gradyansız parametre:** bir mikro-batch'te dizi almayan modül o mikro-batch'te çalışmaz. Gradyanlar
   optimizer adımının 4 mikro-batch'i boyunca birikir; bir parametrenin gradyanı dördünde de `None` kalırsa AdamW onu o adımda
   TÜMÜYLE atlar (weight decay dahil; ağırlık bit düzeyinde değişmez — sınandı).
-* **Dışarıdan zorlama — bugün OLMAYAN şey:** eğitim ve eval döngüsü modeli `model(x, y)` diye çağırır; modele alan kimliği ya da
-  dizi başına bir atama GEÇİRİLMEZ. Alan kimliği her batch için `dataset.last_domain_ids`'te hazırdır ama yalnızca eğitimde router
+* **Dışarıdan zorlama — v02 kollarında YOK, v03 adım 1'de EKLENDİ (2026-09-20):** v02'nin dört kolunda eğitim ve eval döngüsü
+  modeli `model(x, y)` diye çağırır; modele alan kimliği ya da dizi başına bir atama GEÇİRİLMEZ. v03 adım 1'in üç kolunda
+  (`foton-x-dom`, `foton-h-dom`, `foton-x-iid`; `ModelConfig.foton_assign` = `"domain"` | `"iid"`) atama dışarıdan, dizi başına
+  geçirilir (`model(x, y, assign=...)`): router modelde KALIR ama çalışmaz ve gradyan almaz, gate yoktur (çıkış =
+  Modül_atama(x)); `val_loss` EĞİTİMDEKİ atama kuralıyla hesaplanır (X-iid'de beklenen değer = üç modülün ortalaması) ve
+  router'ın seçimiyle hesaplanan sayı `val_loss_router_UNUSED` adını alır; atamasız çağrı HATA verir (sessizce router'a düşmez).
+  Ayrıntı: `experiments/foton-v03-step1/decision_rule.md`. Aşağıdaki cümleler v02 kolları içindir. Alan kimliği her batch için `dataset.last_domain_ids`'te hazırdır ama yalnızca eğitimde router
   loglarına ve eval'de `eval_raw`'ın `domain` alanına yazılır. `forward(..., force_module=m)` bütün batch'i TEK modüle zorlar,
   gate'i ATLAR (router yine koşar ve loglanır ama gradyan almaz → init'te bit düzeyinde sabit kalır; `router_*` logları o zaman
   eğitilmemiş router'ı anlatır) ve yalnızca testlerde ve `scripts/router_grad_diag.py`'de çağrılır. **Oracle eğrileri ve `eval_raw`

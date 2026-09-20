@@ -11,6 +11,7 @@ Bir optimizer adımının anatomisi:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -96,6 +97,85 @@ def oracle_stats(ce_tok: torch.Tensor, choice: torch.Tensor, k: int, perm_idx: t
             "routed": seq.gather(0, choice[None, :])[0]}
 
 
+ASSIGN_SEED_OFFSET = 7_777_777      # X-iid'in atama generator'ı = seed + bu sabit: `train_gen`'den AYRI (veri sırası kaymasın)
+
+
+def make_assigner(mode: str, n_modules: int, domain_names: list[str] | None, seed: int):
+    """v03 adım 1 — dışarıdan atama kuralı: `(alan kimlikleri [B] | None, batch boyutu, cihaz) -> assign [B] int64`.
+
+    "domain": modül = alan kimliği. Alan sayısı modül sayısına EŞİT olmak zorunda (kod → M0, math → M1, nl → M2: alan
+    kimliği `MultiDomainDataset.names` = sorted sırasıdır). "iid": çekim başına BAĞIMSIZ düzgün rastgele modül; kendi CPU
+    generator'ından — `train_gen`'den ya da global RNG'den tek çekim yapmaz, yoksa aynı seed'li kollarla veri sırası /
+    init eşlemesi bozulurdu. Generator döndürülür ki checkpoint'e yazılabilsin."""
+    if mode == "domain":
+        if not domain_names or len(domain_names) != n_modules:
+            raise ValueError(f"alan ataması {n_modules} alan ister, korpusta: {domain_names}")
+
+        def by_domain(domain_ids, batch_size, device):
+            if domain_ids is None or domain_ids.shape != (batch_size,):
+                raise ValueError("alan ataması için batch'in alan kimlikleri gerekli")
+            return domain_ids.to(device=device, dtype=torch.long)
+        return by_domain, None
+    if mode == "iid":
+        gen = torch.Generator().manual_seed(ASSIGN_SEED_OFFSET + seed)
+
+        def iid(domain_ids, batch_size, device):
+            return torch.randint(n_modules, (batch_size,), generator=gen).to(device)
+        return iid, gen
+    raise ValueError(f"bilinmeyen atama kuralı: {mode!r}")
+
+
+def two_routes_agree(a: float, b: float, tol: float) -> bool:
+    """İki yoldan hesaplanan kayıp `tol` içinde aynı mı. Sonlu olmayan değer UYUŞMAZLIKTIR: `abs(nan - x) > tol` False
+    verir, yani çıplak karşılaştırma NaN'ı "uyuşuyor" sayar ve koşu sonuna kadar GPU harcayıp ancak analizde reddedilirdi."""
+    return math.isfinite(a) and math.isfinite(b) and abs(a - b) <= tol
+
+
+class AssignLog:
+    """Zorlanmış atama kollarının log aralığı istatistikleri — GPU'da, `.item()`'sız. Router metrikleri bu kollarda
+    UYGULANAMAZ (router çalışmıyor); onların yerine atamanın kendisi ve gradyansız kalan modüller sayılır:
+
+      assign_counts / assign_domain_counts : ham sayımlar (modül; alan x modül)
+      assign_microbatches_missing_module   : en az bir modülün HİÇ dizi almadığı mikro-batch sayısı
+      assign_steps_gradless_module         : en az bir modülün adımın bütün mikro-batch'lerinde dizi almadığı (gradyanı
+                                             None kalan, AdamW'nin tümüyle atladığı) optimizer adımı sayısı
+    """
+
+    def __init__(self, n_modules: int, n_domains: int, device: str):
+        self.M, self.D = n_modules, max(1, n_domains)
+        self.counts = torch.zeros(self.D, self.M, device=device)
+        self.step_counts = torch.zeros(self.M, device=device)
+        self.missing_mb = torch.zeros((), device=device)
+        self.gradless_steps = torch.zeros((), device=device)
+
+    def add(self, assign: torch.Tensor, domain_ids: torch.Tensor | None) -> None:
+        dom = domain_ids if domain_ids is not None and self.D > 1 else torch.zeros_like(assign)
+        self.counts += torch.zeros_like(self.counts).index_put_((dom, assign), torch.ones_like(assign, dtype=self.counts.dtype),
+                                                                accumulate=True)
+        per_module = torch.bincount(assign, minlength=self.M).to(self.step_counts.dtype)
+        self.step_counts += per_module
+        self.missing_mb += (per_module == 0).any()
+
+    def end_step(self) -> None:
+        self.gradless_steps += (self.step_counts == 0).any()
+        self.step_counts.zero_()
+
+    def flush(self) -> dict:
+        c = self.counts.double().cpu()
+        out = {"assign_counts": [int(v) for v in c.sum(dim=0).tolist()],
+               "assign_domain_counts": [[int(v) for v in row] for row in c.tolist()],
+               "assign_microbatches_missing_module": int(self.missing_mb.item()),
+               "assign_steps_gradless_module": int(self.gradless_steps.item())}
+        self.counts.zero_()
+        self.missing_mb.zero_()
+        self.gradless_steps.zero_()
+        return out
+
+
+ROUTER_FIELDS_NA = ("router_entropy_marginal", "router_entropy_per_seq", "router_margin", "router_load_cv", "router_dead",
+                    "router_switch_rate", "router_counts", "router_domain_counts")
+
+
 @torch.no_grad()
 def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> dict:
     """Val loss. `{"full": ..., "primary": ...}` döner; FOTON kollarında ayrıca oracle nicelikleri.
@@ -123,8 +203,16 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> di
     # akış referans bölüşümün sırasını birebir tekrar oynatır, yani `L*` değişmez.
     k = cfg.loss_prefix_skip
     foton = bool(getattr(model, "cfg", None) and model.cfg.foton)
+    # v03 adım 1 — ZORLANMIŞ atama kolları: kolun val loss'u EĞİTİMDEKİ atama kuralıyla hesaplanır.
+    #   "domain": `model(x, y, assign=alan kimliği)`.  "iid": düzgün rastgele atamanın BEKLENEN değeri = üç modülün
+    #   ortalaması (tek bir rastgele çekimin gürültüsü ölçüme girmesin).
+    # İKİ AYRI KOD YOLU, iki kolda da: 1. yol EĞİTİMİN forward yoludur (`model(x, y, assign=...)`; iid'de m = 0..M-1 sabit
+    # atamalarının ortalaması), 2. yol üç-modül geçişidir (`foton_eval_all`). İlk hâlde iid'in iki "yolu" aynı tensörün iki
+    # okunuşuydu: sağlama BAŞARISIZ OLAMIYORDU ve X-iid'in eğitimde kullandığı dispatch yolu hiçbir eval'de sınanmıyordu.
+    # Router'ın (eğitilmemiş) seçimiyle hesaplanan sayı `router_unused` olarak döner ve hiçbir yerde kol kaybı sayılmaz.
+    assign_mode = model.cfg.foton_assign if foton else ""
     null_gen = torch.Generator().manual_seed(ORACLE_NULL_SEED)
-    fo = {"oracle": 0.0, "null": 0.0, "routed": 0.0}
+    fo = {"oracle": 0.0, "null": 0.0, "routed": 0.0, "assigned": 0.0, "assigned_full": 0.0}
     raw: dict[str, list] = {n: [] for n in ("ce_tok", "seq_masked", "seq_full", "choice", "probs", "logits", "domain")}
 
     def oracle_pass(x: torch.Tensor, y: torch.Tensor) -> None:
@@ -134,8 +222,14 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> di
             ev = model.foton_eval_all(x, y)
         perm_idx = torch.randint(len(_PERMS3), tuple(y.shape), generator=null_gen).to(y.device)
         st = oracle_stats(ev["ce_tok"], ev["choice"], k, perm_idx)
-        for n in fo:
+        for n in ("oracle", "null", "routed"):
             fo[n] += st[n].mean().item()
+        if assign_mode:
+            # İKİNCİ YOL (eval yolundan bağımsız): aynı atama kuralı, üç-modül geçişinin dizi ortalamalarından
+            dom_ids = getattr(ds, "last_domain_ids", None)
+            for name, seq in (("assigned", st["seq_masked"]), ("assigned_full", st["seq_full"])):     # seq: [3, B]
+                fo[name] += (seq.gather(0, dom_ids[None, :].to(seq.device)).mean() if assign_mode == "domain"
+                             else seq.mean()).item()
         raw["ce_tok"].append(ev["ce_tok"].permute(1, 0, 2).to(torch.float16).cpu())      # [B, 3, T]
         raw["seq_masked"].append(st["seq_masked"].T.float().cpu())
         raw["seq_full"].append(st["seq_full"].T.float().cpu())
@@ -147,8 +241,12 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> di
     def finish(tf: float, tp: float, nb: int) -> dict:
         out = {"full": tf / nb, "primary": tp / nb}
         if foton:
-            out.update(oracle=fo["oracle"] / nb, oracle_null=fo["null"] / nb, routed_check=fo["routed"] / nb,
+            out.update(oracle=fo["oracle"] / nb, oracle_null=fo["null"] / nb,
                        raw={n: torch.cat(v).numpy() for n, v in raw.items()})
+            if assign_mode:
+                out.update(assign_mode=assign_mode, assigned_check=fo["assigned"] / nb, router_unused=fo["routed"] / nb)
+            else:
+                out["routed_check"] = fo["routed"] / nb
         return out
 
     def both(x: torch.Tensor, y: torch.Tensor) -> tuple[float, float]:
@@ -158,8 +256,24 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> di
         pozisyon başına CE'yi bir kez hesaplayıp iki ortalamayı alıyoruz. `model(x, y)`'nin
         döndürdüğü skaler `ce` ile `per_pos.mean()` aynı niceliktir (aşağıda test ediliyor).
         """
+        if assign_mode == "iid":
+            # Beklenen değer, EĞİTİMİN forward yolundan: bütün batch sırayla her modüle atanır, M sonucun ortalaması alınır.
+            n_mod = len(model.foton_modules)
+            tot_full = tot_masked = 0.0
+            for m in range(n_mod):
+                with autocast_ctx:
+                    logits, _, info = model(x, y, assign=torch.full((x.shape[0],), m, dtype=torch.long, device=x.device))
+                per_pos = torch.nn.functional.cross_entropy(
+                    logits.float().view(-1, logits.size(-1)), y.reshape(-1), ignore_index=-1, reduction="none").view(y.shape)
+                tot_full += info["ce"].item()
+                tot_masked += per_pos[:, k:].mean().item()
+                del logits
+            return tot_full / n_mod, tot_masked / n_mod
         with autocast_ctx:
-            logits, _, info = model(x, y)
+            if assign_mode == "domain":
+                logits, _, info = model(x, y, assign=ds.last_domain_ids.to(dtype=torch.long))
+            else:
+                logits, _, info = model(x, y)
         full = info["ce"].item()
         if k <= 0:
             return full, full
@@ -173,15 +287,21 @@ def evaluate(model: GPT, ds: TokenDataset, cfg: TrainConfig, autocast_ctx) -> di
         pairs = ds.frozen_val_windows(total_windows, 12345)
         batches = [pairs[i : i + cfg.batch_size] for i in range(0, total_windows, cfg.batch_size)]
         tf = tp = 0.0
+        # Val kümesinin PARMAK İZİ: değerlendirilen pencerelerin TOKEN İÇERİĞİNİN özeti (indislerin değil — dosya yeniden
+        # üretilirse indisler aynı kalır, içerik değişir). Dense kol ham döküm yazmadığı için "D, FOTON kollarıyla aynı val
+        # kümesinde ölçüldü" iddiası yalnızca bu alandan VERİDEN doğrulanabilir. Modele ve kayba dokunmaz.
+        digest = hashlib.sha256()
         for chunk in batches:
             x, y = ds.windows(chunk)
+            digest.update(x.cpu().numpy().tobytes())
+            digest.update(y[:, -1].cpu().numpy().tobytes())
             f, p = both(x, y)
             tf += f
             tp += p
             if foton:
                 oracle_pass(x, y)
         model.train()
-        return finish(tf, tp, len(batches))
+        return {**finish(tf, tp, len(batches)), "val_windows_sha256": digest.hexdigest()}
 
     g = torch.Generator().manual_seed(12345)
     tf = tp = 0.0
@@ -304,6 +424,8 @@ def main() -> None:
     model = GPT(mcfg).to(device)
     optimizer = model.configure_optimizer(tcfg.lr, tcfg.weight_decay, (tcfg.beta1, tcfg.beta2), device)
     train_gen = torch.Generator().manual_seed(tcfg.seed)
+    assigner, assign_gen = (make_assigner(mcfg.foton_assign, len(model.foton_modules), getattr(train_ds, "names", None),
+                                          tcfg.seed) if mcfg.foton_assign else (None, None))
     step, best_val = 0, float("inf")
     # Eğitim duvar saati: yalnızca optimizer adımları (eval, örnek üretimi ve checkpoint kaydı hariç).
     # Eşit süre karşılaştırması bu sayıya dayanır; resume'da checkpoint'ten devam eder.
@@ -338,6 +460,8 @@ def main() -> None:
         for group, wd in zip(optimizer.param_groups, (tcfg.weight_decay, 0.0)):
             group["weight_decay"], group["betas"] = wd, (tcfg.beta1, tcfg.beta2)
         train_gen.set_state(ckpt["train_gen_state"])
+        if assign_gen is not None:
+            assign_gen.set_state(ckpt["assign_gen_state"])
         step, best_val = ckpt["step"], ckpt["best_val"]
         train_time = ckpt.get("train_time", 0.0)  # v1 checkpoint'lerinde yok
         del ckpt
@@ -400,11 +524,17 @@ def main() -> None:
         meta["foton_connections_counted"] = model.foton_connection_counts()
         meta["foton_layout"] = [mcfg.foton_pre, mcfg.foton_routed, mcfg.foton_post]
         meta["foton_prefix_k"], meta["foton_reg"] = mcfg.foton_prefix_k, [mcfg.foton_reg, mcfg.foton_reg_coef]
+        meta["foton_assign"] = mcfg.foton_assign
+        if mcfg.foton_assign:
+            meta["router"] = "UYGULANAMAZ: zorlanmış atama — router modelde durur ama çalışmaz ve eğitilmez"
     print(f"analitik aktif FLOP: eğitim {meta['flops_train_per_token']:,} / token"
           + (f" | sayılmış bağlantı {meta['foton_connections_counted']}" if mcfg.foton else ""))
     if step == 0:
         log(meta)
-    router_log = RouterLog(len(model.foton_modules), len(getattr(train_ds, "names", [])), device) if mcfg.foton else None
+    router_log = (RouterLog(len(model.foton_modules), len(getattr(train_ds, "names", [])), device)
+                  if mcfg.foton and not mcfg.foton_assign else None)
+    assign_log = (AssignLog(len(model.foton_modules), len(getattr(train_ds, "names", [])), device)
+                  if mcfg.foton_assign else None)
     eval_raw_dir = os.path.join(run_dir, "eval_raw")
 
     def sync() -> None:
@@ -420,6 +550,7 @@ def main() -> None:
     load_accum: torch.Tensor | None = None  # (MoE katmanı, E) expert atama sayıları
     last_load: list[list[float]] | None = None
     steps_since_log = 0
+    data_domain_counts = [0] * len(train_ds.names) if isinstance(train_ds, MultiDomainDataset) else []
     skip_eval_once = tcfg.resume and step > 0  # bu adımın eval'i kaydedilmeden önce zaten yapılmıştı
 
     while True:
@@ -435,15 +566,25 @@ def main() -> None:
             tag = "" if tcfg.loss_prefix_skip <= 0 else f" [maskesiz {val_full:.4f}]"
             val_rec = {"type": "val", "step": step, "tokens": step * tokens_per_step, "val_loss": val_loss,
                        "val_loss_full": val_full, "loss_prefix_skip": tcfg.loss_prefix_skip}
+            if "val_windows_sha256" in ev:
+                val_rec["val_windows_sha256"] = ev["val_windows_sha256"]
             if "oracle" in ev:
                 # Oracle eğrileri eğitim SIRASINDA loglanır: yalnızca last.pt / best.pt saklandığı için
                 # eğri sonradan üretilemez (ön-kayıt, "Oracle şartı"). Ham döküm her okumayı yeniden
                 # hesaplanabilir kılar.
-                val_rec.update(val_loss_oracle=ev["oracle"], val_loss_oracle_null=ev["oracle_null"],
-                               val_loss_routed_check=ev["routed_check"])
+                val_rec.update(val_loss_oracle=ev["oracle"], val_loss_oracle_null=ev["oracle_null"])
                 tag += f" [oracle {ev['oracle']:.4f} | null {ev['oracle_null']:.4f}]"
-                if abs(ev["routed_check"] - val_loss) > 1e-3:
-                    print(f"[UYARI] val_loss iki yoldan uyuşmuyor: {val_loss:.6f} vs {ev['routed_check']:.6f}")
+                if "assign_mode" in ev:
+                    # `val_loss` = EĞİTİMDEKİ atama kuralıyla kayıp. İkinci yol (`assigned_check`) üç-modül geçişinden;
+                    # ikisi 1e-4 içinde aynı olmalı (analiz bunu assert eder), kaba bir ayrışma koşuyu DURDURUR.
+                    val_rec.update(val_assign_mode=ev["assign_mode"], val_loss_assigned_check=ev["assigned_check"],
+                                   val_loss_router_UNUSED=ev["router_unused"])
+                    if not two_routes_agree(ev["assigned_check"], val_loss, 1e-3):
+                        sys.exit(f"atanan val loss iki yoldan uyuşmuyor: {val_loss:.6f} vs {ev['assigned_check']:.6f}")
+                else:
+                    val_rec["val_loss_routed_check"] = ev["routed_check"]
+                    if abs(ev["routed_check"] - val_loss) > 1e-3:
+                        print(f"[UYARI] val_loss iki yoldan uyuşmuyor: {val_loss:.6f} vs {ev['routed_check']:.6f}")
                 os.makedirs(eval_raw_dir, exist_ok=True)
                 import numpy as np
                 np.savez_compressed(os.path.join(eval_raw_dir, f"step_{step:05d}.npz"), step=step, **ev["raw"])
@@ -472,7 +613,8 @@ def main() -> None:
                 if tcfg.save_checkpoints:
                     save_atomic(state, best_path)
             if step > 0 and tcfg.save_checkpoints:
-                save_atomic({**state, "optimizer": optimizer.state_dict(), "best_val": best_val,
+                extra = {"assign_gen_state": assign_gen.get_state()} if assign_gen is not None else {}
+                save_atomic({**state, "optimizer": optimizer.state_dict(), "best_val": best_val, **extra,
                              "train_gen_state": train_gen.get_state(), "train_time": train_time_now}, last_path)
             t_log += time.perf_counter() - t_eval  # eval/örnek/kayıt süresi tok/s ölçümüne karışmasın
         skip_eval_once = False
@@ -488,6 +630,10 @@ def main() -> None:
         # dizi başına tanımlanabilir ve "aynı seed = aynı veri sırası" iddiası GERÇEKTEN doğru olur.
         if isinstance(train_ds, MultiDomainDataset):
             seqs = train_ds.sequence_stream(tcfg.batch_size * tcfg.grad_accum, train_gen)
+            # Veri sırasının PARMAK İZİ (CPU, senkronsuz; modele dokunmaz): log aralığı başına alan sayımı. "Aynı seed = aynı veri
+            # sırası" eşleme iddiası (D dahil bütün kollar) analizde bu alandan DOĞRULANIR; yalnızca kod okumasına dayanmaz.
+            for d_name, _ in seqs:
+                data_domain_counts[train_ds.domain_id(d_name)] += 1
             micro = [seqs[i : i + tcfg.batch_size]
                      for i in range(0, len(seqs), tcfg.batch_size)]
         else:
@@ -495,8 +641,16 @@ def main() -> None:
         for chunk in micro:
             x, y = train_ds.windows(chunk) if chunk is not None \
                 else train_ds.get_batch(tcfg.batch_size, train_gen)
-            with autocast_ctx:
-                _, loss, info = train_model(x, y)
+            if assigner is not None:
+                assign = assigner(getattr(train_ds, "last_domain_ids", None), x.shape[0], x.device)
+                with autocast_ctx:
+                    _, loss, info = train_model(x, y, assign=assign)
+                # UYGULANAN atama loglanır (modelin gerçekten dispatch ettiği tensör), döngüdeki `assign` değişkeni değil:
+                # forward'a başka bir atama gitseydi log yine "doğru" görünür ve hiçbir denetim fark etmezdi.
+                assign_log.add(info["foton_choice"], getattr(train_ds, "last_domain_ids", None))
+            else:
+                with autocast_ctx:
+                    _, loss, info = train_model(x, y)
             # Gradyan biriktirme: loss'u grad_accum'a böl ki toplanan gradyan, büyük tek bir
             # batch'in *ortalama* gradyanına eşit olsun (LR'ı batch'ten bağımsız tutar).
             (loss / tcfg.grad_accum).backward()
@@ -513,6 +667,8 @@ def main() -> None:
                     accum["foton_reg"] += info["foton_reg"] / tcfg.grad_accum
         # Gradyan kırpma: nadir "kötü batch"lerde oluşan dev gradyanların modeli bozmasını engeller.
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), tcfg.grad_clip)
+        if assign_log is not None:
+            assign_log.end_step()
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)  # None: sıfır tensörü tutmaktan daha az bellek
         # Aux-loss-free dengeleme (bias_update_rate > 0): gradyandan bağımsız, adım başına bir işaret güncellemesi
@@ -553,6 +709,15 @@ def main() -> None:
                 line += (f"\n           router: marjinal H {rl['router_entropy_marginal']:.3f} | dizi-başı H "
                          f"{rl['router_entropy_per_seq']:.3f} | marj {rl['router_margin']:.3f} | yük {rl['router_counts']} "
                          f"| ölü {rl['router_dead']}")
+            if data_domain_counts:
+                record["data_domain_counts"] = list(data_domain_counts)
+                data_domain_counts = [0] * len(data_domain_counts)
+            if assign_log is not None:
+                al = assign_log.flush()
+                record.update(al)
+                record.update({f: None for f in ROUTER_FIELDS_NA})      # UYGULANAMAZ: router çalışmıyor — sayı basılmaz
+                line += (f"\n           atama ({mcfg.foton_assign}): yük {al['assign_counts']} | modülsüz mikro-batch "
+                         f"{al['assign_microbatches_missing_module']} | gradyansız-modüllü adım {al['assign_steps_gradless_module']}")
             print(line)
             log(record)
             for v in accum.values():

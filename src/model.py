@@ -41,6 +41,7 @@ from src.moe import MoE
 FOTON_ARMS = {"h": ("A", "A", "A"), "x": attn_patterns.FOTON_MODULES}     # modül indeksi 0,1,2 bu SIRADA
 FOTON_CONN_TARGET = 128.4      # sahibin ZORUNLU DOĞRULAMA 1'i: üç modül de 128.4 ± 0.4 (T=512, nedensel, SAYILARAK)
 FOTON_CONN_TOL = 0.4
+FOTON_ASSIGN_MODES = ("", "domain", "iid")     # v03 adım 1: "" = öğrenilmiş router; diğerleri DIŞARIDAN atama
 
 
 class RMSNorm(nn.Module):
@@ -243,6 +244,10 @@ class GPT(nn.Module):
             raise ValueError("foton_prefix_k >= 1 olmalı")
         if cfg.foton_reg not in ("none", "entropy", "lb"):
             raise ValueError(f"foton_reg 'none' | 'entropy' | 'lb' olmalı, verilen: {cfg.foton_reg!r}")
+        if cfg.foton_assign not in FOTON_ASSIGN_MODES:
+            raise ValueError(f"foton_assign {FOTON_ASSIGN_MODES} içinden olmalı, verilen: {cfg.foton_assign!r}")
+        if cfg.foton_assign and cfg.foton_reg != "none":
+            raise ValueError("zorlanmış atamada router çalışmaz: router regularizasyonu (foton_reg) anlamsız")
         pre, r = cfg.foton_pre, cfg.foton_routed
         self.blocks = nn.ModuleList([Block(cfg, i) for i in range(pre)]
                                     + [Block(cfg, pre + r + i) for i in range(cfg.foton_post)])
@@ -319,22 +324,42 @@ class GPT(nn.Module):
             x, _ = blk(x, cos, sin)
         return x
 
-    def _foton_trunk(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, force_module: int | None):
+    def _foton_dispatch(self, x: torch.Tensor, choice: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
+        """Her diziyi `choice[b]` modülünden geçirir (öğrenilmiş seçim ve dışarıdan atama AYNI yolu kullanır)."""
+        y = torch.zeros_like(x)
+        for m in range(len(self.foton_modules)):
+            sel = (choice == m).nonzero(as_tuple=True)[0]
+            if sel.numel() == 0:
+                continue        # bu mikro-batch'te dizi almayan modül ÇALIŞMAZ: gradyanı None kalır
+            y = y.index_copy(0, sel, self._foton_module(m, x.index_select(0, sel), cos, sin).to(y.dtype))
+        return y
+
+    def _foton_trunk(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, force_module: int | None,
+                     assign: torch.Tensor | None = None):
         """Paylaşılan ön bloklar -> router -> seçilen modül -> paylaşılan arka bloklar."""
         pre = self.cfg.foton_pre
         for blk in self.blocks[:pre]:
             x, _ = blk(x, cos, sin)
+        if assign is not None:
+            # v03 adım 1 — DIŞARIDAN atama: router ÇALIŞMAZ (gradyan almaz; AdamW onu tümüyle atlar, init'te kalır), gate
+            # YOKTUR: çıkış = Modül_{assign[b]}(x). (Öğrenilmiş yolda gate'in ileri değeri zaten 1'dir.)
+            M = len(self.foton_modules)
+            if assign.shape != (x.shape[0],) or assign.dtype != torch.long:
+                raise ValueError(f"assign [B] int64 olmalı, verilen: {tuple(assign.shape)} {assign.dtype}")
+            if assign.device != x.device:
+                raise ValueError(f"assign girdiyle aynı cihazda olmalı ({assign.device} != {x.device})")
+            if bool(((assign < 0) | (assign >= M)).any()):
+                raise ValueError(f"assign değerleri 0..{M - 1} aralığında olmalı")
+            x_out = self._foton_dispatch(x, assign, cos, sin)
+            for blk in self.blocks[pre:]:
+                x_out, _ = blk(x_out, cos, sin)
+            return x_out, assign, None, None
         choice, probs, logits = self._foton_route(x)
         if force_module is not None:                       # bütün diziler TEK modülden; gate YOK (router gradyan almaz).
             # Yalnızca testler ve scripts/router_grad_diag.py çağırır; ORACLE eğrileri buradan DEĞİL `foton_eval_all`'dan gelir.
             x_out = self._foton_module(force_module, x, cos, sin)
         else:
-            y = torch.zeros_like(x)
-            for m in range(len(self.foton_modules)):
-                sel = (choice == m).nonzero(as_tuple=True)[0]
-                if sel.numel() == 0:
-                    continue        # bu mikro-batch'te dizi almayan modül ÇALIŞMAZ: gradyanı None kalır
-                y = y.index_copy(0, sel, self._foton_module(m, x.index_select(0, sel), cos, sin).to(y.dtype))
+            y = self._foton_dispatch(x, choice, cos, sin)
             # Straight-through gate: DEĞER p/p.detach() = 1.0, GRADYAN d(log p). k=1'de ham p'yi normalize
             # etmek (p/p) sabit 1 verir ve router görev loss'undan hiç gradyan alamaz; ham p ile çarpmak ise
             # dalı init'te 1/3'e kısar. Gate, modülün residual akışa EKLEDİĞİ farkı çarpar (kimlik yolu
@@ -403,7 +428,8 @@ class GPT(nn.Module):
                 n -= (len(self.foton_modules) - 1) * per_module
         return n
 
-    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None, force_module: int | None = None):
+    def forward(self, idx: torch.Tensor, targets: torch.Tensor | None = None, force_module: int | None = None,
+                assign: torch.Tensor | None = None):
         """Döndürür: (logits, loss, info)
         loss = CE + aux_coef * aux_loss + z_coef * z_loss   (dense modelde sadece CE)
         info = {"ce", ve MoE varsa "aux_loss", "z_loss", "counts" (MoE katmanı x expert)} - hepsi detached.
@@ -416,11 +442,17 @@ class GPT(nn.Module):
         moe_stats = []
         foton = None
         if self.cfg.foton:
-            x, choice, probs, logits_r = self._foton_trunk(x, cos, sin, force_module)
+            # Yanlış kullanım ÇALIŞMASIN: zorlanmış-atama kolu atamasız çağrılırsa sessizce (eğitilmemiş) router'a düşerdi;
+            # öğrenilmiş-router kolu atamayla çağrılırsa router eğitilmeden kalırdı. İkisi de hata.
+            if assign is not None and (force_module is not None or not self.cfg.foton_assign):
+                raise ValueError("assign yalnızca foton_assign kollarında ve force_module OLMADAN verilebilir")
+            if self.cfg.foton_assign and assign is None and force_module is None:
+                raise ValueError(f"bu kol dışarıdan atama ister (foton_assign = {self.cfg.foton_assign!r}): assign verilmedi")
+            x, choice, probs, logits_r = self._foton_trunk(x, cos, sin, force_module, assign)
             foton = (choice, probs, logits_r)
         else:
-            if force_module is not None:
-                raise ValueError("force_module yalnızca FOTON kollarında anlamlı")
+            if force_module is not None or assign is not None:
+                raise ValueError("force_module / assign yalnızca FOTON kollarında anlamlı")
             for block in self.blocks:
                 x, stats = block(x, cos, sin)
                 if stats is not None:
@@ -460,7 +492,10 @@ class GPT(nn.Module):
                 aux = M * (f.detach() * probs.mean(dim=0)).sum()     # Switch: N * sum_m f_m * P_m, bu mikro-batch'te
                 loss = loss + self.cfg.foton_reg_coef * aux
                 info["foton_reg"] = aux.detach()
-            info.update(foton_choice=choice.detach(), foton_probs=probs.detach(), foton_logits=logits_r.detach())
+            if probs is None:       # dışarıdan atama: router çalışmadı — olasılık / logit YOK (anlamsız sayı basılmasın)
+                info.update(foton_choice=choice.detach(), foton_assigned=True)
+            else:
+                info.update(foton_choice=choice.detach(), foton_probs=probs.detach(), foton_logits=logits_r.detach())
         return logits, loss, info
 
     def configure_optimizer(self, lr: float, weight_decay: float, betas: tuple[float, float], device_type: str):

@@ -215,7 +215,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="", help="virgüllü kimlik önekleri (ör. E,B,O0): HIZLI yineleme içindir, "
                                                 "kayıt dosyasına YAZMAZ — kayıt yalnızca tam koşumdan çıkar")
-    ap.add_argument("--suite", choices=("prereg", "06", "07"), default="prereg",
+    ap.add_argument("--suite", choices=("prereg", "06", "07", "v03s1"), default="prereg",
                     help="prereg: tag'li ön-kaydın sınavı (kaydı DONMUŞ); 06: FOTON uygulamasının guard'ları")
     args = ap.parse_args()
     only = tuple(x.strip() for x in args.only.split(",") if x.strip())
@@ -229,6 +229,12 @@ def main() -> None:
         # tag'e erişemezse `skip` eder — atlanan test hiçbir mutantı yakalamaz. Salt-okunur git erişimi verilir.
         EXTRA_ENV["GIT_DIR"] = os.path.join(ROOT, ".git")
         EXTRA_DIRS.append("docs")                 # tests/test_flops.py docs/flops.md tablolarını koddan yeniden üretir
+    elif args.suite == "v03s1":
+        from mutation_catalog_v03s1 import MUTANTS_V03S1
+        MUTANTS = [{**m, "guard": PYTEST(m["guard"])} for m in MUTANTS_V03S1]
+        LOG = "experiments/foton-v03-step1/mutation_log.md"
+        TITLE = "# Mutasyon sınavı kaydı — v03 adım 1: zorlanmış yönlendirme yolu, karar kuralı, analiz"
+        EXTRA_DIRS.append("experiments/foton-v03-step1")     # testler diskteki kuyruğun analizin beklediği 12 koşu olduğunu sınar
     elif args.suite == "07":
         from mutation_catalog_07 import MUTANTS_07
         MUTANTS = [{**m, "guard": PYTEST(m["guard"])} for m in MUTANTS_07]

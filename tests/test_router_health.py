@@ -113,3 +113,12 @@ def test_v6g_collapse_criterion():
     assert rh.collapsed(rows(0.2))["collapsed"] is False
     assert rh.collapsed(rows(0.2, dead={2200: 2}))["collapsed"] is True
     assert rh.collapsed(rows(0.2, marginal=0.05))["collapsed"] is True
+
+
+def test_forced_assignment_runs_are_refused_because_their_router_fields_are_not_applicable(tmp_path):
+    """v03 adım 1'in zorlanmış-atama kollarında router çalışmaz ve `router_*` alanları `null` yazılır: o koşulardan router
+    sağlığı / V7 seçimi OKUNAMAZ — betik null'ı sayı gibi yorumlamak yerine durur."""
+    row = {"type": "train", "step": 25, **{k: None for k in rh.ROUTER_FIELDS}}
+    (tmp_path / "metrics.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="UYGULANAMAZ"):
+        rh.load_router_rows(str(tmp_path))

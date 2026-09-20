@@ -50,6 +50,10 @@ def load_router_rows(run_dir: str) -> list[dict]:
         for line in f:
             r = json.loads(line)
             if r.get("type") == "train" and "router_dead" in r:
+                # v03 adım 1'in zorlanmış-atama kollarında router ÇALIŞMAZ ve bu alanlar `null` ("uygulanamaz") yazılır:
+                # o koşulardan router sağlığı / V7 seçimi OKUNAMAZ — sessizce sayı gibi yorumlanmasın.
+                if any(r.get(k) is None for k in ("router_dead", "router_entropy_per_seq")):
+                    raise ValueError(f"{run_dir}: zorlanmış-atama kolu — router metrikleri UYGULANAMAZ")
                 rows.append({"step": r["step"], **{k: r.get(k) for k in ROUTER_FIELDS}})
     if not rows:
         raise ValueError(f"{run_dir}: router alanı taşıyan train satırı yok (FOTON koşusu değil mi?)")

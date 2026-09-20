@@ -64,6 +64,12 @@ class ModelConfig:
     # "lb" (Switch tarzı load-balancing aux, mikro-batch başına: loss += coef * N * sum_m f_m * P_m)
     foton_reg: str = "none"
     foton_reg_coef: float = 0.01
+    # v03 adım 1 (experiments/foton-v03-step1/decision_rule.md): yönlendirme DIŞARIDAN zorlanır, router eğitilmez.
+    # "" = öğrenilmiş prefix router (v02) | "domain" = modül = alan kimliği | "iid" = çekim başına bağımsız düzgün rastgele.
+    # Boş değilken model dışarıdan `assign` verilmeden çağrılamaz (router yoluna sessizce düşmesin) ve router modelde
+    # KALIR ama çalışmaz / gradyan almaz: çıkarılsaydı bağlı embedding'in init çekimi kayardı ve aynı seed'li v02-X
+    # koşularıyla eşleme bozulurdu (docs/ARCHITECTURE_AS_BUILT.md, bölüm 3).
+    foton_assign: str = ""
 
 
 @dataclass
@@ -211,6 +217,26 @@ PRESETS: dict[str, tuple[ModelConfig, TrainConfig]] = {
     "foton-x-lb": (
         ModelConfig(foton="x", foton_reg="lb", foton_reg_coef=0.01),
         TrainConfig(run_name="foton-x-lb", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    # --- v03 adım 1: ZORLANMIŞ yönlendirme kolları (router eğitimi yok). TrainConfig dört kolla BİREBİR aynı; ModelConfig'te
+    # tek fark `foton_assign` (ve H-dom'da kol). Tarama bütçesi `--stop_step 2188` ile kuyruktan verilir.
+    "foton-x-dom": (
+        ModelConfig(foton="x", foton_assign="domain"),
+        TrainConfig(run_name="foton-x-dom", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-h-dom": (
+        ModelConfig(foton="h", foton_assign="domain"),
+        TrainConfig(run_name="foton-h-dom", data_dir="data/foton", batch_size=16, grad_accum=4,
+                    max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
+                    loss_prefix_skip=64),
+    ),
+    "foton-x-iid": (
+        ModelConfig(foton="x", foton_assign="iid"),
+        TrainConfig(run_name="foton-x-iid", data_dir="data/foton", batch_size=16, grad_accum=4,
                     max_steps=4375, eval_interval=250, eval_iters=80, sample_tokens=0,
                     loss_prefix_skip=64),
     ),

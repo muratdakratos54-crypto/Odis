@@ -1,0 +1,15 @@
+alanlar ['code', 'math', 'nl'] | adım başına 16 x 4 dizi | 2188 adım | log aralığı 25
+
+seed 101: veri sırası v02-X loguyla 88/88 aralıkta aynı | X-iid alan x modül tablosu [[15503, 15526, 15457], [15496, 15621, 15340], [15547, 15887, 15655]] | 1/3'ten en büyük pay sapması 0.00405 (tolerans 0.01)
+seed 102: veri sırası v02-X loguyla 88/88 aralıkta aynı | X-iid alan x modül tablosu [[15554, 15613, 15416], [15535, 15742, 15539], [15489, 15562, 15582]] | 1/3'ten en büyük pay sapması 0.00292 (tolerans 0.01)
+seed 103: veri sırası v02-X loguyla 88/88 aralıkta aynı | X-iid alan x modül tablosu [[15622, 15674, 15692], [15618, 15505, 15420], [15547, 15441, 15513]] | 1/3'ten en büyük pay sapması 0.00223 (tolerans 0.01)
+
+GEÇTİ  seed 101: veri sırası bütün log aralıklarında v02-X'inkiyle aynı
+GEÇTİ  seed 101: X-iid pay sapması toleransın yarısından küçük
+GEÇTİ  seed 101: toplam dizi 140032
+GEÇTİ  seed 102: veri sırası bütün log aralıklarında v02-X'inkiyle aynı
+GEÇTİ  seed 102: X-iid pay sapması toleransın yarısından küçük
+GEÇTİ  seed 102: toplam dizi 140032
+GEÇTİ  seed 103: veri sırası bütün log aralıklarında v02-X'inkiyle aynı
+GEÇTİ  seed 103: X-iid pay sapması toleransın yarısından küçük
+GEÇTİ  seed 103: toplam dizi 140032

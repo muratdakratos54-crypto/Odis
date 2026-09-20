@@ -1,0 +1,15 @@
+ağırlıklar: checkpoints\foton-v02-tarama\v7-x-s101 adım 2188 | NVIDIA GeForce RTX 4070 SUPER | torch 2.14.0+cu130 | bf16
+koşunun kendi logu: val_loss (router) 3.125362, oracle 3.120355
+
+domain  1. yol (eğitimin forward'ı) 3.125697 | 2. yol assigned_check 3.125710 (fark 1.31e-05) | ham dökümden 3.125710 (fark 1.31e-05) | router_UNUSED 3.125379 | oracle 3.120355 | eval tepe bellek 3.07 GB
+iid     1. yol (eğitimin forward'ı) 3.125827 | 2. yol assigned_check 3.125827 (fark 8.15e-08) | ham dökümden 3.125827 (fark 1.91e-08) | router_UNUSED 3.125379 | oracle 3.120355 | eval tepe bellek 3.08 GB
+
+val_windows_sha256 = ['9773961275510800cc4345523184278f7601f5d59d005174143906894888845e']
+
+GEÇTİ  domain: iki yol 0.0001 içinde (assigned_check ve ham döküm)
+GEÇTİ  domain: oracle, v02 koşusunun logladığını yeniden üretiyor (0.0001 içinde)
+GEÇTİ  domain: router'ın sayısı (UNUSED), v02 koşusunun router'lı val_loss'unu yeniden üretiyor (0.0001 içinde)
+GEÇTİ  iid: iki yol 0.0001 içinde (assigned_check ve ham döküm)
+GEÇTİ  iid: oracle, v02 koşusunun logladığını yeniden üretiyor (0.0001 içinde)
+GEÇTİ  iid: router'ın sayısı (UNUSED), v02 koşusunun router'lı val_loss'unu yeniden üretiyor (0.0001 içinde)
+GEÇTİ  val penceresi özeti iki kolda aynı ve analizin beklediği değer
