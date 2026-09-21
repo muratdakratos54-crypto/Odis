@@ -294,3 +294,190 @@ def test_driver_survives_a_redirected_cp1252_stdout_as_a_detached_windows_proces
     assert json.loads((out / "campaign_status.json").read_text(encoding="utf-8"))["status"] == "queue_a_failed"
     assert "kuyruğu" in (tmp_path / "stdout.txt").read_text(encoding="utf-8") and "UnicodeEncodeError" not in err
     assert "queue_a_failed" in (out / "campaign.log").read_text(encoding="utf-8")
+
+
+# ------------------------------------------------------------------------------------ DEVAM: seed 102 / 103 (sahibin onayı)
+def block(tmp_path, seed, levels=None, overrides=None, src=None):
+    lv, kw = {**L, **(levels or {})}, overrides or {}
+    runs, v02 = tmp_path / "runs", tmp_path / "v02"
+    for arm in t.KIND:
+        t._write_arm(runs, v02, arm, seed, lv[arm], **{"src": src or REAL_SRC, **kw.get(arm, {})})
+    return str(runs), str(v02)
+
+
+def run_gate(tmp_path, runs, v02, seed, legs, capsys=None):
+    out = tmp_path / f"gate_s{seed}.json"
+    rc = gate.main(["--runs", runs, "--v02", v02, "--out", str(out), "--seed", str(seed), "--legs", legs])
+    text = out.read_text(encoding="utf-8") + ("\n" + capsys.readouterr().out if capsys is not None else "")
+    return rc, json.loads(out.read_text(encoding="utf-8")), text
+
+
+@pytest.mark.parametrize("seed", [102, 103])
+def test_the_precondition_only_gate_passes_with_a_wildly_off_dense_arm_and_writes_no_number(tmp_path, capsys, seed):
+    """Seed 102 / 103'te YALNIZ ön koşulun seed-başı bacağı yürürlükte: D'ye bakılmaz ((b) zaten okunmaz), D-102 / D-103
+    ne kadar saparsa sapsın kuyruk durmaz. Kapı geçtiğinde yine hiçbir sayı yazılmaz."""
+    rc, res, text = run_gate(tmp_path, *block(tmp_path, seed, {"d": 3.30}), seed, "precondition", capsys)
+    assert rc == gate.EXIT_OK and res["exceeded"] is False and res["seed"] == seed
+    assert res["precondition_seed_leg"] == {"clean": True} and res["d_sanity_seed_leg"] == gate.D_NOT_EVALUATED
+    assert "YALNIZCA ön koşulun seed-başı bacağı" in res["what"] and "deviation_nat" not in text
+    assert_no_arm_loss_or_delta(text, f"seed {seed} ön koşul kapısı")
+    # AYNI veri, seed 101 kipinde (iki bacak) kapıyı DURDURURDU: fark gerçekten kipten geliyor
+    assert run_gate(tmp_path / "iki", *block(tmp_path / "iki", seed, {"d": 3.30}), seed, "both")[0] == gate.EXIT_EXCEEDED
+
+
+@pytest.mark.parametrize("seed", [102, 103])
+def test_the_precondition_only_gate_stops_the_campaign_when_the_precondition_leg_is_exceeded(tmp_path, capsys, seed):
+    rc, res, text = run_gate(tmp_path, *block(tmp_path, seed, {"x-iid": L["v02"] + 0.0151}), seed, "precondition", capsys)
+    pre = res["precondition_seed_leg"]
+    assert rc == gate.EXIT_EXCEEDED and res["exceeded"] is True and pre["clean"] is False
+    assert pre["mean_fixed_diff_nat"] == pytest.approx(0.0151, abs=1e-6) and res["d_sanity_seed_leg"] == gate.D_NOT_EVALUATED
+    assert "deviation_nat" not in text                                    # D'nin sayısı aşılmış kapıda bile yazılmaz
+    assert_no_arm_loss_or_delta(text, f"seed {seed} aşılan ön koşul kapısı")
+
+
+@pytest.mark.parametrize("kw, msg", [({"d": {"lr_2000": 0.00035}}, "LR takvimi"), ({"d": {"order_seed": 999}}, "veri sırası"),
+                                     ({"d": {"digest": "ef" * 32}}, "aynı val pencerelerinde"),
+                                     ({"x-dom": {"check_shift": 3e-4}}, "iki yoldan uyuşmuyor")])
+def test_the_precondition_only_gate_still_checks_the_integrity_of_all_four_runs_including_dense(tmp_path, kw, msg):
+    """D'nin DEĞERİNE bakılmaz ama BÜTÜNLÜĞÜNE bakılır: analiz 12 koşunun hepsini ister; bozuk bir D-102 kuyrukta kalmasın."""
+    rc, res, _ = run_gate(tmp_path, *block(tmp_path, 102, overrides=kw), 102, "precondition")
+    assert rc == gate.EXIT_INTEGRITY and msg in res["integrity_error"] and res["seed"] == 102
+
+
+def test_the_gate_rejects_an_unknown_mode_and_an_unknown_seed(tmp_path):
+    with pytest.raises(ValueError, match="legs"):
+        gate.gate(*block(tmp_path, 102), seed=102, legs="yalniz-d")
+    with pytest.raises(SystemExit):
+        gate.main(["--out", str(tmp_path / "g.json"), "--seed", "104"])
+
+
+def drive_continuation(codes: dict):
+    calls = []
+
+    def run(cmd):
+        if "v03_step1_gate.py" in cmd[1]:
+            seed, out = int(cmd[cmd.index("--seed") + 1]), cmd[cmd.index("--out") + 1]
+            kind = f"gate{seed}:" + cmd[cmd.index("--legs") + 1]
+            assert os.path.normpath(out).startswith("checkpoints")                                   # depoya YAZMAZ
+            assert out == (camp.RECHECK_OUT if seed == 101 else camp.GATE_OUT_S[seed])               # kendi dosyasına
+            assert out != camp.GATE_OUT                                   # seed 101'in AŞILMIŞ kapı kaydının üzerine YAZMAZ
+        else:
+            kind = {camp.QUEUE_S102: "q102", camp.QUEUE_S103: "q103"}.get(cmd[2], "BEKLENMEYEN:" + cmd[2])
+        calls.append(kind)
+        return codes.get(kind, 0)
+    status, rc = camp.continuation(run, lambda msg: None)
+    return status, rc, calls
+
+
+def test_the_continuation_runs_seed_102_its_gate_seed_103_its_gate_in_that_order():
+    status, rc, calls = drive_continuation({})
+    assert (status, rc) == ("completed", 0)
+    # 0. adım seed 101'in yeniden denetimi (yalnız ön koşul kipinde); sonra 102, kapısı, 103, kapısı — seed 101 KUYRUĞU yok
+    assert calls == ["gate101:precondition", "q102", "gate102:precondition", "q103", "gate103:precondition"]
+
+
+R0 = ["gate101:precondition"]
+
+
+@pytest.mark.parametrize("codes, want_status, want_calls", [
+    ({"gate101:precondition": 4}, "s101_recheck_failed", R0),
+    ({"gate101:precondition": 3}, "s101_recheck_failed", R0),
+    ({"gate102:precondition": 3}, "gate_s102_exceeded", R0 + ["q102", "gate102:precondition"]),
+    ({"gate102:precondition": 4}, "gate_s102_integrity_error", R0 + ["q102", "gate102:precondition"]),
+    ({"gate102:precondition": 1}, "gate_s102_integrity_error", R0 + ["q102", "gate102:precondition"]),
+    ({"q102": 90}, "queue_s102_failed", R0 + ["q102"]),
+    ({"q103": 1}, "queue_s103_failed", R0 + ["q102", "gate102:precondition", "q103"]),
+    ({"gate103:precondition": 3}, "gate_s103_exceeded", R0 + ["q102", "gate102:precondition", "q103", "gate103:precondition"]),
+    ({"gate103:precondition": 4}, "gate_s103_integrity_error", R0 + ["q102", "gate102:precondition", "q103", "gate103:precondition"])])
+def test_the_continuation_stops_at_every_non_zero_code_and_waits(codes, want_status, want_calls):
+    status, rc, calls = drive_continuation(codes)
+    assert status == want_status and rc == max(codes.values()) and calls == want_calls
+
+
+def test_the_continuation_preserves_the_record_of_the_exceeded_seed_101_gate(tmp_path, monkeypatch):
+    out = tmp_path / "ckpt"
+    out.mkdir()
+    s102, s103, s101, rechk = out / "gate_s102.json", out / "gate_s103.json", out / "gate_s101.json", out / "gate_s101_recheck.json"
+    for name, value in (("OUT", str(out)), ("STATUS", str(out / "campaign_status.json")), ("LOG", str(out / "campaign.log")),
+                        ("GATE_OUT", str(s101)), ("GATE_OUT_S", {102: str(s102), 103: str(s103)}), ("RECHECK_OUT", str(rechk))):
+        monkeypatch.setattr(camp, name, value)
+    monkeypatch.setattr(camp.os, "chdir", lambda p: None)
+    for f in (s101, s102, s103, rechk):
+        f.write_text(json.dumps({"exceeded": True, "eski": f.name}), encoding="utf-8")
+    seen = []
+
+    class Done:
+        returncode = 0
+
+    def fake_run(cmd, cwd=None):
+        seen.append(json.loads((out / "campaign_status.json").read_text(encoding="utf-8"))["status"])
+        assert s101.exists() and not s102.exists() and not s103.exists() and not rechk.exists()   # 101'in kaydı DURUR
+        return Done()
+
+    monkeypatch.setattr(camp.subprocess, "run", fake_run)
+    assert camp.main(["--continue-after-s101"]) == 0 and seen == ["running"] * 5
+    assert json.loads(s101.read_text(encoding="utf-8"))["eski"] == "gate_s101.json"
+    assert json.loads((out / "campaign_status.json").read_text(encoding="utf-8"))["status"] == "completed"
+    log = (out / "campaign.log").read_text(encoding="utf-8")
+    assert "DEVAM (sahibin onayı" in log and "seed 102 ön koşul kapısı" in log and "KAMPANYA DURUMU: completed" in log
+
+
+def test_the_split_queues_are_the_approved_second_queue_cut_at_the_seed_boundary_nothing_else():
+    """Kuyruk kısaltılmadı ve YENİDEN ÜRETİLMEDİ (Latin kare dönüşümü değişirdi): aynı 8 koşu, aynı sıra, aynı argümanlar."""
+    def load(path):
+        with open(os.path.join(ROOT, path), encoding="utf-8") as f:
+            return json.load(f)
+    b, s102, s103 = load(camp.QUEUE_B), load(camp.QUEUE_S102), load(camp.QUEUE_S103)
+    assert s102["runs"] + s103["runs"] == b["runs"] and len(b["runs"]) == 8
+    for q, seed in ((s102, 102), (s103, 103)):
+        assert {r["name"].rsplit("-s", 1)[1] for r in q["runs"]} == {str(seed)} and len(q["runs"]) == 4
+        assert q["_blocks"] == [[r["name"] for r in q["runs"]]] and q["_strict"] is True and "_sliced_from" in q
+        assert {k: v for k, v in q.items() if k not in ("runs", "_blocks", "_sliced_from")} == \
+               {k: v for k, v in b.items() if k not in ("runs", "_blocks")}
+    assert s102["runs"][0]["name"].startswith("v03s1-h-dom") and s103["runs"][0]["name"].startswith("v03s1-x-iid")
+
+
+
+def test_the_real_output_paths_of_the_continuation_never_collide_with_the_seed_101_record():
+    """Gerçek (monkeypatch'siz) yollar: seed 102 / 103 kapıları ve 0. adımın yeniden denetimi seed 101'in aşılmış kapı
+    kaydının (gate_s101.json) üzerine YAZAMAZ ve birbirinin üzerine yazmaz."""
+    paths = [camp.GATE_OUT, camp.RECHECK_OUT, camp.GATE_OUT_S[102], camp.GATE_OUT_S[103]]
+    assert len({os.path.normpath(p) for p in paths}) == 4 and set(camp.GATE_OUT_S) == {102, 103}
+    assert all(os.path.normpath(p).startswith(os.path.normpath(camp.OUT)) for p in paths)
+    assert [os.path.basename(p) for p in paths] == ["gate_s101.json", "gate_s101_recheck.json", "gate_s102.json", "gate_s103.json"]
+
+
+def test_the_precondition_only_gate_still_checks_src_continuity_against_the_current_tree(tmp_path, capsys):
+    rc, res, text = run_gate(tmp_path, *block(tmp_path, 102, src="c" * 64), 102, "precondition", capsys)
+    assert rc == gate.EXIT_INTEGRITY and "src/ değişti" in res["integrity_error"] and res["legs"] == "precondition"
+    assert_no_arm_loss_or_delta(text, "seed 102 src sürekliliği")
+
+
+def test_the_precondition_only_gate_stops_on_the_ceiling_leg_alone(tmp_path):
+    """Ön koşulun seed-başı bacağı İKİ parçadır (mean_fixed VE tavan); 102 / 103'te tavan bacağı da yürürlükte."""
+    wide = {"x-iid": {"sm_of_step": t.generalist(L["x-iid"], "x-iid", 102, sd=0.014)}}
+    rc, res, _ = run_gate(tmp_path, *block(tmp_path, 102, overrides=wide), 102, "precondition")
+    pre = res["precondition_seed_leg"]
+    assert rc == gate.EXIT_EXCEEDED and abs(pre["mean_fixed_diff_nat"]) < dec.PRE_MEAN_FIXED_NAT
+    assert pre["ceiling_diff_points"] > dec.PRE_CEILING_POINTS
+
+
+def test_the_record_of_a_precondition_only_gate_names_its_own_seed_and_no_dense_quantity(tmp_path):
+    rc, res, _ = run_gate(tmp_path, *block(tmp_path, 103, {"x-iid": L["v02"] + 0.0151}), 103, "precondition")
+    assert rc == gate.EXIT_EXCEEDED and "X-iid-103" in res["NOT_computed"] and "D-101" not in res["NOT_computed"]
+    assert "YALNIZCA ön koşulun seed-başı" in res["NOT_computed"] and gate.not_computed(101, "both") == gate.NOT_COMPUTED
+
+
+S101_DIR = os.path.join(ROOT, "checkpoints", "foton-v03-step1")
+
+
+@pytest.mark.skipif(not all(os.path.isdir(os.path.join(S101_DIR, f"v03s1-{a}-s101")) for a in ("d", "x-dom", "h-dom", "x-iid")),
+                    reason="gerçek seed-101 koşuları diskte yok (mutasyon kumu)")
+def test_the_step_zero_recheck_passes_on_the_real_seed_101_block_and_the_original_gate_still_fails(tmp_path):
+    """Bu gece koşacak 0. adım GERÇEK veride geçmeli (yoksa 8 koşu hiç başlamaz); aynı veride iki bacaklı kapı yine aşılmalı
+    (D-101'in +0.012132'lik sapması değişmez: (b) bu turda okunmaz)."""
+    res = gate.gate(S101_DIR, os.path.join(ROOT, "checkpoints", "foton-v02-tarama"), seed=101, legs="precondition")
+    assert res["exceeded"] is False and res["precondition_seed_leg"] == {"clean": True}
+    both = gate.gate(S101_DIR, os.path.join(ROOT, "checkpoints", "foton-v02-tarama"), seed=101, legs="both")
+    assert both["exceeded"] is True and both["d_sanity_seed_leg"]["clean"] is False
+    assert both["d_sanity_seed_leg"]["deviation_nat_at_ref_step"] == pytest.approx(0.012132, abs=1e-6)

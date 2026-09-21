@@ -34,6 +34,12 @@ ayrı hâller, ikisi de "dense farkı ayrı iş olarak açılır"a bağlanıyor)
 takvim tahmini eğitimin kendi `token_budget()` yardımcısını kullanıyor; ulaşılabilirlik benzetimle ölçülüp assertion'a
 bağlandı (`dcheck_reachability.log`: kod özdeşken P(SAĞLAM) %96–98, anomalinin tamamında P(SUÇLU) %100).
 
+| 5 (8 ajan) | sahibin onayladığı DEVAM yolu (seed 102 / 103 ön koşul kapıları, bölünmüş kuyruklar, sürücü) — başlatmadan ÖNCE | HIGH yok, çürütülen yok; 6 bulgu (2 MEDIUM aynı açık, 4 LOW). MEDIUM: devam yolu seed 101 ile 102 arasındaki src sürekliliğini denetlemiyordu (seed 102 / 103 kapıları kendi koşularını şimdiki ağaçla karşılaştırıyor; bu seed 101'e göre totolojik) — src/ arada değişseydi 8 koşu tamamlanır, analiz sonra "tek src özeti" diye reddederdi. LOW: kapıların seed 101 kaydının ÜZERİNE yazması hiçbir testte yakalanmıyordu; sürücünün kullanım satırı devam bayrağını göstermiyordu (bayraksız başlatma gece hiçbir koşu yapmazdı); "yalnız ön koşul" kipinde src ve tavan bacağı mutasyonla kanıtsızdı; o kipin kaydı yanlış metin taşıyordu (D-101'den, iki kapıdan söz ediyordu). Doğrulanan: bölünmüş kuyruklar onaylı kuyruğa birebir eşit; iki kuyruk seed 101 klasörlerine dokunmuyor; SIKI kip ikinci kuyruğu reddetmez (`__pycache__` ve `checkpoints/` git dışında, koşu defteri kod yolu değil); analizde (b) KESİN okunmaz (D-101 bacağı +0.012132 > 0.012, `all(...)`) |
+
+Tur 5'ten sonra: devam yoluna **0. adım** eklendi (seed 101 bloğunun `--legs precondition` ile yeniden denetimi; gerçek veride
+geçtiği testle doğrulandı); kapı çıktı yollarının seed 101 kaydıyla çakışmadığı gerçek yollarla sınanıyor; "yalnız ön
+koşul" kipinde src sürekliliği ve tavan bacağı için test + mutant; kipe göre kayıt metni; sürücü belgesi düzeltildi.
+
 **Tur 3'ün en pahalı bulgusu kodda değil, BENDEYDİ ve başlatmadan önce denenerek bulundu:** kampanya sürücüsü bağımsız
 süreç olarak koşarken stdout dosyaya yönlenir ve Windows'ta cp1252 olur; ilk Türkçe günlük satırı `UnicodeEncodeError` ile
 sürücüyü öldürecekti — kuyruk hiç başlamadan, durum dosyası da yazılmadan. Düzeltildi (`sys.stdout.reconfigure`, günlük önce
@@ -60,6 +66,7 @@ eklendi; Ö2 ve Ö3'ün ulaşılabilirlik tabloları assertion'larıyla `reachab
 | 3 (tur 2 düzeltmeleri) | 119 | 119 yakalandı (tur 2'nin 13 sonda mutantı kataloğa girdi: N40–N67, R09–R12, D09–D11) |
 | 4 (seed-101 kapısı + sürücü + LR denetimi + tur 3'ün bulguları) | 146 | 146 yakalandı (yeni: G01–G23 kapı / sürücü, N68–N69, P01–P03) |
 | 5 (dense teşhis ölçütü; tur 4'ün bulguları) | 170 | 170 yakalandı (yeni: E01–E24) |
+| 6 (devam yolu: seed 102 / 103 ön koşul kapıları, 0. adım, bölünmüş kuyruklar; tur 5'in bulguları) | 187 | 187 yakalandı (yeni: G24–G40) |
 
 06 sınavı (FOTON uygulamasının guard'ları) `src/train.py` / `src/model.py` her değiştiğinde yeniden koşuldu: 71 / 71.
 
@@ -89,6 +96,18 @@ eklendi; Ö2 ve Ö3'ün ulaşılabilirlik tabloları assertion'larıyla `reachab
   anomalisi +0.025295 ve her adımda pozitifti: yaklaşık 10 kat büyük ve desen olarak farklı. Teşhis koşusu, seed 101'in
   düştüğü denetimi geçiyor (adım 2000 sapması −0.004443). **Sonuç: bugünkü kod dondurulmuş dense referansını aynı seed'de
   yeniden üretiyor; D-101'in sapması seed çekimidir.** Kayıt: `dcheck_result.json`, `dcheck_rule.md` bölüm 5b.
+* **Teşhis sonucu KABUL EDİLDİ (2026-09-21).** Sahibi: "Kod sağlam, D-101 seed çekimi. Net." Gürültü çapasının iki farklı
+  kod sürümünden alındığının koşudan ÖNCE yakalanıp düzeltilmesi "doğru sıra" diye kayda geçti.
+* **KAPANAN KAPI KAPALI KALIYOR.** Sahibi: "Toleransın dar kalibre olmuş olması, kuralı veriyi gördükten sonra esnetme hakkı
+  vermez — tersine, kuralın neden önceden yazıldığının kanıtıdır. (b) bu turda okunmaz." Satır `decision_rule.md`'ye yazıldı.
+* **v03 derslerine üç satır** (`experiments/foton-v02/v03_design_notes.md` bölüm 3): gürültü zarfı aynı kodla koşmuş
+  çiftten ölçülür; beş seed'lik referans ailesi kuyruğu dar gösteriyor (D-101 kanıtı); (b) sorusu ayrı bir ön-kayıtta,
+  doğru kalibre edilmiş D toleransı ve genişletilmiş D referansıyla sorulacak — ertelendi, kayıp değil.
+* **KALAN 8 KOŞU ONAYLANDI.** Ön-kayıtlı kuyruğun tamamı, kısaltma yok; seed başına ön koşul bacağı yürürlükte (102 ya da
+  103'te aşılırsa kuyruk durur ve sabahı bekler); kuyruk bitince ön koşul → (a) → (b) hücresi ("okunamadı") → harita hücresi,
+  kuralın kendi cümleleriyle; bitince bildirim. Uygulama: sürücünün `--continue-after-s101` yolu, kapının
+  `--legs precondition` kipi, onaylı ikinci kuyruğun seed sınırında bölünmüş iki dosyası (`step1_s102.json`,
+  `step1_s103.json`; birleşimleri onaylı kuyruğa birebir eşit, testle kilitli).
 * **Yakın-kaçış dersi** (sahibin yazdırdığı): kapı atanmış kontrol noktasında sınırı yalnızca %1.1 aştı, oysa eğri adım
   1500'de z = +9.6 ile tamamen dışarıdaydı — tek noktalı akla-yatkınlık denetimi bu anomaliyi neredeyse kaçırıyordu ve
   kirli veriyle (b) okunabilirdi. Gelecekteki akla-yatkınlık kapıları EĞRİ BOYUNCA tanımlanacak. Kayıt:

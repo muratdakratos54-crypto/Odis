@@ -1,0 +1,72 @@
+{
+ "out_dir": "checkpoints/foton-v03-step1",
+ "cwd": ".",
+ "python": ".venv/Scripts/python.exe",
+ "_scale": "S0",
+ "_owner_decision": null,
+ "_order": "seed-block interleaved + Latin-square counterbalanced (PREREGISTRATION_V02 V11a)",
+ "_strict": true,
+ "_blocks": [
+  [
+   "v03s1-x-iid-s103",
+   "v03s1-d-s103",
+   "v03s1-x-dom-s103",
+   "v03s1-h-dom-s103"
+  ]
+ ],
+ "_sliced_from": "step1_s102_s103.json — onaylı ikinci kuyruğun seed sınırında bölünmüş hâli (aynı koşular, aynı sıra); seed başına ön koşul kapısı araya girebilsin diye (sahibin talimatı, 2026-09-21)",
+ "runs": [
+  {
+   "name": "v03s1-x-iid-s103",
+   "args": [
+    "--preset",
+    "foton-x-iid",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "x-iid"
+  },
+  {
+   "name": "v03s1-d-s103",
+   "args": [
+    "--preset",
+    "foton-d",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "d"
+  },
+  {
+   "name": "v03s1-x-dom-s103",
+   "args": [
+    "--preset",
+    "foton-x-dom",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "x-dom"
+  },
+  {
+   "name": "v03s1-h-dom-s103",
+   "args": [
+    "--preset",
+    "foton-h-dom",
+    "--seed",
+    "103",
+    "--stop_step",
+    "2188"
+   ],
+   "_block": "v03s1-s103",
+   "_arm": "h-dom"
+  }
+ ]
+}

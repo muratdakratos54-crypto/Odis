@@ -122,6 +122,15 @@ karşı-olgusaldır. Ham sayı tek başına raporlanmamalıdır.
   (v03 adım 1, 2026-09-20): D akla-yatkınlık kapısı atanmış kontrol noktasında (adım 2000) sınırı yalnızca %1.1 aştı
   (+0.012132 / 0.012), oysa aynı koşu adım 1500'de z = +9.6 ile referans ailesinin tamamen dışındaydı. Tek noktalı denetim
   bu anomaliyi neredeyse kaçırıyordu ve kirli veriyle (b) kapısı okunabilirdi.
+* **Gürültü zarfı AYNI KODLA koşmuş çiftten ölçülür.** (v03 adım 1, 2026-09-20.) Dense teşhis koşusunun ölçütünü ilk
+  yazarken gürültü çapası, iki FARKLI kod sürümüyle koşmuş bir çiftten alınmıştı ve zarfı olduğundan dar gösteriyordu;
+  diskte aynı kodla koşmuş bir tekrar çifti (`r-m-s11`) vardı ve zarfı daha genişti. Koşudan önceki inceleme yakaladı.
+* **Beş seed'lik referans ailesi kuyruğu dar gösteriyor.** Gelecekteki akla-yatkınlık toleransları daha çok seed'den ya da
+  ölçülmüş kuyruğu içeren bir zarftan türetilsin. D-101 bunun kanıtı: kod sağlamken (teşhis koşusu), yalnızca seed çekimiyle
+  5 seed'lik ailenin aralığının tamamen dışına düştü (adım 1500'de z = +9.6).
+* **(b) sorusu — X-dom eşli D'yi geçiyor mu — cevapsız kaldı.** Doğru kalibre edilmiş D toleransı ve genişletilmiş D
+  referansıyla AYRI bir ön-kayıtta sorulacak. Kayıp değil, ertelendi. (Sahibin kararı: toleransın dar kalibre olmuş olması,
+  kuralı veriyi gördükten sonra esnetme hakkı vermez; v03 adım 1'de (b) okunmaz.)
 * Rapor yazıldıktan sonra bağımsız bir doğrulama turu (kör yeniden hesap + sayı denetimi + düşmanca hakem) koşulsun: v02'nin
   07 raporunda bu tur bir aşırı iddiayı ("öğrenilecek bir şey yoktu"), birime bağlı bir eğilim cümlesini ("tavan küçülüyor")
   ve FOTON lehine yanıltıcı bir parantezi ("fark kapanıyor") yakaladı.

@@ -1,0 +1,25 @@
+{
+ "what": "v03 adım 1 — seed 101 geçerlilik kapısı (yalnızca seed-başı bacaklar; kural: scripts/v03_step1_decision.py)",
+ "seed": 101,
+ "integrity": "dört koşu analizin kimlik / bütçe / LR / iki-yol / atama / eşleme / src denetimlerinden geçti",
+ "precondition_seed_leg": {
+  "clean": true,
+  "mean_fixed_diff_nat": -0.002548504370497362,
+  "ceiling_diff_points": 0.10770501539503208,
+  "limits": [
+   0.015,
+   0.4
+  ]
+ },
+ "d_sanity_seed_leg": {
+  "clean": false,
+  "deviation_nat_at_ref_step": 0.01213209171295171,
+  "reference": [
+   2000,
+   3.1198,
+   0.012
+  ]
+ },
+ "exceeded": true,
+ "NOT_computed": "X-dom / H-dom'un kaybı, D'nin adım-2188 kaybı, delta, delta_D ve maske teşhisi bu betikte HESAPLANMAZ / YAZILMAZ: 12 koşu bitmeden hiçbir delta hesaplanmayacak (sahibin talimatı). Kapı AŞILMADIYSA hiçbir sayı yazılmaz; aşıldıysa yalnızca iki kapının kendi nicelikleri yazılır (bunlar X-iid-101'in mean_fixed'ini ve D-101'in adım-2000 kaybını sabit bir kaydırmayla taşır — kampanya o durumda zaten durur ve sahibe rapor edilir)."
+}

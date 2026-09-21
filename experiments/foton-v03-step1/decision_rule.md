@@ -19,6 +19,20 @@ Kuralın TEK kopyası koddadır: `scripts/v03_step1_decision.py` (ulaşılabilir
 > OKUNMAZ** ve haritanın "(b) okunamadı" hücresi geçerlidir; bu karar veriyi gördükten sonra tartışmaya açılmaz. Sahibi
 > ayrıca bir TEŞHİS koşusu onayladı (D, seed 11, 2188 adım; ölçütü koşudan önce yazıldı: `dcheck_rule.md`) ve kalan 8
 > koşunun TAMAMININ koşulmasını, kuyruğun kısaltılmamasını istedi.
+>
+> **TEŞHİS SONUCU (2026-09-20 22:03): KOD SAĞLAM.** Bugünkü kod dondurulmuş dense referansını aynı seed'de yeniden üretti;
+> D-101'in sapması seed çekimidir (`dcheck_rule.md` bölüm 5b). Sahibi sonucu kabul etti.
+>
+> **KAPANAN KAPI KAPALI KALIYOR** (sahibin kararı, 2026-09-21; ileride kimse yanlış hatırlamasın diye buraya yazıldı):
+> "Referans ailesi beş seed'di, kuyruğu dar gösteriyordu" doğru bir gözlem ve iyi bir v03 dersi; ama bu turda (b)'yi
+> yeniden açmanın gerekçesi DEĞİL. **Toleransın dar kalibre olmuş olması, kuralı veriyi gördükten sonra esnetme hakkı
+> vermez — tersine, kuralın neden önceden yazıldığının kanıtıdır. (b) bu turda okunmaz.** (b) sorusu (X-dom eşli D'yi
+> geçiyor mu) cevapsız kaldı; doğru kalibre edilmiş D toleransı ve genişletilmiş D referansıyla AYRI bir ön-kayıtta
+> sorulacak. Kayıp değil, ertelendi.
+>
+> **KALAN 8 KOŞU ONAYLANDI (2026-09-21).** Ön-kayıtlı kuyruğun tamamı, kısaltma yok. Seed başına ön koşul bacağı yürürlükte:
+> 102 ya da 103'te aşılırsa kuyruk durur ve sabahı bekler. Kuyruk bitince sırayla: ön koşul → (a) → (b) hücresi
+> ("okunamadı") → harita hücresi; kuralın kendi cümleleriyle, yorum eklenmeden.
 
 ## Kollar — 12 koşu: 4 kol × seed {101, 102, 103}; T = 512; tarama bütçesi (adım 2188, LR takvimi tam bütçe üzerinden)
 
@@ -256,6 +270,17 @@ değil ya da birden fazla `src` özeti · v02-X referansı aynı sıkılıkla de
   koşudan SONRA karar üretmezdi). Bozuk bir koşu ya da src sapması da kuyruğu durdurur — bu bir ara sonuç değildir, hiçbir
   kayıp sayısı üretmez, yalnızca DURMA yönünde çalışır. Bu üçüncü durdurma yolu sahibin "yalnızca iki kapı" talimatının
   ötesindedir ve bu yüzden burada ve başlatma raporunda açıkça yazılıdır.
+* **DEVAM (sahibin onayı, 2026-09-21).** Sürücü `--continue-after-s101` ile: **0. adım** seed 101 bloğunun yeniden
+  denetimi (`--seed 101 --legs precondition`, çıktı `gate_s101_recheck.json`; bütünlük + src sürekliliği) → kuyruk
+  `queues/step1_s102.json` → seed 102 ön koşul kapısı → kuyruk `queues/step1_s103.json` → seed 103 ön koşul kapısı.
+  0. adım başlatma öncesi incelemenin bulgusudur: seed 102 / 103 kapıları kendi koşularının src özetini ŞU ANKİ ağaçla
+  karşılaştırır, o koşular o ağaçtan koştuğu için bu seed 101'e göre totolojiktir; 101 | 102 sınırını yalnızca bu adım görür
+  (seed 101'den sonra src/ değişmişse 8 koşu başlamadan durulur). Bu adım durdurmaktan başka bir şey yapmaz, sayı üretmez. İki dosya onaylı ikinci kuyruğun
+  (`step1_s102_s103.json`) seed sınırında BÖLÜNMÜŞ hâlidir: aynı 8 koşu, aynı sıra, aynı argümanlar (testle kilitli; kuyruk
+  kısaltılmadı ve yeniden üretilmedi). Seed 102 / 103 kapıları `--legs precondition` ile çağrılır: YALNIZCA ön koşulun
+  seed-başı bacağına bakar, D'ye bakmaz ((b) zaten okunmaz; D-102 / D-103'ün değeri teşhistir). Dört koşunun bütünlüğü (D
+  dahil) ve src sürekliliği yine denetlenir. Kapı geçerse hiçbir sayı yazılmaz; aşılırsa yalnız ön koşulun nicelikleri
+  yazılır ve kuyruk durur. Seed 101'in aşılmış kapı kaydı (`gate_s101.json`) silinmez; bir kopyası bu klasördedir.
 * **12 koşu bitmeden hiçbir δ hesaplanmaz.** Analiz yalnızca sürücü `completed` yazdıktan sonra koşulur.
 * **Kuyruk bitince, bu sırayla ve belgedeki kuralla:** ön koşul (üç bacak: seed-başı mean_fixed, işaretli ortalama, seed-başı
   tavan) → (a) → (b) → harita hücresi. Sonra sahibe rapor. Yorum eklenmez; kural konuşur. Raporda AÇIKÇA yazılır: δ'nın
