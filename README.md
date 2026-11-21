@@ -1,3 +1,44 @@
+**Sprache / Language:** [Deutsch](#deutsch) · [English](#english) · [Türkçe](#moe-llm)
+
+## Deutsch
+
+Kleines **Mixture-of-Experts (MoE) Sprachmodell**, von Grund auf in PyTorch geschrieben und auf einer einzelnen Consumer-GPU trainiert (RTX 4070 Super, 12 GB VRAM). Ziel: lernen und MoE-Ideen im Stil von Kimi K2 / DeepSeek-V3 im kleinen Maßstab testen. Status: experimentell (Forschung und Entwicklung).
+
+**Was enthalten ist**
+- Decoder-only Transformer (RoPE, RMSNorm, SwiGLU), eigener BPE-Tokenizer (mit SentencePiece trainiert), Trainingsschleife mit Checkpoints
+- MoE mit Top-k-Router: in den Schichten 1–7 je 16 Experten plus ein Shared Expert (Schicht 0 ist dicht), Load-Balancing-Loss und Z-Loss
+- Faire Vergleiche zwischen dichtem Modell und MoE (gleiche Tokens, gleiche FLOPs, gleiche Laufzeit, gleiche aktive Parameter), jeweils mit 3 Seeds
+- Router-Ablation: sechs Balancing-Bedingungen × 3 Seeds
+- Experiment FOTON v0.1 vor dem Code vorab registriert (Ziel und Entscheidungstabelle festgelegt, per Git-Tag eingefroren)
+- 196 automatisierte Tests
+
+**Wichtigste Ergebnisse** (ca. 98 Mio. Tokens, TinyStories)
+- Bei gleichem aktiven Rechenaufwand erreicht das MoE-Modell (79,2 Mio. Parameter gesamt, 30,0 Mio. aktiv) einen geringeren Validierungsverlust als das dichte Modell (29,9 Mio.): 1,317 gegenüber 1,354 in der ersten Messung. Mit 3 Seeds bestätigt (Mittelwert 1,323 gegenüber 1,358).
+- Ohne Load-Balancing-Loss fallen Experten aus (Expert Collapse): in der ersten Messung 49 von 112, im Mittel über 3 Seeds 51 von 112. Der Verlust steigt deutlich.
+- Bei gleicher Laufzeit (Wall-Clock) ist das dichte Modell um 0,016 besser, da die MoE-Implementierung auf dieser GPU langsamer ist. Dieses Ergebnis ist ebenfalls dokumentiert.
+
+Details, Tabellen und die Grenzen der Messungen stehen im türkischen Hauptteil unten. Modellgewichte sind nicht im Repository enthalten.
+
+## English
+
+A small **Mixture-of-Experts (MoE) language model** written from scratch in PyTorch and trained on a single consumer GPU (RTX 4070 Super, 12 GB VRAM). Goal: learn, and test Kimi K2 / DeepSeek-V3 style MoE ideas at small scale. Status: experimental (research and development).
+
+**What is included**
+- Decoder-only Transformer (RoPE, RMSNorm, SwiGLU), custom BPE tokenizer (trained with SentencePiece), training loop with checkpoints
+- MoE with top-k router: layers 1–7 each have 16 experts plus a shared expert (layer 0 is dense), load-balancing loss and z-loss
+- Fair dense-vs-MoE comparisons (same tokens, same FLOPs, same wall-clock, same active parameters), 3 seeds each
+- Router ablation: six balancing conditions × 3 seeds
+- FOTON v0.1 experiment pre-registered before the code (goal and decision table fixed, frozen with a git tag)
+- 196 automated tests
+
+**Key results** (about 98M tokens, TinyStories)
+- At equal active compute, the MoE model (79.2M total / 30.0M active parameters) reaches a lower validation loss than the dense model (29.9M): 1.317 vs 1.354 in the first run. Confirmed with 3 seeds (mean 1.323 vs 1.358).
+- Without the load-balancing loss, experts die (expert collapse): 49 of 112 in the first run, 51 of 112 on average over 3 seeds. The loss rises noticeably.
+- At equal wall-clock time the dense model is better by 0.016, because the MoE implementation is slower on this GPU. This result is documented as well.
+
+Details, tables and the limits of the measurements are in the Turkish main section below. Model weights are not included in the repository.
+
+---
 # moe-llm
 
 Sıfırdan, PyTorch ile yazılmış küçük bir **Mixture-of-Experts (MoE)** dil modeli.
